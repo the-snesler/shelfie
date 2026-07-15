@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/*
+ * Minimal light palette. Each token becomes a Tailwind color utility, e.g.
+ * `--color-panel` -> `bg-panel` / `text-panel` / `border-panel`.
+ */
+@theme {
+  --color-bg: #f7f7f8;
+  --color-panel: #ffffff;
+  --color-divider: #e4e4e7;
+  --color-ink: #1c1c1f;
+  --color-muted: #71717a;
+  --color-accent: #4f46e5;
+  --color-danger: #dc2626;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family:
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+  }
+}
