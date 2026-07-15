@@ -4,6 +4,7 @@ import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { authFetch } from "../../auth";
 import type { ShelfieDatabase } from "../../db/database";
+import { hasAppHistory, navigate } from "../../router";
 
 const STATUS_LABELS: Record<ItemStatus, string> = {
   wishlisted: "Wishlisted",
@@ -14,53 +15,77 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
   completed: "Completed",
 };
 
-export function Detail({
-  db,
-  id,
-  onBack,
-}: {
-  db: ShelfieDatabase;
-  id: string;
-  onBack: () => void;
-}) {
+/** Sentinel `<select>` value for a game with no library doc yet. */
+const NOT_IN_LIBRARY = "__not_in_library__";
+
+type MetaState =
+  | { status: "loading" }
+  | { status: "not-found" }
+  | { status: "loaded"; meta: GameMetadata };
+
+export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
+  const [metaState, setMetaState] = useState<MetaState>({
+    status: "loading",
+  });
   const [item, setItem] = useState<RxDocument<LibraryItem> | null | undefined>(
     undefined,
   );
-  const [meta, setMeta] = useState<GameMetadata | null>(null);
 
   useEffect(() => {
-    const sub = db.library_items.findOne(id).$.subscribe((doc) => {
-      setItem(doc ?? null);
-    });
-    return () => sub.unsubscribe();
-  }, [db, id]);
-
-  const sourceId = item?.sourceId;
-  useEffect(() => {
-    if (!sourceId) return;
+    setMetaState({ status: "loading" });
     let active = true;
-    void authFetch(`/api/games?ids=${sourceId}`)
-      .then((res) => (res.ok ? (res.json() as Promise<GameMetadata[]>) : []))
-      .then((rows) => {
-        if (active) setMeta(rows[0] ?? null);
+    void authFetch(`/api/games/by-slug/${encodeURIComponent(slug)}`)
+      .then(async (res) => {
+        if (!active) return;
+        if (res.status === 404) {
+          setMetaState({ status: "not-found" });
+          return;
+        }
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const meta = (await res.json()) as GameMetadata;
+        setMetaState({ status: "loaded", meta });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setMetaState({ status: "not-found" });
+      });
     return () => {
       active = false;
     };
-  }, [sourceId]);
+  }, [slug]);
 
-  if (item === undefined) {
+  const igdbId = metaState.status === "loaded" ? metaState.meta.igdbId : null;
+  useEffect(() => {
+    if (igdbId === null) {
+      setItem(undefined);
+      return;
+    }
+    const sub = db.library_items
+      .findOne(`game:${igdbId}`)
+      .$.subscribe((doc) => {
+        setItem(doc ?? null);
+      });
+    return () => sub.unsubscribe();
+  }, [db, igdbId]);
+
+  function handleBack() {
+    if (hasAppHistory()) {
+      window.history.back();
+    } else {
+      navigate("/");
+    }
+  }
+
+  if (metaState.status === "loading") {
     return <div className="p-4 text-muted">Loading…</div>;
   }
 
-  if (item === null) {
+  if (metaState.status === "not-found") {
     return (
       <div className="flex flex-col items-center gap-3 p-8 text-muted">
-        <p>This item is no longer in your library.</p>
+        <p>Game not found.</p>
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => navigate("/")}
           className="text-accent underline"
         >
           Back to library
@@ -69,15 +94,34 @@ export function Detail({
     );
   }
 
-  const cover = meta?.coverImageId
+  const meta = metaState.meta;
+  const cover = meta.coverImageId
     ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${meta.coverImageId}.jpg`
     : null;
+
+  function handleStatusChange(value: ItemStatus) {
+    if (item) {
+      void item.incrementalPatch({ status: value, updatedAt: Date.now() });
+      return;
+    }
+    const now = Date.now();
+    const doc: LibraryItem = {
+      id: `game:${meta.igdbId}`,
+      mediaType: "game",
+      sourceId: String(meta.igdbId),
+      status: value,
+      progress: null,
+      addedAt: now,
+      updatedAt: now,
+    };
+    void db.library_items.insert(doc);
+  }
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
       <button
         type="button"
-        onClick={onBack}
+        onClick={handleBack}
         className="self-start text-sm text-muted hover:text-ink"
       >
         ← Back
@@ -87,45 +131,42 @@ export function Detail({
           {cover && (
             <img
               src={cover}
-              alt={meta?.name ?? item.sourceId}
+              alt={meta.name}
               className="h-full w-full object-cover"
             />
           )}
         </div>
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-xl font-semibold text-ink">
-            {meta?.name ?? item.sourceId}
-          </h2>
-          {meta?.firstReleaseDate && (
+          <h2 className="text-xl font-semibold text-ink">{meta.name}</h2>
+          {meta.firstReleaseDate && (
             <p className="text-sm text-muted">
               {new Date(meta.firstReleaseDate * 1000).getFullYear()}
             </p>
           )}
-          {meta && meta.genres.length > 0 && (
+          {meta.genres.length > 0 && (
             <p className="text-sm text-muted">{meta.genres.join(", ")}</p>
           )}
-          {meta && meta.platforms.length > 0 && (
+          {meta.platforms.length > 0 && (
             <p className="text-sm text-muted">{meta.platforms.join(", ")}</p>
           )}
-          {meta?.developer && (
+          {meta.developer && (
             <p className="text-sm text-muted">{meta.developer}</p>
           )}
         </div>
       </div>
-      {meta?.summary && <p className="text-sm text-ink">{meta.summary}</p>}
+      {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
       <div className="flex flex-col gap-3 rounded border border-divider bg-panel p-4">
         <label className="flex flex-col gap-1 text-sm font-medium text-muted">
           Status
           <select
-            value={item.status}
-            onChange={(e) => {
-              void item.incrementalPatch({
-                status: e.target.value as ItemStatus,
-                updatedAt: Date.now(),
-              });
-            }}
+            value={item ? item.status : NOT_IN_LIBRARY}
+            disabled={item === undefined}
+            onChange={(e) => handleStatusChange(e.target.value as ItemStatus)}
             className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
           >
+            <option value={NOT_IN_LIBRARY} disabled>
+              Not in your library
+            </option>
             {ITEM_STATUSES.map((status) => (
               <option key={status} value={status}>
                 {STATUS_LABELS[status]}
@@ -133,7 +174,7 @@ export function Detail({
             ))}
           </select>
         </label>
-        {item.status === "playing" && (
+        {item && item.status === "playing" && (
           <label className="flex flex-col gap-1 text-sm font-medium text-muted">
             Progress ({item.progress ?? 0}%)
             <input

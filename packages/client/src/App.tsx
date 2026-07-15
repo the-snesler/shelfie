@@ -12,13 +12,9 @@ import { startReplication, stopReplication } from "./db/replication";
 import { Detail } from "./features/detail/Detail";
 import { Library } from "./features/library/Library";
 import { Search } from "./features/search/Search";
+import { navigate, useRoute } from "./router";
 
 export type AuthMode = "checking" | "setup" | "login" | "app" | "unreachable";
-
-type View =
-  | { type: "library" }
-  | { type: "search" }
-  | { type: "detail"; id: string };
 
 export function App() {
   const [authMode, setAuthMode] = useState<AuthMode>(() =>
@@ -119,7 +115,7 @@ export function App() {
 
 function AuthedApp({ onLogout }: { onLogout: () => void }) {
   const [db, setDb] = useState<ShelfieDatabase | null>(null);
-  const [view, setView] = useState<View>({ type: "library" });
+  const route = useRoute();
 
   useEffect(() => {
     let active = true;
@@ -150,7 +146,7 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
       <header className="flex items-center gap-4 border-b border-divider bg-panel px-4 py-3">
         <button
           type="button"
-          onClick={() => setView({ type: "library" })}
+          onClick={() => navigate("/")}
           className="text-lg font-semibold text-ink"
         >
           Shelfie
@@ -158,9 +154,9 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
         <nav className="flex gap-1">
           <button
             type="button"
-            onClick={() => setView({ type: "library" })}
+            onClick={() => navigate("/")}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
-              view.type === "library"
+              route.view === "library"
                 ? "bg-accent text-white"
                 : "text-muted hover:bg-bg"
             }`}
@@ -169,9 +165,9 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
           </button>
           <button
             type="button"
-            onClick={() => setView({ type: "search" })}
+            onClick={() => navigate("/search")}
             className={`rounded px-3 py-1.5 text-sm font-medium ${
-              view.type === "search"
+              route.view === "search"
                 ? "bg-accent text-white"
                 : "text-muted hover:bg-bg"
             }`}
@@ -189,17 +185,9 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {view.type === "library" && (
-          <Library db={db} onSelect={(id) => setView({ type: "detail", id })} />
-        )}
-        {view.type === "search" && <Search db={db} />}
-        {view.type === "detail" && (
-          <Detail
-            db={db}
-            id={view.id}
-            onBack={() => setView({ type: "library" })}
-          />
-        )}
+        {route.view === "library" && <Library db={db} />}
+        {route.view === "search" && <Search db={db} />}
+        {route.view === "detail" && <Detail db={db} slug={route.slug} />}
       </div>
     </div>
   );

@@ -84,6 +84,24 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 2,
+    name: "game-metadata-slug",
+    async up(db) {
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("slug", "text")
+        .execute();
+
+      await db.schema
+        .createIndex("game_metadata_slug")
+        .ifNotExists()
+        .unique()
+        .on("game_metadata")
+        .column("slug")
+        .execute();
+    },
+  },
 ];
 
 /**

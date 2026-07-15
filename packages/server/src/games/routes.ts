@@ -3,11 +3,18 @@ import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import type { Database, GameMetadataTable } from "../db/types.js";
-import { fetchGamesByIds, searchGames } from "../igdb/client.js";
+import {
+  fetchGameBySlug,
+  fetchGamesByIds,
+  searchGames,
+} from "../igdb/client.js";
 
-function metadataRowToDto(row: GameMetadataTable): GameMetadata {
+function metadataRowToDto(
+  row: GameMetadataTable & { slug: string },
+): GameMetadata {
   return {
     igdbId: row.igdb_id,
+    slug: row.slug,
     name: row.name,
     coverImageId: row.cover_image_id,
     summary: row.summary,
@@ -21,6 +28,7 @@ function metadataRowToDto(row: GameMetadataTable): GameMetadata {
 function metadataToRow(metadata: GameMetadata): GameMetadataTable {
   return {
     igdb_id: metadata.igdbId,
+    slug: metadata.slug,
     name: metadata.name,
     cover_image_id: metadata.coverImageId,
     summary: metadata.summary,
@@ -30,6 +38,32 @@ function metadataToRow(metadata: GameMetadata): GameMetadataTable {
     first_release_date: metadata.firstReleaseDate,
     fetched_at: Date.now(),
   };
+}
+
+/** Upserts a fetched game's row into the cache, keyed by igdb_id. */
+async function upsertMetadata(
+  database: Kysely<Database>,
+  metadata: GameMetadata,
+): Promise<GameMetadataTable> {
+  const row = metadataToRow(metadata);
+  await database
+    .insertInto("game_metadata")
+    .values(row)
+    .onConflict((oc) =>
+      oc.column("igdb_id").doUpdateSet({
+        slug: row.slug,
+        name: row.name,
+        cover_image_id: row.cover_image_id,
+        summary: row.summary,
+        genres: row.genres,
+        platforms: row.platforms,
+        developer: row.developer,
+        first_release_date: row.first_release_date,
+        fetched_at: row.fetched_at,
+      }),
+    )
+    .execute();
+  return row;
 }
 
 function parseIds(raw: string): number[] {
@@ -64,30 +98,26 @@ export function registerGamesRoutes(
       .selectAll()
       .where("igdb_id", "in", ids)
       .execute();
-    const cachedById = new Map(cached.map((row) => [row.igdb_id, row]));
+    // Rows cached before migration 002 have a NULL slug; treat them as
+    // misses so every response consistently carries a slug.
+    const cachedById = new Map(
+      cached
+        .filter(
+          (row): row is GameMetadataTable & { slug: string } =>
+            row.slug !== null,
+        )
+        .map((row) => [row.igdb_id, row]),
+    );
 
     const missingIds = ids.filter((id) => !cachedById.has(id));
     if (missingIds.length > 0) {
       const fetched = await fetchGamesByIds(missingIds);
       for (const metadata of fetched) {
-        const row = metadataToRow(metadata);
-        await database
-          .insertInto("game_metadata")
-          .values(row)
-          .onConflict((oc) =>
-            oc.column("igdb_id").doUpdateSet({
-              name: row.name,
-              cover_image_id: row.cover_image_id,
-              summary: row.summary,
-              genres: row.genres,
-              platforms: row.platforms,
-              developer: row.developer,
-              first_release_date: row.first_release_date,
-              fetched_at: row.fetched_at,
-            }),
-          )
-          .execute();
-        cachedById.set(metadata.igdbId, row);
+        const row = await upsertMetadata(database, metadata);
+        cachedById.set(
+          metadata.igdbId,
+          row as GameMetadataTable & { slug: string },
+        );
       }
     }
 
@@ -97,5 +127,29 @@ export function registerGamesRoutes(
       if (row) results.push(metadataRowToDto(row));
     }
     return c.json(results);
+  });
+
+  app.get("/api/games/by-slug/:slug", async (c) => {
+    const slug = c.req.param("slug");
+
+    const cached = await database
+      .selectFrom("game_metadata")
+      .selectAll()
+      .where("slug", "=", slug)
+      .executeTakeFirst();
+    if (cached && cached.slug !== null) {
+      return c.json(
+        metadataRowToDto(cached as GameMetadataTable & { slug: string }),
+      );
+    }
+
+    const metadata = await fetchGameBySlug(slug);
+    if (!metadata) {
+      return c.json({ error: "not found" }, 404);
+    }
+    const row = await upsertMetadata(database, metadata);
+    return c.json(
+      metadataRowToDto(row as GameMetadataTable & { slug: string }),
+    );
   });
 }

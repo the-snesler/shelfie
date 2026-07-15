@@ -39,6 +39,7 @@ interface IgdbInvolvedCompany {
 interface IgdbSearchGame {
   id: number;
   name: string;
+  slug?: string;
   cover?: IgdbCover;
   first_release_date?: number;
   platforms?: IgdbPlatform[];
@@ -47,12 +48,33 @@ interface IgdbSearchGame {
 interface IgdbMetadataGame {
   id: number;
   name: string;
+  slug?: string;
   summary?: string;
   cover?: IgdbCover;
   genres?: IgdbGenre[];
   platforms?: IgdbPlatform[];
   first_release_date?: number;
   involved_companies?: IgdbInvolvedCompany[];
+}
+
+/** Fields shared by fetchGamesByIds and fetchGameBySlug metadata queries. */
+const METADATA_FIELDS =
+  "name,slug,summary,cover.image_id,genres.name,platforms.name,first_release_date,involved_companies.company.name,involved_companies.developer";
+
+/** Maps a raw IGDB metadata game into the DTO; null when IGDB omitted the slug. */
+function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
+  if (!game.slug) return null;
+  return {
+    igdbId: game.id,
+    slug: game.slug,
+    name: game.name,
+    coverImageId: game.cover?.image_id ?? null,
+    summary: game.summary ?? null,
+    genres: (game.genres ?? []).map((genre) => genre.name),
+    platforms: (game.platforms ?? []).map((platform) => platform.name),
+    developer: extractDeveloper(game.involved_companies),
+    firstReleaseDate: game.first_release_date ?? null,
+  };
 }
 
 /** Requests IGDB with a 401-retry-once (revoked/rotated credentials safety net). */
@@ -84,7 +106,9 @@ function coverUrl(imageId: string | undefined): string | null {
     : null;
 }
 
-function extractDeveloper(companies: IgdbInvolvedCompany[] | undefined): string | null {
+function extractDeveloper(
+  companies: IgdbInvolvedCompany[] | undefined,
+): string | null {
   const dev = companies?.find((company) => company.developer);
   return dev?.company.name ?? null;
 }
@@ -99,37 +123,53 @@ function escapeApicalypseString(input: string): string {
 }
 
 export async function searchGames(q: string): Promise<SearchResult[]> {
-  const query = `search "${escapeApicalypseString(q)}"; fields name,cover.image_id,first_release_date,platforms.name; where game_type = 0; limit 20;`;
+  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name; where game_type = 0; limit 20;`;
   const res = await igdbFetch(query);
   if (!res.ok) {
     throw new Error(`IGDB search failed: ${res.status}`);
   }
   const games = (await res.json()) as IgdbSearchGame[];
-  return games.map((game) => ({
-    igdbId: game.id,
-    name: game.name,
-    coverUrl: coverUrl(game.cover?.image_id),
-    year: epochSecondsToYear(game.first_release_date),
-    platforms: (game.platforms ?? []).map((platform) => platform.name),
-  }));
+  const results: SearchResult[] = [];
+  for (const game of games) {
+    if (!game.slug) continue;
+    results.push({
+      igdbId: game.id,
+      slug: game.slug,
+      name: game.name,
+      coverUrl: coverUrl(game.cover?.image_id),
+      year: epochSecondsToYear(game.first_release_date),
+      platforms: (game.platforms ?? []).map((platform) => platform.name),
+    });
+  }
+  return results;
 }
 
 export async function fetchGamesByIds(ids: number[]): Promise<GameMetadata[]> {
   if (ids.length === 0) return [];
-  const query = `fields name,summary,cover.image_id,genres.name,platforms.name,first_release_date,involved_companies.company.name,involved_companies.developer; where id = (${ids.join(",")}); limit ${ids.length};`;
+  const query = `fields ${METADATA_FIELDS}; where id = (${ids.join(",")}); limit ${ids.length};`;
   const res = await igdbFetch(query);
   if (!res.ok) {
     throw new Error(`IGDB metadata fetch failed: ${res.status}`);
   }
   const games = (await res.json()) as IgdbMetadataGame[];
-  return games.map((game) => ({
-    igdbId: game.id,
-    name: game.name,
-    coverImageId: game.cover?.image_id ?? null,
-    summary: game.summary ?? null,
-    genres: (game.genres ?? []).map((genre) => genre.name),
-    platforms: (game.platforms ?? []).map((platform) => platform.name),
-    developer: extractDeveloper(game.involved_companies),
-    firstReleaseDate: game.first_release_date ?? null,
-  }));
+  const results: GameMetadata[] = [];
+  for (const game of games) {
+    const dto = metadataGameToDto(game);
+    if (dto) results.push(dto);
+  }
+  return results;
+}
+
+/** Looks up a single game by its IGDB URL slug; null if IGDB has no such slug. */
+export async function fetchGameBySlug(
+  slug: string,
+): Promise<GameMetadata | null> {
+  const query = `fields ${METADATA_FIELDS}; where slug = "${escapeApicalypseString(slug)}"; limit 1;`;
+  const res = await igdbFetch(query);
+  if (!res.ok) {
+    throw new Error(`IGDB metadata fetch failed: ${res.status}`);
+  }
+  const games = (await res.json()) as IgdbMetadataGame[];
+  const [game] = games;
+  return game ? metadataGameToDto(game) : null;
 }

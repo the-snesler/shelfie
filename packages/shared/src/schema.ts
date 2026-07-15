@@ -33,7 +33,12 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       maximum: 9007199254740991,
       multipleOf: 1,
     },
-    updatedAt: { type: "number" },
+    updatedAt: {
+      type: "number",
+      minimum: 0,
+      maximum: 9007199254740991,
+      multipleOf: 1,
+    },
   },
   required: [
     "id",

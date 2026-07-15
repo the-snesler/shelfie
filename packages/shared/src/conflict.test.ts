@@ -15,9 +15,9 @@ const base: ReplicatedLibraryItem = {
 
 describe("libraryItemConflictHandler", () => {
   it("detects equal replicated library item states", () => {
-    expect(
-      libraryItemConflictHandler.isEqual(base, { ...base }, "test"),
-    ).toBe(true);
+    expect(libraryItemConflictHandler.isEqual(base, { ...base }, "test")).toBe(
+      true,
+    );
     expect(
       libraryItemConflictHandler.isEqual(
         base,

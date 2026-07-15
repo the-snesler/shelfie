@@ -3,6 +3,7 @@ import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
 import type { ShelfieDatabase } from "../../db/database";
+import { navigate } from "../../router";
 
 const STATUS_LABELS: Record<ItemStatus, string> = {
   wishlisted: "Wishlisted",
@@ -13,13 +14,7 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
   completed: "Completed",
 };
 
-export function Library({
-  db,
-  onSelect,
-}: {
-  db: ShelfieDatabase;
-  onSelect: (id: string) => void;
-}) {
+export function Library({ db }: { db: ShelfieDatabase }) {
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>([]);
   const [metadata, setMetadata] = useState<Map<string, GameMetadata>>(
     new Map(),
@@ -75,8 +70,12 @@ export function Library({
           <button
             key={item.id}
             type="button"
-            onClick={() => onSelect(item.id)}
-            className="flex flex-col gap-2 rounded text-left"
+            disabled={!meta?.slug}
+            onClick={() => {
+              if (meta?.slug)
+                navigate(`/games/${encodeURIComponent(meta.slug)}`);
+            }}
+            className="flex flex-col gap-2 rounded text-left disabled:cursor-default disabled:opacity-60"
           >
             <div className="relative aspect-[3/4] w-full overflow-hidden rounded bg-panel ring-1 ring-divider">
               {cover ? (

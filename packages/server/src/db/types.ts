@@ -26,6 +26,8 @@ export interface LibraryItemsTable {
  */
 export interface GameMetadataTable {
   igdb_id: number;
+  /** IGDB's unique URL slug; null for rows cached before migration 002. */
+  slug: string | null;
   name: string;
   cover_image_id: string | null;
   summary: string | null;
