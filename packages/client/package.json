@@ -1,0 +1,33 @@
+{
+  "name": "@shelfie/client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@floating-ui/react": "^0.27.19",
+    "@shelfie/shared": "workspace:*",
+    "dexie": "^4.4.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rxdb": "^16.21.1",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.111",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.9.3",
+    "unplugin-icons": "^23.0.1",
+    "vite": "^6.4.3"
+  }
+}
