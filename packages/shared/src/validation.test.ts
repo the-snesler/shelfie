@@ -10,6 +10,7 @@ const base: ReplicatedLibraryItem = {
   progress: 50,
   addedAt: 1,
   updatedAt: 2,
+  platforms: [],
   _deleted: false,
 };
 
@@ -25,6 +26,18 @@ describe("libraryItemDocSchema id pattern", () => {
 
   it("rejects an id with a non-numeric sourceId", () => {
     const doc = { ...base, id: "game:abc" };
+    expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema platforms", () => {
+  it("accepts a platform list", () => {
+    const doc = { ...base, platforms: ["PlayStation 5", "Nintendo Switch"] };
+    expect(libraryItemDocSchema.safeParse(doc).success).toBe(true);
+  });
+
+  it("rejects a non-string platform entry", () => {
+    const doc = { ...base, platforms: [5] };
     expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
   });
 });

@@ -14,6 +14,8 @@ export interface LibraryItemsTable {
   progress: number | null;
   added_at: number;
   updated_at: number;
+  /** JSON-encoded string[] — IGDB platform names the user owns this on. */
+  platforms: string;
   /** server-owned replication cursor */
   seq: number;
   /** 0 | 1 — SQLite has no native boolean */
@@ -35,6 +37,8 @@ export interface GameMetadataTable {
   genres: string;
   /** JSON-encoded string[] */
   platforms: string;
+  /** JSON-encoded PlatformRelease[] — earliest release date per platform. */
+  platform_release_dates: string;
   developer: string | null;
   /** epoch seconds */
   first_release_date: number | null;

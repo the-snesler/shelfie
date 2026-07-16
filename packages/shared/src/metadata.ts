@@ -16,6 +16,12 @@ export interface SearchResult {
   platforms: string[];
 }
 
+/** Earliest known release date for one platform of a game. */
+export interface PlatformRelease {
+  platform: string; // IGDB platform name, matches an entry in `platforms`
+  date: number;     // epoch seconds
+}
+
 /** A single row from `GET /api/games?ids=`, backed by the server's `game_metadata` cache table. */
 export interface GameMetadata {
   igdbId: number;
@@ -26,6 +32,9 @@ export interface GameMetadata {
   summary: string | null;
   genres: string[];
   platforms: string[];
+  /** Earliest known release date per platform, ascending by date. Drives
+   *  default cover-platform selection ("released on first"). May be empty. */
+  platformReleaseDates: PlatformRelease[];
   developer: string | null;
   /** epoch seconds */
   firstReleaseDate: number | null;

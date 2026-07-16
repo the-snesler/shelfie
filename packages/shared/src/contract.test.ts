@@ -16,6 +16,7 @@ const sample: ReplicatedLibraryItem = {
   addedAt: 1,
   updatedAt: 2,
   _deleted: false,
+  platforms: ["PlayStation 5"],
 };
 
 const wishlistedSample: ReplicatedLibraryItem = {
@@ -24,6 +25,7 @@ const wishlistedSample: ReplicatedLibraryItem = {
   sourceId: "7",
   status: "wishlisted",
   progress: null,
+  platforms: [],
 };
 
 describe("library item contract", () => {
@@ -51,9 +53,15 @@ describe("library item contract", () => {
     );
   });
 
-  it("starts at schema version 0 with an empty migration seam", () => {
-    expect(libraryItemSchema.version).toBe(0);
-    expect(libraryItemMigrationStrategies).toEqual({});
+  it("is at schema version 1 with a platforms migration", () => {
+    expect(libraryItemSchema.version).toBe(1);
+    expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
+    const migrate = libraryItemMigrationStrategies[1] as (
+      oldDoc: unknown,
+    ) => unknown;
+    expect(migrate({ id: "game:1", platforms: undefined })).toMatchObject({
+      platforms: [],
+    });
   });
 
   it("keeps status a plain string in the RxDB schema (enum lives in zod)", () => {

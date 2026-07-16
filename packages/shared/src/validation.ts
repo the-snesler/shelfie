@@ -20,5 +20,6 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
   progress: z.number().int().min(0).max(100).nullable(),
   addedAt: z.number().positive(),
   updatedAt: z.number().positive(),
+  platforms: z.array(z.string().min(1).max(64)).max(32),
   _deleted: z.boolean(),
 });

@@ -10,6 +10,7 @@ const base: ReplicatedLibraryItem = {
   progress: 10,
   addedAt: 1,
   updatedAt: 10,
+  platforms: [],
   _deleted: false,
 };
 

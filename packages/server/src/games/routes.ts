@@ -1,4 +1,4 @@
-import type { GameMetadata } from "@shelfie/shared";
+import type { GameMetadata, PlatformRelease } from "@shelfie/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
@@ -20,6 +20,7 @@ function metadataRowToDto(
     summary: row.summary,
     genres: JSON.parse(row.genres) as string[],
     platforms: JSON.parse(row.platforms) as string[],
+    platformReleaseDates: JSON.parse(row.platform_release_dates) as PlatformRelease[],
     developer: row.developer,
     firstReleaseDate: row.first_release_date,
   };
@@ -34,6 +35,7 @@ function metadataToRow(metadata: GameMetadata): GameMetadataTable {
     summary: metadata.summary,
     genres: JSON.stringify(metadata.genres),
     platforms: JSON.stringify(metadata.platforms),
+    platform_release_dates: JSON.stringify(metadata.platformReleaseDates),
     developer: metadata.developer,
     first_release_date: metadata.firstReleaseDate,
     fetched_at: Date.now(),
@@ -57,6 +59,7 @@ async function upsertMetadata(
         summary: row.summary,
         genres: row.genres,
         platforms: row.platforms,
+        platform_release_dates: row.platform_release_dates,
         developer: row.developer,
         first_release_date: row.first_release_date,
         fetched_at: row.fetched_at,

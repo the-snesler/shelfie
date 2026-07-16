@@ -1,0 +1,20 @@
+{
+  "PlayStation 5": {
+    "overlay": "/assets/games/ps5-cover.png",
+    "aspectRatio": 0.803,
+    "heightMm": 173,
+    "caseColor": "#0F52CA"
+  },
+  "Nintendo Switch": {
+    "overlay": "/assets/games/switch-cover.png",
+    "aspectRatio": 0.615,
+    "heightMm": 169,
+    "caseColor": "#F3F1F6"
+  },
+  "Nintendo Switch 2": {
+    "overlay": "/assets/games/switch-2-cover.png",
+    "aspectRatio": 0.615,
+    "heightMm": 169,
+    "caseColor": "#F23132"
+  }
+}

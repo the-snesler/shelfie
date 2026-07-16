@@ -12,4 +12,4 @@ export {
 } from "./conflict.js";
 export { libraryItemMigrationStrategies, libraryItemSchema } from "./schema.js";
 export { libraryItemDocSchema } from "./validation.js";
-export type { SearchResult, GameMetadata } from "./metadata.js";
+export type { SearchResult, GameMetadata, PlatformRelease } from "./metadata.js";

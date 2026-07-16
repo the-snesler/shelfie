@@ -13,6 +13,7 @@ export function libraryItemRowToDoc(
     progress: row.progress,
     addedAt: row.added_at,
     updatedAt: row.updated_at,
+    platforms: JSON.parse(row.platforms) as string[],
     _deleted: row.deleted === 1,
   };
 }
@@ -30,6 +31,7 @@ export function libraryItemDocToRow(
     progress: doc.progress,
     added_at: doc.addedAt,
     updated_at: doc.updatedAt,
+    platforms: JSON.stringify(doc.platforms),
     seq,
     deleted: doc._deleted ? 1 : 0,
   };

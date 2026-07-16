@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
 import type { ShelfieDatabase } from "../../db/database";
 import { navigate } from "../../router";
+import { GameCover } from "../games/GameCover";
+import { LIBRARY_COVER_SCALE, selectPlatform } from "../games/platforms";
 
 const STATUS_LABELS: Record<ItemStatus, string> = {
   wishlisted: "Wishlisted",
@@ -60,12 +62,17 @@ export function Library({ db }: { db: ShelfieDatabase }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+    <div className="flex flex-wrap justify-center items-baseline gap-8 p-4">
       {items.map((item) => {
         const meta = metadata.get(item.sourceId);
         const cover = meta?.coverImageId
           ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${meta.coverImageId}.jpg`
           : null;
+        const platform = selectPlatform(
+          item.platforms,
+          meta?.platforms ?? [],
+          meta?.platformReleaseDates ?? [],
+        );
         return (
           <button
             key={item.id}
@@ -75,28 +82,18 @@ export function Library({ db }: { db: ShelfieDatabase }) {
               if (meta?.slug)
                 navigate(`/games/${encodeURIComponent(meta.slug)}`);
             }}
-            className="flex flex-col gap-2 rounded text-left disabled:cursor-default disabled:opacity-60"
+            className="flex flex-col items-center gap-2 rounded text-left disabled:cursor-default disabled:opacity-60"
           >
-            <div className="relative aspect-[3/4] w-full overflow-hidden rounded bg-panel ring-1 ring-divider">
-              {cover ? (
-                <img
-                  src={cover}
-                  alt={meta?.name ?? item.sourceId}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-muted">
-                  No cover
-                </div>
-              )}
+            <GameCover
+              coverUrl={cover}
+              platform={platform}
+              name={meta?.name ?? item.sourceId}
+              scale={LIBRARY_COVER_SCALE}
+            >
               <span className="absolute bottom-1 left-1 rounded bg-ink/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
                 {STATUS_LABELS[item.status]}
               </span>
-            </div>
-            <span className="line-clamp-2 text-sm font-medium text-ink">
-              {meta?.name ?? item.sourceId}
-            </span>
+            </GameCover>
           </button>
         );
       })}

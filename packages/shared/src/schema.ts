@@ -1,4 +1,4 @@
-import type { RxJsonSchema } from "rxdb";
+import type { MigrationStrategies, RxJsonSchema } from "rxdb";
 import type { LibraryItem } from "./types.js";
 
 /**
@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -26,6 +26,11 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       minimum: 0,
       maximum: 100,
       multipleOf: 1,
+    },
+    platforms: {
+      type: "array",
+      items: { type: "string", maxLength: 64 },
+      maxItems: 32,
     },
     addedAt: {
       type: "number",
@@ -46,6 +51,7 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "sourceId",
     "status",
     "progress",
+    "platforms",
     "addedAt",
     "updatedAt",
   ],
@@ -53,8 +59,9 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
 } as const;
 
 /**
- * Migration seam for `library_items`. Empty because the collection starts at
- * schema version 0 — future field changes bump `version` above and add a
- * numbered strategy here, mirroring aside's per-collection migration maps.
+ * Migration seam for `library_items`. Schema version 1 adds `platforms`;
+ * existing documents default to an empty list.
  */
-export const libraryItemMigrationStrategies = {};
+export const libraryItemMigrationStrategies: MigrationStrategies = {
+  1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
+};

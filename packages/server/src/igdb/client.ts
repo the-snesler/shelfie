@@ -31,6 +31,11 @@ interface IgdbGenre {
   name: string;
 }
 
+interface IgdbReleaseDate {
+  date?: number;
+  platform?: { name: string };
+}
+
 interface IgdbInvolvedCompany {
   company: { name: string };
   developer: boolean;
@@ -53,17 +58,28 @@ interface IgdbMetadataGame {
   cover?: IgdbCover;
   genres?: IgdbGenre[];
   platforms?: IgdbPlatform[];
+  release_dates?: IgdbReleaseDate[];
   first_release_date?: number;
   involved_companies?: IgdbInvolvedCompany[];
 }
 
 /** Fields shared by fetchGamesByIds and fetchGameBySlug metadata queries. */
 const METADATA_FIELDS =
-  "name,slug,summary,cover.image_id,genres.name,platforms.name,first_release_date,involved_companies.company.name,involved_companies.developer";
+  "name,slug,summary,cover.image_id,genres.name,platforms.name,first_release_date,involved_companies.company.name,involved_companies.developer,release_dates.date,release_dates.platform.name";
 
 /** Maps a raw IGDB metadata game into the DTO; null when IGDB omitted the slug. */
 function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
   if (!game.slug) return null;
+  const releaseByPlatform = new Map<string, number>();
+  for (const rd of game.release_dates ?? []) {
+    const name = rd.platform?.name;
+    if (!name || rd.date === undefined) continue;
+    const prev = releaseByPlatform.get(name);
+    if (prev === undefined || rd.date < prev) releaseByPlatform.set(name, rd.date);
+  }
+  const platformReleaseDates = [...releaseByPlatform.entries()]
+    .map(([platform, date]) => ({ platform, date }))
+    .sort((a, b) => a.date - b.date);
   return {
     igdbId: game.id,
     slug: game.slug,
@@ -72,6 +88,7 @@ function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
     summary: game.summary ?? null,
     genres: (game.genres ?? []).map((genre) => genre.name),
     platforms: (game.platforms ?? []).map((platform) => platform.name),
+    platformReleaseDates,
     developer: extractDeveloper(game.involved_companies),
     firstReleaseDate: game.first_release_date ?? null,
   };

@@ -47,6 +47,7 @@ export const libraryItemsSync: SyncCollection<ReplicatedLibraryItem> = {
           progress: row.progress,
           added_at: row.added_at,
           updated_at: row.updated_at,
+          platforms: row.platforms,
           seq: row.seq,
           deleted: row.deleted,
         }),

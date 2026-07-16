@@ -33,6 +33,9 @@ export interface LibraryItem {
   status: ItemStatus;
   /** 0-100 int; only meaningful when status === "playing" */
   progress: number | null;
+  /** IGDB platform names the user owns this game on; the first entry drives
+   *  cover rendering. Empty until the user records one. */
+  platforms: string[];
   /** ms epoch */
   addedAt: number;
   /** ms epoch — last-write-time; used by conflict resolution and UI sorting */

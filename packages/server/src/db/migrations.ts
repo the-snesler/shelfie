@@ -102,6 +102,31 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 3,
+    name: "library-item-platforms",
+    async up(db) {
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("platforms", "text", (c) => c.notNull().defaultTo("[]"))
+        .execute();
+    },
+  },
+  {
+    id: 4,
+    name: "game-metadata-platform-release-dates",
+    async up(db) {
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("platform_release_dates", "text", (c) =>
+          c.notNull().defaultTo("[]"),
+        )
+        .execute();
+      // game_metadata is a rebuildable IGDB cache; clear it so every row
+      // re-fetches with per-platform release dates on next access.
+      await db.deleteFrom("game_metadata").execute();
+    },
+  },
 ];
 
 /**

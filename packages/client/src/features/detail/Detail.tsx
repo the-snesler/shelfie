@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { authFetch } from "../../auth";
 import type { ShelfieDatabase } from "../../db/database";
 import { hasAppHistory, navigate } from "../../router";
+import { GameCover } from "../games/GameCover";
+import { DETAIL_COVER_SCALE, selectPlatform } from "../games/platforms";
 
 const STATUS_LABELS: Record<ItemStatus, string> = {
   wishlisted: "Wishlisted",
@@ -98,6 +100,11 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
   const cover = meta.coverImageId
     ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${meta.coverImageId}.jpg`
     : null;
+  const detailPlatform = selectPlatform(
+    item?.platforms ?? [],
+    meta.platforms,
+    meta.platformReleaseDates,
+  );
 
   function handleStatusChange(value: ItemStatus) {
     if (item) {
@@ -111,10 +118,20 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
       sourceId: String(meta.igdbId),
       status: value,
       progress: null,
+      platforms: [],
       addedAt: now,
       updatedAt: now,
     };
     void db.library_items.insert(doc);
+  }
+
+  function togglePlatform(p: string) {
+    if (!item) return;
+    const has = item.platforms.includes(p);
+    const platforms = has
+      ? item.platforms.filter((x) => x !== p)
+      : [...item.platforms, p];
+    void item.incrementalPatch({ platforms, updatedAt: Date.now() });
   }
 
   return (
@@ -127,14 +144,13 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
         ← Back
       </button>
       <div className="flex gap-4">
-        <div className="h-56 w-40 shrink-0 overflow-hidden rounded bg-panel ring-1 ring-divider">
-          {cover && (
-            <img
-              src={cover}
-              alt={meta.name}
-              className="h-full w-full object-cover"
-            />
-          )}
+        <div className="shrink-0">
+          <GameCover
+            coverUrl={cover}
+            platform={detailPlatform}
+            name={meta.name}
+            scale={DETAIL_COVER_SCALE}
+          />
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="text-xl font-semibold text-ink">{meta.name}</h2>
@@ -174,6 +190,27 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
             ))}
           </select>
         </label>
+        {item && meta.platforms.length > 0 && (
+          <fieldset className="flex flex-col gap-1 text-sm font-medium text-muted">
+            <legend>Platform</legend>
+            <div className="flex flex-wrap gap-2">
+              {meta.platforms.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => togglePlatform(p)}
+                  className={
+                    item.platforms.includes(p)
+                      ? "rounded bg-accent px-2 py-1 text-xs text-white"
+                      : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
+                  }
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
         {item && item.status === "playing" && (
           <label className="flex flex-col gap-1 text-sm font-medium text-muted">
             Progress ({item.progress ?? 0}%)
