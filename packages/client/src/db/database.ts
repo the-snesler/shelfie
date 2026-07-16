@@ -1,4 +1,5 @@
 import type { LibraryItem } from "@shelfie/shared";
+import type { GameCardDoc } from "./gameCards";
 import {
   addRxPlugin,
   createRxDatabase,
@@ -27,6 +28,7 @@ const storage = import.meta.env.DEV
 export type LibraryItemCollection = RxCollection<LibraryItem>;
 export interface ShelfieCollections {
   library_items: LibraryItemCollection;
+  game_metadata: RxCollection<GameCardDoc>;
 }
 export type ShelfieDatabase = RxDatabase<ShelfieCollections>;
 

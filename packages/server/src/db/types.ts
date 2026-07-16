@@ -44,6 +44,28 @@ export interface GameMetadataTable {
   first_release_date: number | null;
   /** epoch ms — when this row was last (re)fetched from IGDB */
   fetched_at: number;
+  storyline: string | null;
+  /** JSON-encoded string[] */
+  screenshots: string | null;
+  /** JSON-encoded GameVideo[] */
+  videos: string | null;
+  /** JSON-encoded string[] */
+  game_modes: string | null;
+  /** JSON-encoded string[] */
+  themes: string | null;
+  /** JSON-encoded string[] */
+  player_perspectives: string | null;
+  publisher: string | null;
+  aggregated_rating: number | null;
+  aggregated_rating_count: number | null;
+  rating: number | null;
+  rating_count: number | null;
+  /** JSON-encoded StoreLink[] */
+  stores: string | null;
+  /** JSON-encoded TimeToBeat */
+  time_to_beat: string | null;
+  /** epoch ms — NULL means the detail tier has never been fetched */
+  detail_fetched_at: number | null;
 }
 
 /** Single-user password record. Exactly one row is expected, keyed by "owner". */

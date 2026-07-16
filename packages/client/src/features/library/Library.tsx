@@ -3,6 +3,7 @@ import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
 import type { ShelfieDatabase } from "../../db/database";
+import { type GameCardDoc, upsertCards } from "../../db/gameCards";
 import { navigate } from "../../router";
 import { GameCover } from "../games/GameCover";
 import { LIBRARY_COVER_SCALE, selectPlatform } from "../games/platforms";
@@ -18,13 +19,18 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
 
 export function Library({ db }: { db: ShelfieDatabase }) {
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>([]);
-  const [metadata, setMetadata] = useState<Map<string, GameMetadata>>(
-    new Map(),
-  );
+  const [cards, setCards] = useState<Map<string, GameCardDoc>>(new Map());
 
   useEffect(() => {
     const sub = db.library_items.find().$.subscribe((found) => {
       setItems([...found]);
+    });
+    return () => sub.unsubscribe();
+  }, [db]);
+
+  useEffect(() => {
+    const sub = db.game_metadata.find().$.subscribe((found) => {
+      setCards(new Map(found.map((doc) => [doc.id, doc])));
     });
     return () => sub.unsubscribe();
   }, [db]);
@@ -35,22 +41,12 @@ export function Library({ db }: { db: ShelfieDatabase }) {
   );
 
   useEffect(() => {
-    if (!sourceIdKey) {
-      setMetadata(new Map());
-      return;
-    }
-    let active = true;
+    if (!sourceIdKey) return;
     void authFetch(`/api/games?ids=${sourceIdKey}`)
       .then((res) => (res.ok ? (res.json() as Promise<GameMetadata[]>) : []))
-      .then((rows) => {
-        if (!active) return;
-        setMetadata(new Map(rows.map((row) => [String(row.igdbId), row])));
-      })
+      .then((rows) => upsertCards(db, rows))
       .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [sourceIdKey]);
+  }, [db, sourceIdKey]);
 
   if (items.length === 0) {
     return (
@@ -64,7 +60,7 @@ export function Library({ db }: { db: ShelfieDatabase }) {
   return (
     <div className="flex flex-wrap justify-center items-baseline gap-8 p-4">
       {items.map((item) => {
-        const meta = metadata.get(item.sourceId);
+        const meta = cards.get(item.id);
         const cover = meta?.coverImageId
           ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${meta.coverImageId}.jpg`
           : null;

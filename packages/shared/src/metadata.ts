@@ -39,3 +39,40 @@ export interface GameMetadata {
   /** epoch seconds */
   firstReleaseDate: number | null;
 }
+
+export interface GameVideo {
+  videoId: string; // YouTube id
+  name: string | null;
+}
+
+export type StoreName = "official" | "steam" | "epic" | "gog" | "itch";
+
+export interface StoreLink {
+  store: StoreName;
+  url: string;
+}
+
+/** Average completion times in SECONDS; null when IGDB has no value. */
+export interface TimeToBeat {
+  hastily: number | null;
+  normally: number | null;
+  completely: number | null;
+  count: number; // submissions backing the averages
+}
+
+/** Heavy, on-demand projection served by GET /api/games/by-slug/:slug. Never synced. */
+export interface GameDetail extends GameMetadata {
+  storyline: string | null;
+  screenshotImageIds: string[];
+  videos: GameVideo[];
+  gameModes: string[];
+  themes: string[];
+  playerPerspectives: string[];
+  publisher: string | null;
+  aggregatedRating: number | null; // 0-100 external critic aggregate; null when unrated
+  aggregatedRatingCount: number;
+  rating: number | null; // 0-100 IGDB user rating; null when unrated
+  ratingCount: number;
+  stores: StoreLink[];
+  timeToBeat: TimeToBeat | null;
+}

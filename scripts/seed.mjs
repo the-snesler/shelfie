@@ -26,11 +26,19 @@ const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
 // query: title to search IGDB for. status/progress: seeded library item state.
 const SEEDS = [
-  { query: "The Legend of Zelda: Breath of the Wild", status: "playing", progress: 40 },
+  {
+    query: "The Legend of Zelda: Breath of the Wild",
+    status: "playing",
+    progress: 40,
+  },
   { query: "Hollow Knight", status: "completed", progress: 100 },
   { query: "Elden Ring", status: "backlogged", progress: null },
   { query: "Stardew Valley", status: "wishlisted", progress: null },
   { query: "Celeste", status: "completed", progress: 100 },
+  { query: "Splatoon Raiders", status: "playing", progress: 20 },
+  { query: "Super Mario Galaxy", status: "completed", progress: 100 },
+  { query: "Super Mario Sunshine", status: "backlogged", progress: null },
+  { query: "Super Mario 64", status: "completed", progress: 100 },
 ];
 
 async function main() {
@@ -56,6 +64,7 @@ async function main() {
       sourceId: String(igdbId),
       status: seed.status,
       progress: seed.progress,
+      platforms: [],
       addedAt: ts,
       updatedAt: ts,
       _deleted: false,

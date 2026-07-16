@@ -26,11 +26,21 @@ export function GameCover({
   } as React.CSSProperties;
 
   return (
-    <div className="video-game relative overflow-hidden rounded bg-panel" style={style}>
+    <div
+      className="video-game relative overflow-hidden rounded bg-panel"
+      style={style}
+    >
       {coverUrl ? (
-        <img src={coverUrl} className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={coverUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-muted">No cover</div>
+        <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+          {name}
+        </div>
       )}
       {template && (
         <img

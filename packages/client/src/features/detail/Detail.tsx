@@ -1,9 +1,10 @@
 import { ITEM_STATUSES } from "@shelfie/shared";
-import type { GameMetadata, ItemStatus, LibraryItem } from "@shelfie/shared";
+import type { GameDetail, ItemStatus, LibraryItem, StoreName } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { authFetch } from "../../auth";
 import type { ShelfieDatabase } from "../../db/database";
+import { upsertCards } from "../../db/gameCards";
 import { hasAppHistory, navigate } from "../../router";
 import { GameCover } from "../games/GameCover";
 import { DETAIL_COVER_SCALE, selectPlatform } from "../games/platforms";
@@ -17,13 +18,28 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
   completed: "Completed",
 };
 
+const STORE_LABELS: Record<StoreName, string> = {
+  official: "Official site",
+  steam: "Steam",
+  epic: "Epic",
+  gog: "GOG",
+  itch: "itch.io",
+};
+
 /** Sentinel `<select>` value for a game with no library doc yet. */
 const NOT_IN_LIBRARY = "__not_in_library__";
 
 type MetaState =
   | { status: "loading" }
   | { status: "not-found" }
-  | { status: "loaded"; meta: GameMetadata };
+  | { status: "loaded"; meta: GameDetail };
+
+/** Whole hours + minutes, e.g. `64800 -> "18h"`, `81000 -> "22h 30m"`. */
+function formatHltb(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
 
 export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
   const [metaState, setMetaState] = useState<MetaState>({
@@ -44,8 +60,9 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
           return;
         }
         if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-        const meta = (await res.json()) as GameMetadata;
+        const meta = (await res.json()) as GameDetail;
         setMetaState({ status: "loaded", meta });
+        void upsertCards(db, [meta]);
       })
       .catch(() => {
         if (active) setMetaState({ status: "not-found" });
@@ -53,7 +70,7 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [db, slug]);
 
   const igdbId = metaState.status === "loaded" ? metaState.meta.igdbId : null;
   useEffect(() => {
@@ -105,6 +122,26 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
     meta.platforms,
     meta.platformReleaseDates,
   );
+  const detailRows = [
+    meta.developer && { label: "Developer", value: meta.developer },
+    meta.publisher && { label: "Publisher", value: meta.publisher },
+    meta.gameModes.length > 0 && {
+      label: "Modes",
+      value: meta.gameModes.join(" · "),
+    },
+    meta.themes.length > 0 && {
+      label: "Themes",
+      value: meta.themes.join(" · "),
+    },
+    meta.playerPerspectives.length > 0 && {
+      label: "Perspectives",
+      value: meta.playerPerspectives.join(" · "),
+    },
+    meta.platforms.length > 0 && {
+      label: "Platforms",
+      value: meta.platforms.join(" · "),
+    },
+  ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   function handleStatusChange(value: ItemStatus) {
     if (item) {
@@ -168,9 +205,34 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
           {meta.developer && (
             <p className="text-sm text-muted">{meta.developer}</p>
           )}
+          {meta.publisher && (
+            <p className="text-sm text-muted">{meta.publisher}</p>
+          )}
         </div>
       </div>
-      {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
+      {(meta.aggregatedRating != null ||
+        meta.rating != null ||
+        meta.timeToBeat?.normally != null) && (
+        <div className="flex flex-wrap gap-2">
+          {meta.aggregatedRating != null && (
+            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
+              Critics {Math.round(meta.aggregatedRating)}
+              {meta.aggregatedRatingCount > 0 &&
+                ` (${meta.aggregatedRatingCount})`}
+            </span>
+          )}
+          {meta.rating != null && (
+            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
+              IGDB {(meta.rating / 10).toFixed(1)}
+            </span>
+          )}
+          {meta.timeToBeat?.normally != null && (
+            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
+              HLTB ~{formatHltb(meta.timeToBeat.normally)}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-3 rounded border border-divider bg-panel p-4">
         <label className="flex flex-col gap-1 text-sm font-medium text-muted">
           Status
@@ -230,6 +292,72 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
           </label>
         )}
       </div>
+      {meta.screenshotImageIds.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto">
+          {meta.screenshotImageIds.map((id) => (
+            <a
+              key={id}
+              target="_blank"
+              rel="noreferrer"
+              href={`https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`}
+            >
+              <img
+                loading="lazy"
+                src={`https://images.igdb.com/igdb/image/upload/t_screenshot_med/${id}.jpg`}
+                className="h-24 w-auto rounded object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      {meta.videos.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm">
+          {meta.videos.map((video) => (
+            <li key={video.videoId}>
+              <a
+                target="_blank"
+                rel="noreferrer"
+                href={`https://www.youtube.com/watch?v=${video.videoId}`}
+                className="text-accent underline"
+              >
+                {video.name ?? "Trailer"}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
+      {meta.storyline && (
+        <p className="text-sm text-muted">{meta.storyline}</p>
+      )}
+      {(detailRows.length > 0 || meta.stores.length > 0) && (
+        <div className="flex flex-col gap-2 rounded border border-divider bg-panel p-4 text-sm">
+          {detailRows.map((row) => (
+            <div key={row.label} className="flex justify-between gap-4">
+              <span className="text-muted">{row.label}</span>
+              <span className="text-right text-ink">{row.value}</span>
+            </div>
+          ))}
+          {meta.stores.length > 0 && (
+            <div className="flex justify-between gap-4">
+              <span className="text-muted">Get it</span>
+              <span className="flex flex-wrap justify-end gap-2">
+                {meta.stores.map((store) => (
+                  <a
+                    key={store.store}
+                    target="_blank"
+                    rel="noreferrer"
+                    href={store.url}
+                    className="text-accent underline"
+                  >
+                    {STORE_LABELS[store.store]}
+                  </a>
+                ))}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -127,6 +127,68 @@ const migrations: Migration[] = [
       await db.deleteFrom("game_metadata").execute();
     },
   },
+  {
+    id: 5,
+    name: "game-metadata-detail-fields",
+    async up(db) {
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("storyline", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("screenshots", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("videos", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("game_modes", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("themes", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("player_perspectives", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("publisher", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("aggregated_rating", "real")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("aggregated_rating_count", "integer")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("rating", "real")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("rating_count", "integer")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("stores", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("time_to_beat", "text")
+        .execute();
+      await db.schema
+        .alterTable("game_metadata")
+        .addColumn("detail_fetched_at", "integer")
+        .execute();
+    },
+  },
 ];
 
 /**
