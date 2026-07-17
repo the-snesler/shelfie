@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.turbo
+data
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.git
+.DS_Store

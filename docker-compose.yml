@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    # image: ghcr.io/the-snesler/shelfie:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      # Swap to an external Postgres later by setting DATABASE_URL here.
+    volumes:
+      - shelfie-data:/data
+    restart: unless-stopped
+
+volumes:
+  shelfie-data:
