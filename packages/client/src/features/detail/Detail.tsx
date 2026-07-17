@@ -35,6 +35,9 @@ const STORE_LABELS: Record<StoreName, string> = {
 /** Sentinel `<select>` value for a game with no library doc yet. */
 const NOT_IN_LIBRARY = "__not_in_library__";
 
+/** Sentinel `<select>` value that triggers removal from the library. */
+const REMOVE_FROM_LIBRARY = "__remove_from_library__";
+
 type MetaState =
   | { status: "loading" }
   | { status: "not-found" }
@@ -177,6 +180,13 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
     void item.incrementalPatch({ platforms, updatedAt: Date.now() });
   }
 
+  function handleRemove() {
+    if (!item) return;
+    void item
+      .incrementalPatch({ updatedAt: Date.now() })
+      .then((doc) => doc.incrementalRemove());
+  }
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
       <button
@@ -245,7 +255,13 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
           <select
             value={item ? item.status : NOT_IN_LIBRARY}
             disabled={item === undefined}
-            onChange={(e) => handleStatusChange(e.target.value as ItemStatus)}
+            onChange={(e) => {
+              if (e.target.value === REMOVE_FROM_LIBRARY) {
+                handleRemove();
+              } else {
+                handleStatusChange(e.target.value as ItemStatus);
+              }
+            }}
             className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
           >
             <option value={NOT_IN_LIBRARY} disabled>
@@ -256,6 +272,9 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
                 {STATUS_LABELS[status]}
               </option>
             ))}
+            {item && (
+              <option value={REMOVE_FROM_LIBRARY}>Remove from library</option>
+            )}
           </select>
         </label>
         {item && meta.platforms.length > 0 && (

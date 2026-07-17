@@ -8,6 +8,7 @@ import type {
   TimeToBeat,
 } from "@shelfie/shared";
 import { getIgdbToken, invalidateIgdbToken } from "./token.js";
+import { rankSearchGames } from "./rank.js";
 
 const IGDB_GAMES_URL = "https://api.igdb.com/v4/games";
 const IGDB_TIME_TO_BEATS_URL = "https://api.igdb.com/v4/game_time_to_beats";
@@ -58,6 +59,8 @@ interface IgdbSearchGame {
   cover?: IgdbCover;
   first_release_date?: number;
   platforms?: IgdbPlatform[];
+  total_rating_count?: number;
+  hypes?: number;
 }
 
 interface IgdbNamed {
@@ -246,14 +249,15 @@ function escapeApicalypseString(input: string): string {
 }
 
 export async function searchGames(q: string): Promise<SearchResult[]> {
-  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name; where game_type = 0; limit 20;`;
+  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name,total_rating_count,hypes; where game_type = 0; limit 50;`;
   const res = await igdbFetch(IGDB_GAMES_URL, query);
   if (!res.ok) {
     throw new Error(`IGDB search failed: ${res.status}`);
   }
   const games = (await res.json()) as IgdbSearchGame[];
+  const ranked = rankSearchGames(q, games).slice(0, 20);
   const results: SearchResult[] = [];
-  for (const game of games) {
+  for (const game of ranked) {
     if (!game.slug) continue;
     results.push({
       igdbId: game.id,
