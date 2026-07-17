@@ -1,4 +1,12 @@
-import type { GameMetadata, GameDetail, GameVideo, SearchResult, StoreLink, StoreName, TimeToBeat } from "@shelfie/shared";
+import type {
+  GameMetadata,
+  GameDetail,
+  GameVideo,
+  SearchResult,
+  StoreLink,
+  StoreName,
+  TimeToBeat,
+} from "@shelfie/shared";
 import { getIgdbToken, invalidateIgdbToken } from "./token.js";
 
 const IGDB_GAMES_URL = "https://api.igdb.com/v4/games";
@@ -118,7 +126,8 @@ function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
     const name = rd.platform?.name;
     if (!name || rd.date === undefined) continue;
     const prev = releaseByPlatform.get(name);
-    if (prev === undefined || rd.date < prev) releaseByPlatform.set(name, rd.date);
+    if (prev === undefined || rd.date < prev)
+      releaseByPlatform.set(name, rd.date);
   }
   const platformReleaseDates = [...releaseByPlatform.entries()]
     .map(([platform, date]) => ({ platform, date }))
@@ -210,9 +219,7 @@ async function igdbFetch(
 }
 
 function coverUrl(imageId: string | undefined): string | null {
-  return imageId
-    ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`
-    : null;
+  return imageId ? `/api/images/t_cover_big/${imageId}` : null;
 }
 
 function extractDeveloper(

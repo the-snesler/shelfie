@@ -79,7 +79,7 @@ async function login(page) {
 // route content div; the header's nav buttons aren't in a `.grid`, so this
 // stays unambiguous without needing a landmark wrapper (the app renders none).
 function libraryItem(page) {
-  return page.locator(".grid > button").first();
+  return page.locator(".flex > button").first();
 }
 
 /**

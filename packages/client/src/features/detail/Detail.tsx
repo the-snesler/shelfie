@@ -1,5 +1,10 @@
 import { ITEM_STATUSES } from "@shelfie/shared";
-import type { GameDetail, ItemStatus, LibraryItem, StoreName } from "@shelfie/shared";
+import type {
+  GameDetail,
+  ItemStatus,
+  LibraryItem,
+  StoreName,
+} from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { authFetch } from "../../auth";
@@ -8,6 +13,7 @@ import { upsertCards } from "../../db/gameCards";
 import { hasAppHistory, navigate } from "../../router";
 import { GameCover } from "../games/GameCover";
 import { DETAIL_COVER_SCALE, selectPlatform } from "../games/platforms";
+import { gameImageUrl } from "../../images";
 
 const STATUS_LABELS: Record<ItemStatus, string> = {
   wishlisted: "Wishlisted",
@@ -115,7 +121,7 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
 
   const meta = metaState.meta;
   const cover = meta.coverImageId
-    ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${meta.coverImageId}.jpg`
+    ? gameImageUrl("t_cover_big", meta.coverImageId)
     : null;
   const detailPlatform = selectPlatform(
     item?.platforms ?? [],
@@ -299,11 +305,11 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
               key={id}
               target="_blank"
               rel="noreferrer"
-              href={`https://images.igdb.com/igdb/image/upload/t_1080p/${id}.jpg`}
+              href={gameImageUrl("t_1080p", id)}
             >
               <img
                 loading="lazy"
-                src={`https://images.igdb.com/igdb/image/upload/t_screenshot_med/${id}.jpg`}
+                src={gameImageUrl("t_screenshot_med", id)}
                 className="h-24 w-auto rounded object-cover"
               />
             </a>
@@ -327,9 +333,7 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
         </ul>
       )}
       {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
-      {meta.storyline && (
-        <p className="text-sm text-muted">{meta.storyline}</p>
-      )}
+      {meta.storyline && <p className="text-sm text-muted">{meta.storyline}</p>}
       {(detailRows.length > 0 || meta.stores.length > 0) && (
         <div className="flex flex-col gap-2 rounded border border-divider bg-panel p-4 text-sm">
           {detailRows.map((row) => (

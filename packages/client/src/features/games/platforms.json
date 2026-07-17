@@ -3,7 +3,8 @@
     "overlay": "/assets/games/ps5-cover.png",
     "aspectRatio": 0.803,
     "heightMm": 173,
-    "caseColor": "#0F52CA"
+    "caseColor": "#0F52CA",
+    "paddingTop": 25
   },
   "Nintendo Switch": {
     "overlay": "/assets/games/switch-cover.png",
@@ -15,6 +16,7 @@
     "overlay": "/assets/games/switch-2-cover.png",
     "aspectRatio": 0.615,
     "heightMm": 169,
-    "caseColor": "#F23132"
+    "caseColor": "#F23132",
+    "paddingTop": 25
   }
 }

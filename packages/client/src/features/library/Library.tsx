@@ -2,6 +2,7 @@ import type { GameMetadata, ItemStatus, LibraryItem } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
+import { gameImageUrl } from "../../images";
 import type { ShelfieDatabase } from "../../db/database";
 import { type GameCardDoc, upsertCards } from "../../db/gameCards";
 import { navigate } from "../../router";
@@ -62,7 +63,7 @@ export function Library({ db }: { db: ShelfieDatabase }) {
       {items.map((item) => {
         const meta = cards.get(item.id);
         const cover = meta?.coverImageId
-          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${meta.coverImageId}.jpg`
+          ? gameImageUrl("t_cover_big", meta.coverImageId)
           : null;
         const platform = selectPlatform(
           item.platforms,

@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { createAuthMiddleware, registerAuthRoutes } from "./auth/index.js";
 import { registerGamesRoutes } from "./games/routes.js";
+import { registerImageRoutes } from "./images/routes.js";
 import type { ReplicatedDoc, SyncCollection } from "./sync/collection.js";
 import { libraryItemsSync } from "./sync/library-items.js";
 import { pull } from "./sync/pull.js";
@@ -26,6 +27,7 @@ export function createApp(): Hono {
   app.get("/health", (c) => c.json({ status: "ok" }));
 
   registerAuthRoutes(app);
+  registerImageRoutes(app);
   app.use("/api/*", createAuthMiddleware());
 
   registerSyncRoutes(app, libraryItemsSync);
