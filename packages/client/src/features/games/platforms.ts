@@ -17,6 +17,16 @@ export const DEFAULT_TEMPLATE = { aspectRatio: 0.71, heightMm: 172 } as const;
 /** px per mm of case height, per surface. */
 export const LIBRARY_COVER_SCALE = 1.1;
 export const DETAIL_COVER_SCALE = 1.5;
+export const SEARCH_COVER_SCALE = 0.37;
+
+/** Shared `view-transition-name` for a game's cover, keyed by its route
+ *  slug — the one identifier every surface (library card, search result,
+ *  detail route param) already has synchronously, so the destination page
+ *  can tag its cover box on first paint, before any async fetch resolves
+ *  (the browser only pairs old/new elements present when it snapshots). */
+export function gameCoverTransitionName(slug: string): string {
+  return `game-cover-${slug}`;
+}
 
 /**
  * Picks the platform whose overlay to render.

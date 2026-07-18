@@ -6,12 +6,17 @@ export function GameCover({
   platform,
   name,
   scale,
+  viewTransitionName,
   children,
 }: {
   coverUrl: string | null;
   platform: string | null;
   name: string;
   scale: number; // px per mm of case height
+  /** CSS `view-transition-name` to assign to the cover box, e.g. from
+   *  `gameCoverTransitionName()`; omit (or leave undefined) outside an
+   *  active transition so idle covers never claim a transition name. */
+  viewTransitionName?: string;
   children?: ReactNode;
 }) {
   const template = platform ? platformTemplates[platform] : undefined;
@@ -19,13 +24,14 @@ export function GameCover({
   const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;
 
   const style = {
-    "height": `${heightMm * scale}px`,
-    "width": `${heightMm * scale * aspectRatio}px`,
-    "aspectRatio": String(aspectRatio),
+    height: `${heightMm * scale}px`,
+    width: `${heightMm * scale * aspectRatio}px`,
+    aspectRatio: String(aspectRatio),
     "--case-color": template?.caseColor ?? "transparent",
     "--art-padding-top": template?.paddingTop
       ? `${template.paddingTop}px`
       : "0px",
+    viewTransitionName: viewTransitionName ?? "none",
   } as React.CSSProperties;
 
   return (

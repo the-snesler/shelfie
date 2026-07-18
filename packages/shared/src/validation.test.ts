@@ -109,18 +109,18 @@ describe("libraryItemDocSchema rating", () => {
     expect(
       libraryItemDocSchema.safeParse({ ...base, rating: 0.5 }).success,
     ).toBe(true);
-    expect(
-      libraryItemDocSchema.safeParse({ ...base, rating: 5 }).success,
-    ).toBe(true);
+    expect(libraryItemDocSchema.safeParse({ ...base, rating: 5 }).success).toBe(
+      true,
+    );
     expect(
       libraryItemDocSchema.safeParse({ ...base, rating: null }).success,
     ).toBe(true);
   });
 
   it("rejects out-of-range or non-half-step ratings", () => {
-    expect(
-      libraryItemDocSchema.safeParse({ ...base, rating: 0 }).success,
-    ).toBe(false);
+    expect(libraryItemDocSchema.safeParse({ ...base, rating: 0 }).success).toBe(
+      false,
+    );
     expect(
       libraryItemDocSchema.safeParse({ ...base, rating: 5.5 }).success,
     ).toBe(false);
@@ -159,8 +159,7 @@ describe("libraryItemDocSchema completedDates", () => {
 describe("libraryItemDocSchema notes", () => {
   it("accepts a plain string", () => {
     expect(
-      libraryItemDocSchema.safeParse({ ...base, notes: "great game" })
-        .success,
+      libraryItemDocSchema.safeParse({ ...base, notes: "great game" }).success,
     ).toBe(true);
   });
 });

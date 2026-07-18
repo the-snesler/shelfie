@@ -48,7 +48,7 @@
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   }
 
-  .book::hover {
+  .book:hover {
     transform: scale(1.05);
     box-shadow: var(--content-elevated-shadow);
   }

@@ -1,37 +1,19 @@
-import {
-  ITEM_STATUSES,
-  LOG_FORMATS_BY_MEDIA,
-  STATUS_META_GROUP,
-  defaultLogFormat,
-} from "@shelfie/shared";
-import type {
-  GameDetail,
-  ItemStatus,
-  LibraryItem,
-  LogFormat,
-  StoreName,
-} from "@shelfie/shared";
+import type { GameDetail, LibraryItem, StoreName } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
-import IconX from "~icons/tabler/x";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/Detail";
 import { authFetch } from "../../auth";
 import { upsertCards } from "../../db/gameCards";
 import { GameCover } from "../games/GameCover";
-import { DETAIL_COVER_SCALE, selectPlatform } from "../games/platforms";
+import {
+  DETAIL_COVER_SCALE,
+  gameCoverTransitionName,
+  selectPlatform,
+} from "../games/platforms";
 import { gameImageUrl } from "../../images";
-import { StarRating } from "./StarRating";
-
-const STATUS_LABELS: Record<ItemStatus, string> = {
-  wishlisted: "Wishlisted",
-  backlogged: "Backlogged",
-  playing: "Playing",
-  played: "Played",
-  beaten: "Beaten",
-  completed: "Completed",
-};
+import { StatusControl } from "../games/StatusControl";
 
 const STORE_LABELS: Record<StoreName, string> = {
   official: "Official site",
@@ -41,31 +23,21 @@ const STORE_LABELS: Record<StoreName, string> = {
   itch: "itch.io",
 };
 
-/** Sentinel `<select>` value for a game with no library doc yet. */
-const NOT_IN_LIBRARY = "__not_in_library__";
-
-/** Sentinel `<select>` value that triggers removal from the library. */
-const REMOVE_FROM_LIBRARY = "__remove_from_library__";
-
-const COMPLETION_STATUSES: Record<ItemStatus, boolean> = {
-  wishlisted: false,
-  backlogged: false,
-  playing: false,
-  played: true,
-  beaten: true,
-  completed: true,
-};
-
-/** Local-time YYYY-MM-DD (avoids the UTC off-by-one of toISOString). */
-function toLocalIsoDate(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 type MetaState =
   | { status: "loading" }
   | { status: "not-found" }
   | { status: "loaded"; meta: GameDetail };
+
+/** Minimal cover data passed via `<Link state>` from the library/search
+ *  cards that navigate here, so the first paint (before the detail fetch
+ *  resolves) already has a cover box on-screen — a view transition can only
+ *  pair a `view-transition-name` across old/new snapshots if the named
+ *  element is actually present in the DOM when each snapshot is taken. */
+interface DetailLinkState {
+  coverUrl: string | null;
+  platform: string | null;
+  name: string;
+}
 
 /** Whole hours + minutes, e.g. `64800 -> "18h"`, `81000 -> "22h 30m"`. */
 function formatHltb(seconds: number): string {
@@ -85,7 +57,6 @@ export default function Detail({ params }: Route.ComponentProps) {
   const [item, setItem] = useState<RxDocument<LibraryItem> | null | undefined>(
     undefined,
   );
-  const [datePrompt, setDatePrompt] = useState<{ date: string } | null>(null);
 
   useEffect(() => {
     setMetaState({ status: "loading" });
@@ -127,13 +98,41 @@ export default function Detail({ params }: Route.ComponentProps) {
   function handleBack() {
     // location.key is "default" only for the initial history entry (deep link
     // / hard load), where going back would leave the app — same guard the old
-    // pushCount-based hasAppHistory() provided.
+    // pushCount-based hasAppHistory() provided. `navigate(-1)`'s delta
+    // overload takes no options, but react-router replays a POP navigation's
+    // view transition automatically when the matching forward nav used one
+    // (see `appliedViewTransitions` in its router), so the cover still morphs.
     if (location.key !== "default") navigate(-1);
-    else navigate("/");
+    else navigate("/", { viewTransition: true });
   }
 
   if (metaState.status === "loading") {
-    return <div className="p-4 text-muted">Loading…</div>;
+    const linkState = location.state as DetailLinkState | null;
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="self-start text-sm text-muted hover:text-ink"
+        >
+          ← Back
+        </button>
+        <div className="flex gap-4">
+          <div className="shrink-0">
+            <GameCover
+              coverUrl={linkState?.coverUrl ?? null}
+              platform={linkState?.platform ?? null}
+              name={linkState?.name ?? "Loading…"}
+              scale={DETAIL_COVER_SCALE}
+              viewTransitionName={gameCoverTransitionName(slug)}
+            />
+          </div>
+          {linkState?.name && (
+            <h2 className="text-xl font-semibold text-ink">{linkState.name}</h2>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (metaState.status === "not-found") {
@@ -181,82 +180,6 @@ export default function Detail({ params }: Route.ComponentProps) {
     },
   ].filter((row): row is { label: string; value: string } => Boolean(row));
 
-  function handleStatusChange(value: ItemStatus) {
-    if (item) {
-      void item.incrementalPatch({ status: value, updatedAt: Date.now() });
-    } else {
-      const now = Date.now();
-      const doc: LibraryItem = {
-        id: `game:${meta.igdbId}`,
-        mediaType: "game",
-        sourceId: String(meta.igdbId),
-        status: value,
-        progressFormat: defaultLogFormat("game"),
-        progressValue: null,
-        platforms: [],
-        rating: null,
-        completedDates: [],
-        notes: "",
-        addedAt: now,
-        updatedAt: now,
-      };
-      void db.library_items.insert(doc);
-    }
-    if (COMPLETION_STATUSES[value]) {
-      setDatePrompt({ date: toLocalIsoDate(new Date()) });
-    }
-  }
-
-  function togglePlatform(p: string) {
-    if (!item) return;
-    const has = item.platforms.includes(p);
-    const platforms = has
-      ? item.platforms.filter((x) => x !== p)
-      : [...item.platforms, p];
-    void item.incrementalPatch({ platforms, updatedAt: Date.now() });
-  }
-
-  function handleRemove() {
-    if (!item) return;
-    void item
-      .incrementalPatch({ updatedAt: Date.now() })
-      .then((doc) => doc.incrementalRemove());
-  }
-
-  async function addCompletionDate(date: string) {
-    if (!date) return;
-    const doc = await db.library_items.findOne(`game:${meta.igdbId}`).exec();
-    setDatePrompt(null);
-    if (!doc || doc.completedDates.includes(date)) return;
-    await doc.incrementalPatch({
-      completedDates: [...doc.completedDates, date],
-      updatedAt: Date.now(),
-    });
-  }
-
-  function removeCompletionDate(date: string) {
-    if (!item) return;
-    void item.incrementalPatch({
-      completedDates: item.completedDates.filter((d) => d !== date),
-      updatedAt: Date.now(),
-    });
-  }
-
-  function handleRating(value: number | null) {
-    if (!item) return;
-    void item.incrementalPatch({ rating: value, updatedAt: Date.now() });
-  }
-
-  function handleFormatChange(format: LogFormat) {
-    if (!item || item.progressFormat === format) return;
-    // No cross-unit conversion (42% ≠ 42h) — reset value on switch.
-    void item.incrementalPatch({
-      progressFormat: format,
-      progressValue: null,
-      updatedAt: Date.now(),
-    });
-  }
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
       <button
@@ -273,6 +196,7 @@ export default function Detail({ params }: Route.ComponentProps) {
             platform={detailPlatform}
             name={meta.name}
             scale={DETAIL_COVER_SCALE}
+            viewTransitionName={gameCoverTransitionName(slug)}
           />
         </div>
         <div className="flex min-w-0 flex-col gap-1">
@@ -319,168 +243,15 @@ export default function Detail({ params }: Route.ComponentProps) {
           )}
         </div>
       )}
-      <div className="flex flex-col gap-3 rounded border border-divider bg-panel p-4">
-        <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-          Status
-          <select
-            value={item ? item.status : NOT_IN_LIBRARY}
-            disabled={item === undefined}
-            onChange={(e) => {
-              if (e.target.value === REMOVE_FROM_LIBRARY) {
-                handleRemove();
-              } else {
-                handleStatusChange(e.target.value as ItemStatus);
-              }
-            }}
-            className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-          >
-            <option value={NOT_IN_LIBRARY} disabled>
-              Not in your library
-            </option>
-            {ITEM_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </option>
-            ))}
-            {item && (
-              <option value={REMOVE_FROM_LIBRARY}>Remove from library</option>
-            )}
-          </select>
-        </label>
-        {item && meta.platforms.length > 0 && (
-          <fieldset className="flex flex-col gap-1 text-sm font-medium text-muted">
-            <legend>Platform</legend>
-            <div className="flex flex-wrap gap-2">
-              {meta.platforms.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => togglePlatform(p)}
-                  className={
-                    item.platforms.includes(p)
-                      ? "rounded bg-accent px-2 py-1 text-xs text-white"
-                      : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
-                  }
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        )}
-        {item && STATUS_META_GROUP[item.status] !== "planned" && (
-          <div className="flex flex-col gap-2">
-            {LOG_FORMATS_BY_MEDIA.game.length > 1 && (
-              <div className="flex gap-2">
-                {LOG_FORMATS_BY_MEDIA.game.map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => handleFormatChange(f)}
-                    className={
-                      item.progressFormat === f
-                        ? "rounded bg-accent px-2 py-1 text-xs text-white"
-                        : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
-                    }
-                  >
-                    {f === "hours" ? "Hours" : "Percent"}
-                  </button>
-                ))}
-              </div>
-            )}
-            {item.progressFormat === "hours" ? (
-              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-                Hours played ({item.progressValue ?? 0}h)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  value={item.progressValue ?? 0}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    void item.incrementalPatch({
-                      progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
-                      updatedAt: Date.now(),
-                    });
-                  }}
-                  className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-                />
-              </label>
-            ) : (
-              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-                Progress ({item.progressValue ?? 0}%)
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={item.progressValue ?? 0}
-                  onChange={(e) => {
-                    void item.incrementalPatch({
-                      progressValue: Number(e.target.value),
-                      updatedAt: Date.now(),
-                    });
-                  }}
-                />
-              </label>
-            )}
-          </div>
-        )}
-        {item && (
-          <div className="flex flex-col gap-1 text-sm font-medium text-muted">
-            Rating
-            <StarRating value={item.rating} onChange={handleRating} />
-          </div>
-        )}
-        {item && item.completedDates.length > 0 && (
-          <div className="flex flex-col gap-1 text-sm font-medium text-muted">
-            Completed
-            <div className="flex flex-wrap gap-2">
-              {[...item.completedDates]
-                .sort()
-                .reverse()
-                .map((date) => (
-                  <button
-                    key={date}
-                    type="button"
-                    onClick={() => removeCompletionDate(date)}
-                    title="Click to remove"
-                    className="group flex items-center gap-1 rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent"
-                  >
-                    {new Date(`${date}T00:00:00`).toLocaleDateString(
-                      undefined,
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      },
-                    )}
-                    <IconX className="opacity-0 group-hover:opacity-100" />
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
-        {item && (
-          <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-            Notes
-            <textarea
-              key={item.id}
-              defaultValue={item.notes}
-              onBlur={(e) => {
-                if (e.target.value !== item.notes) {
-                  void item.incrementalPatch({
-                    notes: e.target.value,
-                    updatedAt: Date.now(),
-                  });
-                }
-              }}
-              rows={4}
-              className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-            />
-          </label>
-        )}
-      </div>
+      <StatusControl
+        db={db}
+        game={{
+          igdbId: meta.igdbId,
+          name: meta.name,
+          platforms: meta.platforms,
+        }}
+        item={item}
+      />
       {meta.screenshotImageIds.length > 0 && (
         <div className="flex gap-2 overflow-x-auto">
           {meta.screenshotImageIds.map((id) => (
@@ -543,43 +314,6 @@ export default function Detail({ params }: Route.ComponentProps) {
               </span>
             </div>
           )}
-        </div>
-      )}
-      {datePrompt && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setDatePrompt(null)}
-        >
-          <div
-            className="flex flex-col gap-3 rounded border border-divider bg-panel p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm font-medium text-ink">
-              When did you finish it?
-            </p>
-            <input
-              type="date"
-              value={datePrompt.date}
-              onChange={(e) => setDatePrompt({ date: e.target.value })}
-              className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDatePrompt(null)}
-                className="rounded px-3 py-1 text-sm text-muted hover:text-ink"
-              >
-                Skip
-              </button>
-              <button
-                type="button"
-                onClick={() => void addCompletionDate(datePrompt.date)}
-                className="rounded bg-accent px-3 py-1 text-sm text-white"
-              >
-                Add date
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

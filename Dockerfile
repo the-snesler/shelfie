@@ -45,9 +45,6 @@ ENV STATIC_DIR=./public
 ENV DATA_DIR=/data
 ENV PORT=3001
 WORKDIR /app
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends chromium \
-  && rm -rf /var/lib/apt/lists/*
 COPY --from=deploy /app/deploy/dist ./dist
 COPY --from=deploy /app/deploy/node_modules ./node_modules
 COPY --from=deploy /app/deploy/package.json ./package.json

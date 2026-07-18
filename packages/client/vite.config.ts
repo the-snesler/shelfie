@@ -21,7 +21,11 @@ const CLIENT_PORT = Number(process.env.CLIENT_PORT ?? 5173);
 const SERVER_PORT = Number(process.env.SERVER_PORT ?? process.env.PORT ?? 3001);
 
 export default defineConfig({
-  plugins: [tailwindcss(), reactRouter(), Icons({ compiler: "jsx", jsx: "react" })],
+  plugins: [
+    tailwindcss(),
+    reactRouter(),
+    Icons({ compiler: "jsx", jsx: "react" }),
+  ],
   server: {
     port: CLIENT_PORT,
     // Fail fast instead of silently drifting to the next free port — a
@@ -32,5 +36,11 @@ export default defineConfig({
       // SSE (sync stream) rides plain HTTP through this proxy fine, no ws needed.
       "/api": { target: `http://localhost:${SERVER_PORT}`, changeOrigin: true },
     },
+  },
+  // React Router's SPA build starts an internal Vite preview server. On
+  // Debian, `localhost` can bind to `::1` while its build-time request resolves
+  // to `127.0.0.1`; pin both sides to IPv4 so container builds are reliable.
+  preview: {
+    host: "127.0.0.1",
   },
 });
