@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           # pnpm 11.5.2 requires Node >= 22.13; the Docker runtime uses Node 24.
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       # Skip the Puppeteer Chromium download — the feed source isn't exercised
@@ -54,5 +54,5 @@ jobs:
         if: github.event_name == 'push'
         uses: macbre/push-to-ghcr@v14
         with:
-          image_name: the-snesler/shelfie
+          image_name: ${{ github.repository }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
