@@ -15,7 +15,7 @@ for (const candidate of ["./.env", "../../.env"]) {
   }
 }
 
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(process.env.SERVER_PORT ?? process.env.PORT ?? 3001);
 
 await initDb();
 

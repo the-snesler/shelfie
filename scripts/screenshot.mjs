@@ -8,13 +8,18 @@
  * running; this only drives the browser.
  *
  * Usage:   node scripts/screenshot.mjs [output-path]
- * Env:     SHELFIE_CLIENT_URL  default http://localhost:5173
+ * Env:     SHELFIE_CLIENT_URL  full override, default derived from CLIENT_PORT
+ *          CLIENT_PORT         default 5173 (matches packages/client's own default;
+ *                              set alongside SERVER_PORT to run several dev
+ *                              stacks — e.g. one per agent — in parallel)
  *          SHELFIE_PASSWORD    default "admin" (matches the dev convention)
  */
 
 import { chromium } from "playwright";
 
-const CLIENT_URL = process.env.SHELFIE_CLIENT_URL ?? "http://localhost:5173";
+const CLIENT_URL =
+  process.env.SHELFIE_CLIENT_URL ??
+  `http://localhost:${process.env.CLIENT_PORT ?? 5173}`;
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 const OUTPUT_PATH = process.argv[2] ?? "scripts/screenshot.png";
 const EMPTY_STATE_TEXT = /your library is empty/i;

@@ -17,11 +17,16 @@
  * overwriting).
  *
  * Usage:   node scripts/seed.mjs
- * Env:     SHELFIE_SERVER_URL  default http://localhost:3001
+ * Env:     SHELFIE_SERVER_URL  full override, default derived from SERVER_PORT
+ *          SERVER_PORT         default 3001 (matches packages/server's own default;
+ *                              set alongside CLIENT_PORT to run several dev
+ *                              stacks — e.g. one per agent — in parallel)
  *          SHELFIE_PASSWORD    default "admin" (matches the dev convention)
  */
 
-const SERVER_URL = process.env.SHELFIE_SERVER_URL ?? "http://localhost:3001";
+const SERVER_URL =
+  process.env.SHELFIE_SERVER_URL ??
+  `http://localhost:${process.env.SERVER_PORT ?? process.env.PORT ?? 3001}`;
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
 // query: title to search IGDB for. status/progress: seeded library item state.

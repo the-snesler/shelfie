@@ -153,14 +153,14 @@ version bump.
 
 Run from the repo root (pnpm workspaces + Turbo):
 
-- `pnpm dev` — Turbo runs all three packages: `shared` (tsup watch), `server` (`tsx watch`, port 3001), `client` (Vite, port 5173, proxies `/api` → 3001).
+- `pnpm dev` — Turbo runs all three packages: `shared` (tsup watch), `server` (`tsx watch`, port `SERVER_PORT`/`PORT`, default 3001), `client` (Vite, port `CLIENT_PORT`, default 5173, proxies `/api` → `SERVER_PORT`). Set `SERVER_PORT`/`CLIENT_PORT`/`DATA_DIR` (and re-run `pnpm seed`) to spin up an independent, fully isolated dev stack — e.g. one per agent working in parallel; the client's IndexedDB is already origin-scoped, so distinct `CLIENT_PORT`s isolate browser state for free.
 - `pnpm build` — builds `shared` → `client` → `server` in dependency order (Turbo `dependsOn: ["^build"]`).
 - `pnpm typecheck` — `tsc --noEmit` across packages (also gated on `^build`, since client/server import the built `@shelfie/shared`).
 - `pnpm test` — Vitest. Only `packages/shared` has real tests today; `client`/`server` run `vitest run --passWithNoTests` (currently trivially pass — no test files yet).
 - `pnpm lint` — wired through Turbo but **no package defines a `lint` script**, so this currently no-ops. Don't rely on it to catch anything.
 - `pnpm format` — Prettier (`**/*.{ts,tsx,json,md}`), no dedicated `.prettierrc` (uses Prettier defaults).
-- `pnpm seed` (`scripts/seed.mjs`) — claims the owner password (`admin`, the dev convention) against a running server, resolves a handful of real games through the server's own `/api/games/search` (so seeded items get real IGDB cover art), then pushes them through `/api/sync/library_items/push`. Card metadata is *not* pre-warmed by seeding — the client populates its local `game_metadata` cache itself on first `Library.tsx` mount via `GET /api/games?ids=`. Idempotent: re-running skips ids already present. Needs the server up (`pnpm dev`) and `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET` set; override target with `SHELFIE_SERVER_URL` / `SHELFIE_PASSWORD`.
-- `pnpm screenshot [path]` (`scripts/screenshot.mjs`) — opens the client in headless Chromium (Playwright), logs in if needed, waits for the library grid (or empty state) to settle, and saves a PNG (default `scripts/screenshot.png`). Needs the client up too; override with `SHELFIE_CLIENT_URL` / `SHELFIE_PASSWORD`.
+- `pnpm seed` (`scripts/seed.mjs`) — claims the owner password (`admin`, the dev convention) against a running server, resolves a handful of real games through the server's own `/api/games/search` (so seeded items get real IGDB cover art), then pushes them through `/api/sync/library_items/push`. Card metadata is *not* pre-warmed by seeding — the client populates its local `game_metadata` cache itself on first `Library.tsx` mount via `GET /api/games?ids=`. Idempotent: re-running skips ids already present. Needs the server up (`pnpm dev`) and `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET` set; targets `http://localhost:$SERVER_PORT` (default 3001) unless `SHELFIE_SERVER_URL` is set; `SHELFIE_PASSWORD` overrides the claimed/expected password.
+- `pnpm screenshot [path]` (`scripts/screenshot.mjs`) — opens the client in headless Chromium (Playwright), logs in if needed, waits for the library grid (or empty state) to settle, and saves a PNG (default `scripts/screenshot.png`). Needs the client up too; targets `http://localhost:$CLIENT_PORT` (default 5173) unless `SHELFIE_CLIENT_URL` is set; `SHELFIE_PASSWORD` overrides the expected password.
 
 Typical flow for a task that needs to look at the UI: `pnpm dev` in the
 background, then `pnpm seed`, then `pnpm screenshot [path]`.
@@ -192,7 +192,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - `packages/client/src/db/gameCards.ts` — the local-only offline card cache: schema, `cardToDoc` projection, `upsertCards`.
 - `packages/client/src/db/replication.ts` — client-side RxDB replication wiring against the sync routes.
 - `packages/client/src/auth.ts` — `authFetch()`, the required wrapper for all authenticated client requests.
-- `.env` (root, gitignored) — `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`. Server also reads `PORT`, `DATABASE_URL`, `DATA_DIR`, `STATIC_DIR` (all optional, sensible defaults in `db/index.ts`/`index.ts`).
+- `.env` (root, gitignored) — `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`. Server also reads `SERVER_PORT` (falls back to `PORT`), `DATABASE_URL`, `DATA_DIR`, `STATIC_DIR`; client (`vite.config.ts`) reads `CLIENT_PORT` and `SERVER_PORT` for its own port and proxy target (all optional, sensible defaults in `db/index.ts`/`index.ts`/`vite.config.ts`).
 - `turbo.json` — task graph (`build`/`typecheck`/`lint` depend on `^build`; `test`/`dev` don't).
 
 ## Runtime/Tooling Preferences
