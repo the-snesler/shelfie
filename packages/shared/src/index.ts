@@ -5,8 +5,16 @@ export type {
   ItemStatus,
   MediaType,
   MetaStatus,
+  LogFormat,
 } from "./types.js";
-export { ITEM_STATUSES, META_STATUSES, STATUS_META_GROUP } from "./types.js";
+export {
+  ITEM_STATUSES,
+  META_STATUSES,
+  STATUS_META_GROUP,
+  LOG_FORMATS,
+  LOG_FORMATS_BY_MEDIA,
+  defaultLogFormat,
+} from "./types.js";
 export {
   createLwwConflictHandler,
   libraryItemConflictHandler,

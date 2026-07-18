@@ -40,6 +40,23 @@ export const STATUS_META_GROUP: Record<ItemStatus, MetaStatus> = {
 /** The kind of media a library item tracks. Union will grow (movies, books, …). */
 export type MediaType = "game";
 
+/** Progress log formats. Append new units (e.g. "pages", "episodes", "minutes")
+ *  here; adding one never bumps the RxDB schema (progressFormat is a plain
+ *  string there, mirroring `status`). */
+export const LOG_FORMATS = ["percent", "hours"] as const;
+export type LogFormat = (typeof LOG_FORMATS)[number];
+
+/** Allowed formats per media type; the FIRST entry is the default for a new
+ *  item of that type. Grows as media types and formats are added. */
+export const LOG_FORMATS_BY_MEDIA: Record<MediaType, readonly LogFormat[]> = {
+  game: ["hours", "percent"],
+};
+
+/** Default log format for a newly added item of the given media type. */
+export function defaultLogFormat(mediaType: MediaType): LogFormat {
+  return LOG_FORMATS_BY_MEDIA[mediaType][0];
+}
+
 export interface LibraryItem {
   /** `${mediaType}:${sourceId}`, e.g. "game:1942" */
   id: string;
@@ -47,8 +64,11 @@ export interface LibraryItem {
   /** id in the source catalog (e.g. IGDB game id), stringified */
   sourceId: string;
   status: ItemStatus;
-  /** 0-100 int; only meaningful when status === "playing" */
-  progress: number | null;
+  /** How progressValue is expressed; one of this media type's LOG_FORMATS. */
+  progressFormat: LogFormat;
+  /** Progress amount in progressFormat's unit (percent 0–100 int, or hours ≥0,
+   *  fractional allowed); null until the user logs progress. */
+  progressValue: number | null;
   /** IGDB platform names the user owns this game on; the first entry drives
    *  cover rendering. Empty until the user records one. */
   platforms: string[];

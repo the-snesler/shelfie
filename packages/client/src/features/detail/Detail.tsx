@@ -1,8 +1,14 @@
-import { ITEM_STATUSES } from "@shelfie/shared";
+import {
+  ITEM_STATUSES,
+  LOG_FORMATS_BY_MEDIA,
+  STATUS_META_GROUP,
+  defaultLogFormat,
+} from "@shelfie/shared";
 import type {
   GameDetail,
   ItemStatus,
   LibraryItem,
+  LogFormat,
   StoreName,
 } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
@@ -180,7 +186,8 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
         mediaType: "game",
         sourceId: String(meta.igdbId),
         status: value,
-        progress: null,
+        progressFormat: defaultLogFormat("game"),
+        progressValue: null,
         platforms: [],
         rating: null,
         completedDates: [],
@@ -233,6 +240,16 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
   function handleRating(value: number | null) {
     if (!item) return;
     void item.incrementalPatch({ rating: value, updatedAt: Date.now() });
+  }
+
+  function handleFormatChange(format: LogFormat) {
+    if (!item || item.progressFormat === format) return;
+    // No cross-unit conversion (42% ≠ 42h) — reset value on switch.
+    void item.incrementalPatch({
+      progressFormat: format,
+      progressValue: null,
+      updatedAt: Date.now(),
+    });
   }
 
   return (
@@ -346,23 +363,63 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
             </div>
           </fieldset>
         )}
-        {item && item.status === "playing" && (
-          <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-            Progress ({item.progress ?? 0}%)
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={item.progress ?? 0}
-              onChange={(e) => {
-                void item.incrementalPatch({
-                  progress: Number(e.target.value),
-                  updatedAt: Date.now(),
-                });
-              }}
-            />
-          </label>
+        {item && STATUS_META_GROUP[item.status] !== "planned" && (
+          <div className="flex flex-col gap-2">
+            {LOG_FORMATS_BY_MEDIA.game.length > 1 && (
+              <div className="flex gap-2">
+                {LOG_FORMATS_BY_MEDIA.game.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => handleFormatChange(f)}
+                    className={
+                      item.progressFormat === f
+                        ? "rounded bg-accent px-2 py-1 text-xs text-white"
+                        : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
+                    }
+                  >
+                    {f === "hours" ? "Hours" : "Percent"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {item.progressFormat === "hours" ? (
+              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
+                Hours played ({item.progressValue ?? 0}h)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={item.progressValue ?? 0}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    void item.incrementalPatch({
+                      progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
+                      updatedAt: Date.now(),
+                    });
+                  }}
+                  className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
+                />
+              </label>
+            ) : (
+              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
+                Progress ({item.progressValue ?? 0}%)
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={item.progressValue ?? 0}
+                  onChange={(e) => {
+                    void item.incrementalPatch({
+                      progressValue: Number(e.target.value),
+                      updatedAt: Date.now(),
+                    });
+                  }}
+                />
+              </label>
+            )}
+          </div>
         )}
         {item && (
           <div className="flex flex-col gap-1 text-sm font-medium text-muted">
@@ -385,11 +442,14 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
                     title="Click to remove"
                     className="group flex items-center gap-1 rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent"
                   >
-                    {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {new Date(`${date}T00:00:00`).toLocaleDateString(
+                      undefined,
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      },
+                    )}
                     <IconX className="opacity-0 group-hover:opacity-100" />
                   </button>
                 ))}

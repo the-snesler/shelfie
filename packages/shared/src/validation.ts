@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ITEM_STATUSES } from "./types.js";
+import { ITEM_STATUSES, LOG_FORMATS } from "./types.js";
 import type { ReplicatedLibraryItem } from "./types.js";
 
 /**
@@ -17,7 +17,8 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
   status: z.enum(ITEM_STATUSES),
   // Only meaningful when status === "playing", but always present (never
   // absent) so the RxDB schema's `required` list stays simple.
-  progress: z.number().int().min(0).max(100).nullable(),
+  progressFormat: z.enum(LOG_FORMATS),
+  progressValue: z.number().min(0).nullable(),
   addedAt: z.number().positive(),
   updatedAt: z.number().positive(),
   platforms: z.array(z.string().min(1).max(64)).max(32),

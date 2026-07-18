@@ -1,4 +1,5 @@
 import type { Kysely } from "kysely";
+import { sql } from "kysely";
 import type { Database } from "./types.js";
 
 /**
@@ -205,6 +206,25 @@ const migrations: Migration[] = [
         .alterTable("library_items")
         .addColumn("notes", "text", (c) => c.notNull().defaultTo(""))
         .execute();
+    },
+  },
+  {
+    id: 7,
+    name: "library-item-progress-format",
+    async up(db) {
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("progress_format", "text", (c) => c.notNull().defaultTo("percent"))
+        .execute();
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("progress_value", "real")
+        .execute();
+      // Backfill: existing percent data moves into progress_value; format stays
+      // "percent" (the column default). Raw SQL because `progress` is being
+      // removed from the Kysely Database type.
+      await sql`UPDATE library_items SET progress_value = progress`.execute(db);
+      await db.schema.alterTable("library_items").dropColumn("progress").execute();
     },
   },
 ];

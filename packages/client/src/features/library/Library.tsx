@@ -28,15 +28,47 @@ function cardCaption(
   item: LibraryItem,
   meta: GameCardDoc | undefined,
 ): string | null {
-  const normally = meta?.timeToBeat?.normally ?? null;
-  if (STATUS_META_GROUP[item.status] === "in-progress") {
-    const pct = item.progress ?? 0;
-    if (normally == null) return pct > 0 ? `${pct}%` : null;
-    const left = toHours(normally * (1 - pct / 100));
-    return pct > 0 ? `${pct}% · ${left}h left` : `~${left}h left`;
+  switch (STATUS_META_GROUP[item.status]) {
+    case "in-progress": {
+      return formatProgress(item, meta);
+    }
+    case "planned": {
+      const expected = meta?.timeToBeat?.normally ?? null;
+      return expected != null ? `~${toHours(expected)}h` : null;
+    }
+    case "finished": {
+      return `${item.progressValue ?? 0}${formatProgressSuffix(item)}`;
+    }
   }
-  // planned + finished: estimated total playtime
-  return normally != null ? `~${toHours(normally)}h` : null;
+}
+
+function formatProgressSuffix(item: LibraryItem): string {
+  if (item.progressFormat === "hours") return "h";
+  return "%";
+}
+
+function formatProgress(
+  item: LibraryItem,
+  meta: GameCardDoc | undefined,
+): string | null {
+  const expected = meta?.timeToBeat?.normally ?? null;
+  if (expected == null)
+    return `${item.progressValue ?? 0}${formatProgressSuffix(item)}`;
+
+  let pct: number;
+  if (item.progressFormat === "hours") {
+    const h = item.progressValue ?? 0;
+    if (h >= toHours(expected)) return `${h}h`;
+    pct = (h / toHours(expected)) * 100;
+  } else {
+    pct = item.progressValue ?? 0;
+    if (pct >= 100) return `${pct}%`;
+  }
+
+  pct = Math.round(pct);
+  pct = Math.min(Math.max(pct, 0), 100);
+  const left = toHours(expected * (1 - pct / 100));
+  return pct > 0 ? `${pct}% · ${left}h left` : `~${left}h left`;
 }
 
 export function Library({ db }: { db: ShelfieDatabase }) {
@@ -95,7 +127,7 @@ export function Library({ db }: { db: ShelfieDatabase }) {
       {META_STATUSES.filter((g) => grouped.get(g)?.length).map((g) => (
         <section key={g} className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-ink">{META_LABELS[g]}</h2>
-          <div className="flex flex-wrap items-end gap-8">
+          <div className="flex flex-wrap items-end gap-4">
             {grouped.get(g)!.map((item) => {
               const meta = cards.get(item.id);
               const cover = meta?.coverImageId

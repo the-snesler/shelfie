@@ -15,7 +15,7 @@ export const platformTemplates: Record<string, PlatformTemplate> = templates;
 export const DEFAULT_TEMPLATE = { aspectRatio: 0.71, heightMm: 172 } as const;
 
 /** px per mm of case height, per surface. */
-export const LIBRARY_COVER_SCALE = 1.2;
+export const LIBRARY_COVER_SCALE = 1.1;
 export const DETAIL_COVER_SCALE = 1.5;
 
 /**

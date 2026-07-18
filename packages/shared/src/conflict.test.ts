@@ -7,7 +7,8 @@ const base: ReplicatedLibraryItem = {
   mediaType: "game",
   sourceId: "1942",
   status: "playing",
-  progress: 10,
+  progressFormat: "hours",
+  progressValue: 10,
   addedAt: 1,
   updatedAt: 10,
   platforms: [],
@@ -25,14 +26,14 @@ describe("libraryItemConflictHandler", () => {
     expect(
       libraryItemConflictHandler.isEqual(
         base,
-        { ...base, progress: 20 },
+        { ...base, progressValue: 20 },
         "test",
       ),
     ).toBe(false);
   });
 
   it("resolves to the newer local document", async () => {
-    const local = { ...base, progress: 50, updatedAt: 20 };
+    const local = { ...base, progressValue: 50, updatedAt: 20 };
     await expect(
       libraryItemConflictHandler.resolve(
         { realMasterState: base, newDocumentState: local },
@@ -42,7 +43,7 @@ describe("libraryItemConflictHandler", () => {
   });
 
   it("resolves to the newer remote document", async () => {
-    const remote = { ...base, progress: 50, updatedAt: 20 };
+    const remote = { ...base, progressValue: 50, updatedAt: 20 };
     await expect(
       libraryItemConflictHandler.resolve(
         { realMasterState: remote, newDocumentState: base },

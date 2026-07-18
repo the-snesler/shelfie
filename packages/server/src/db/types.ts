@@ -10,8 +10,10 @@ export interface LibraryItemsTable {
   media_type: string;
   source_id: string;
   status: string;
-  /** 0-100 int; only meaningful when status === "playing" */
-  progress: number | null;
+  /** Log format for progress_value; one of the media type's LOG_FORMATS. */
+  progress_format: string;
+  /** Progress amount in progress_format's unit; NULL until logged. */
+  progress_value: number | null;
   added_at: number;
   updated_at: number;
   /** JSON-encoded string[] — IGDB platform names the user owns this on. */

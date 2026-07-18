@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 2,
+  version: 3,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -21,12 +21,8 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     mediaType: { type: "string", maxLength: 16 },
     sourceId: { type: "string", maxLength: 64 },
     status: { type: "string", maxLength: 16 },
-    progress: {
-      type: ["number", "null"],
-      minimum: 0,
-      maximum: 100,
-      multipleOf: 1,
-    },
+    progressFormat: { type: "string", maxLength: 16 },
+    progressValue: { type: ["number", "null"], minimum: 0 },
     platforms: {
       type: "array",
       items: { type: "string", maxLength: 64 },
@@ -62,7 +58,8 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "mediaType",
     "sourceId",
     "status",
-    "progress",
+    "progressFormat",
+    "progressValue",
     "platforms",
     "rating",
     "completedDates",
@@ -76,9 +73,14 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
 /**
  * Migration seam for `library_items`. Schema version 1 adds `platforms`;
  * existing documents default to an empty list. Version 2 adds `rating`,
- * `completedDates`, and `notes`.
+ * `completedDates`, and `notes`. Version 3 splits `progress` into
+ * `progressFormat` + `progressValue` (percent data preserved as-is).
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
   2: (oldDoc) => ({ ...oldDoc, rating: null, completedDates: [], notes: "" }),
+  3: (oldDoc) => {
+    const { progress, ...rest } = oldDoc;
+    return { ...rest, progressFormat: "percent", progressValue: progress ?? null };
+  },
 };

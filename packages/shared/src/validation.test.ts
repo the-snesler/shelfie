@@ -7,7 +7,8 @@ const base: ReplicatedLibraryItem = {
   mediaType: "game",
   sourceId: "1942",
   status: "playing",
-  progress: 50,
+  progressFormat: "hours",
+  progressValue: 50,
   addedAt: 1,
   updatedAt: 2,
   platforms: [],
@@ -45,33 +46,42 @@ describe("libraryItemDocSchema platforms", () => {
   });
 });
 
-describe("libraryItemDocSchema progress bound", () => {
-  it("accepts null progress", () => {
-    const doc = { ...base, status: "wishlisted" as const, progress: null };
+describe("libraryItemDocSchema progress fields", () => {
+  it("accepts null progressValue", () => {
+    const doc = {
+      ...base,
+      status: "wishlisted" as const,
+      progressValue: null,
+    };
     expect(libraryItemDocSchema.safeParse(doc).success).toBe(true);
   });
 
-  it("accepts progress at the bounds", () => {
+  it("accepts a fractional hours value", () => {
     expect(
-      libraryItemDocSchema.safeParse({ ...base, progress: 0 }).success,
-    ).toBe(true);
-    expect(
-      libraryItemDocSchema.safeParse({ ...base, progress: 100 }).success,
+      libraryItemDocSchema.safeParse({
+        ...base,
+        progressFormat: "hours",
+        progressValue: 24.5,
+      }).success,
     ).toBe(true);
   });
 
-  it("rejects progress past the bounds", () => {
+  it("accepts progressValue at zero", () => {
     expect(
-      libraryItemDocSchema.safeParse({ ...base, progress: 101 }).success,
-    ).toBe(false);
+      libraryItemDocSchema.safeParse({ ...base, progressValue: 0 }).success,
+    ).toBe(true);
+  });
+
+  it("rejects negative progressValue", () => {
     expect(
-      libraryItemDocSchema.safeParse({ ...base, progress: -1 }).success,
+      libraryItemDocSchema.safeParse({ ...base, progressValue: -1 }).success,
     ).toBe(false);
   });
 
-  it("rejects non-integer progress", () => {
+  it("rejects an unknown progressFormat", () => {
     expect(
-      libraryItemDocSchema.safeParse({ ...base, progress: 50.5 }).success,
+      libraryItemDocSchema.safeParse({ ...base, progressFormat: "pages" })
+        .success,
     ).toBe(false);
   });
 });

@@ -29,21 +29,62 @@ const SERVER_URL =
   `http://localhost:${process.env.SERVER_PORT ?? process.env.PORT ?? 3001}`;
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
-// query: title to search IGDB for. status/progress: seeded library item state.
+// query: title to search IGDB for. status/progressFormat/progressValue: seeded library item state.
 const SEEDS = [
   {
     query: "The Legend of Zelda: Breath of the Wild",
     status: "playing",
-    progress: 40,
+    progressFormat: "hours",
+    progressValue: 24,
   },
-  { query: "Hollow Knight", status: "completed", progress: 100 },
-  { query: "Elden Ring", status: "backlogged", progress: null },
-  { query: "Stardew Valley", status: "wishlisted", progress: null },
-  { query: "Celeste", status: "completed", progress: 100 },
-  { query: "Splatoon Raiders", status: "playing", progress: 20 },
-  { query: "Super Mario Galaxy", status: "completed", progress: 100 },
-  { query: "Super Mario Sunshine", status: "backlogged", progress: null },
-  { query: "Super Mario 64", status: "completed", progress: 100 },
+  {
+    query: "Hollow Knight",
+    status: "completed",
+    progressFormat: "percent",
+    progressValue: 100,
+  },
+  {
+    query: "Elden Ring",
+    status: "backlogged",
+    progressFormat: "hours",
+    progressValue: null,
+  },
+  {
+    query: "Stardew Valley",
+    status: "wishlisted",
+    progressFormat: "hours",
+    progressValue: null,
+  },
+  {
+    query: "Celeste",
+    status: "completed",
+    progressFormat: "percent",
+    progressValue: 100,
+  },
+  {
+    query: "Splatoon Raiders",
+    status: "playing",
+    progressFormat: "hours",
+    progressValue: 12,
+  },
+  {
+    query: "Super Mario Galaxy",
+    status: "completed",
+    progressFormat: "percent",
+    progressValue: 100,
+  },
+  {
+    query: "Super Mario Sunshine",
+    status: "backlogged",
+    progressFormat: "hours",
+    progressValue: null,
+  },
+  {
+    query: "Super Mario 64",
+    status: "completed",
+    progressFormat: "percent",
+    progressValue: 100,
+  },
 ];
 
 async function main() {
@@ -68,7 +109,8 @@ async function main() {
       mediaType: "game",
       sourceId: String(igdbId),
       status: seed.status,
-      progress: seed.progress,
+      progressFormat: seed.progressFormat,
+      progressValue: seed.progressValue,
       platforms: [],
       rating: null,
       completedDates: [],

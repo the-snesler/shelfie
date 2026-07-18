@@ -12,7 +12,8 @@ const sample: ReplicatedLibraryItem = {
   mediaType: "game",
   sourceId: "1942",
   status: "playing",
-  progress: 42,
+  progressFormat: "hours",
+  progressValue: 42,
   addedAt: 1,
   updatedAt: 2,
   _deleted: false,
@@ -27,7 +28,8 @@ const wishlistedSample: ReplicatedLibraryItem = {
   id: "game:7",
   sourceId: "7",
   status: "wishlisted",
-  progress: null,
+  progressFormat: "hours",
+  progressValue: null,
   platforms: [],
   rating: null,
   completedDates: [],
@@ -59,10 +61,11 @@ describe("library item contract", () => {
     );
   });
 
-  it("is at schema version 2 with platforms/rating/completions/notes migrations", () => {
-    expect(libraryItemSchema.version).toBe(2);
+  it("is at schema version 3 with platforms/rating/completions/notes/progress-format migrations", () => {
+    expect(libraryItemSchema.version).toBe(3);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
+    expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
@@ -77,6 +80,19 @@ describe("library item contract", () => {
       completedDates: [],
       notes: "",
     });
+    const migrate3 = libraryItemMigrationStrategies[3] as (
+      oldDoc: unknown,
+    ) => unknown;
+    expect(migrate3({ id: "game:1", progress: 42 })).toEqual({
+      id: "game:1",
+      progressFormat: "percent",
+      progressValue: 42,
+    });
+    expect(migrate3({ id: "game:1", progress: null })).toEqual({
+      id: "game:1",
+      progressFormat: "percent",
+      progressValue: null,
+    });
   });
 
   it("keeps status a plain string in the RxDB schema (enum lives in zod)", () => {
@@ -84,10 +100,11 @@ describe("library item contract", () => {
     expect(libraryItemSchema.properties.status).not.toHaveProperty("enum");
   });
 
-  it("allows progress to be null or absent-typed as number|null in the RxDB schema", () => {
-    expect(libraryItemSchema.properties.progress.type).toEqual([
+  it("allows progressValue to be null or absent-typed as number|null, and progressFormat as a plain string, in the RxDB schema", () => {
+    expect(libraryItemSchema.properties.progressValue.type).toEqual([
       "number",
       "null",
     ]);
+    expect(libraryItemSchema.properties.progressFormat.type).toBe("string");
   });
 });
