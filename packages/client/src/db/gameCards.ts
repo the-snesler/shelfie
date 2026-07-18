@@ -1,4 +1,4 @@
-import type { GameMetadata, PlatformRelease } from "@shelfie/shared";
+import type { GameMetadata, PlatformRelease, TimeToBeat } from "@shelfie/shared";
 import type { RxJsonSchema } from "rxdb";
 import type { ShelfieDatabase } from "./database";
 
@@ -19,12 +19,13 @@ export interface GameCardDoc {
   platformReleaseDates: PlatformRelease[];
   developer: string | null;
   firstReleaseDate: number | null;
+  timeToBeat: TimeToBeat | null;
   cachedAt: number;
 }
 
 export const gameCardSchema: RxJsonSchema<GameCardDoc> = {
   title: "game card cache schema",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -53,6 +54,15 @@ export const gameCardSchema: RxJsonSchema<GameCardDoc> = {
       minimum: 0,
       maximum: 9007199254740991,
       multipleOf: 1,
+    },
+    timeToBeat: {
+      type: ["object", "null"],
+      properties: {
+        hastily: { type: ["number", "null"] },
+        normally: { type: ["number", "null"] },
+        completely: { type: ["number", "null"] },
+        count: { type: "number" },
+      },
     },
     cachedAt: {
       type: "number",
@@ -86,6 +96,7 @@ export function cardToDoc(card: GameMetadata): GameCardDoc {
     platformReleaseDates: card.platformReleaseDates,
     developer: card.developer,
     firstReleaseDate: card.firstReleaseDate,
+    timeToBeat: card.timeToBeat ?? null,
     cachedAt: Date.now(),
   };
 }

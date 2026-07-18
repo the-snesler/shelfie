@@ -38,6 +38,9 @@ export interface GameMetadata {
   developer: string | null;
   /** epoch seconds */
   firstReleaseDate: number | null;
+  /** IGDB average completion times; null when IGDB has none. Card-tier so the
+   *  library grid can show "hours left" offline. */
+  timeToBeat: TimeToBeat | null;
 }
 
 export interface GameVideo {

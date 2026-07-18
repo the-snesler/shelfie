@@ -83,6 +83,7 @@ interface IgdbWebsite {
 }
 
 interface IgdbTimeToBeat {
+  game_id?: number;
   hastily?: number;
   normally?: number;
   completely?: number;
@@ -146,6 +147,7 @@ function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
     platformReleaseDates,
     developer: extractDeveloper(game.involved_companies),
     firstReleaseDate: game.first_release_date ?? null,
+    timeToBeat: null,
   };
 }
 
@@ -287,6 +289,15 @@ export async function fetchGamesByIds(ids: number[]): Promise<GameMetadata[]> {
   return results;
 }
 
+function timeToBeatFromRow(row: IgdbTimeToBeat): TimeToBeat {
+  return {
+    hastily: row.hastily ? row.hastily : null,
+    normally: row.normally ? row.normally : null,
+    completely: row.completely ? row.completely : null,
+    count: row.count ?? 0,
+  };
+}
+
 /** Best-effort lookup; a failing/empty response or errored request yields null rather than failing the detail fetch. */
 async function fetchTimeToBeat(igdbId: number): Promise<TimeToBeat | null> {
   try {
@@ -296,15 +307,31 @@ async function fetchTimeToBeat(igdbId: number): Promise<TimeToBeat | null> {
     const rows = (await res.json()) as IgdbTimeToBeat[];
     const [row] = rows;
     if (!row) return null;
-    return {
-      hastily: row.hastily ? row.hastily : null,
-      normally: row.normally ? row.normally : null,
-      completely: row.completely ? row.completely : null,
-      count: row.count ?? 0,
-    };
+    return timeToBeatFromRow(row);
   } catch {
     return null;
   }
+}
+
+/** Best-effort batch TTB by game id. Errors/misses yield an empty (or partial)
+ *  map rather than failing the caller. */
+export async function fetchTimeToBeatsByIds(
+  ids: number[],
+): Promise<Map<number, TimeToBeat>> {
+  const out = new Map<number, TimeToBeat>();
+  if (ids.length === 0) return out;
+  try {
+    const query = `fields game_id,hastily,normally,completely,count; where game_id = (${ids.join(",")}); limit ${ids.length};`;
+    const res = await igdbFetch(IGDB_TIME_TO_BEATS_URL, query);
+    if (!res.ok) return out;
+    const rows = (await res.json()) as IgdbTimeToBeat[];
+    for (const row of rows) {
+      if (row.game_id !== undefined) out.set(row.game_id, timeToBeatFromRow(row));
+    }
+  } catch {
+    // best-effort: swallow, return whatever was collected
+  }
+  return out;
 }
 
 /** Looks up a single game by its IGDB URL slug; null if IGDB has no such slug. */

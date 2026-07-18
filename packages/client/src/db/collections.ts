@@ -1,9 +1,10 @@
+import type { RxDocumentData } from "rxdb";
 import {
   libraryItemConflictHandler,
   libraryItemMigrationStrategies,
   libraryItemSchema,
 } from "@shelfie/shared";
-import { gameCardSchema } from "./gameCards";
+import { gameCardSchema, type GameCardDoc } from "./gameCards";
 
 /**
  * Collection definitions built from the shared schema. Keeping this separate
@@ -20,5 +21,8 @@ export const collections = {
   },
   game_metadata: {
     schema: gameCardSchema,
+    migrationStrategies: {
+      1: (doc: RxDocumentData<GameCardDoc>) => ({ ...doc, timeToBeat: null }),
+    },
   },
 };

@@ -1,4 +1,9 @@
-import type { GameDetail, GameMetadata, PlatformRelease } from "@shelfie/shared";
+import type {
+  GameDetail,
+  GameMetadata,
+  PlatformRelease,
+  TimeToBeat,
+} from "@shelfie/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
@@ -22,9 +27,14 @@ function metadataRowToDto(
     summary: row.summary,
     genres: JSON.parse(row.genres) as string[],
     platforms: JSON.parse(row.platforms) as string[],
-    platformReleaseDates: JSON.parse(row.platform_release_dates) as PlatformRelease[],
+    platformReleaseDates: JSON.parse(
+      row.platform_release_dates,
+    ) as PlatformRelease[],
     developer: row.developer,
     firstReleaseDate: row.first_release_date,
+    timeToBeat: row.time_to_beat
+      ? (JSON.parse(row.time_to_beat) as TimeToBeat)
+      : null,
   };
 }
 
@@ -53,7 +63,9 @@ function metadataToRow(metadata: GameMetadata): GameMetadataTable {
     rating: null,
     rating_count: null,
     stores: null,
-    time_to_beat: null,
+    time_to_beat: metadata.timeToBeat
+      ? JSON.stringify(metadata.timeToBeat)
+      : null,
     detail_fetched_at: null,
   };
 }
@@ -122,6 +134,11 @@ async function upsertMetadata(
         developer: row.developer,
         first_release_date: row.first_release_date,
         fetched_at: row.fetched_at,
+        time_to_beat: (eb) =>
+          eb.fn.coalesce(
+            eb.ref("excluded.time_to_beat"),
+            eb.ref("game_metadata.time_to_beat"),
+          ),
       }),
     )
     .execute();
@@ -219,6 +236,7 @@ export function registerGamesRoutes(
     if (missingIds.length > 0) {
       const fetched = await fetchGamesByIds(missingIds);
       for (const metadata of fetched) {
+        metadata.timeToBeat = ttbs.get(metadata.igdbId) ?? null;
         const row = await upsertMetadata(database, metadata);
         cachedById.set(
           metadata.igdbId,

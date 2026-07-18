@@ -21,6 +21,22 @@ export const ITEM_STATUSES = [
 
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 
+/** Coarse buckets the library home groups items into, independent of media
+ *  type. Array order is display order. */
+export const META_STATUSES = ["in-progress", "planned", "finished"] as const;
+export type MetaStatus = (typeof META_STATUSES)[number];
+
+/** Every item status → its bucket. Keyed by ItemStatus so adding a status is
+ *  a compile error until it is bucketed here. */
+export const STATUS_META_GROUP: Record<ItemStatus, MetaStatus> = {
+  wishlisted: "planned",
+  backlogged: "planned",
+  playing: "in-progress",
+  played: "finished",
+  beaten: "finished",
+  completed: "finished",
+};
+
 /** The kind of media a library item tracks. Union will grow (movies, books, …). */
 export type MediaType = "game";
 
