@@ -1,10 +1,12 @@
 import type { SearchResult } from "@shelfie/shared";
 import { useEffect, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router";
+import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
-import type { ShelfieDatabase } from "../../db/database";
-import { navigate } from "../../router";
 
-export function Search({ db }: { db: ShelfieDatabase }) {
+export default function Search() {
+  const { db } = useOutletContext<AppOutletContext>();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);

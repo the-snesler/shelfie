@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet } from "react-router";
 import {
   clearAuthToken,
   getAuthStatus,
@@ -9,14 +10,11 @@ import {
 import { AuthScreen } from "./AuthScreen";
 import { getDatabase, type ShelfieDatabase } from "./db/database";
 import { startReplication, stopReplication } from "./db/replication";
-import { Detail } from "./features/detail/Detail";
-import { Library } from "./features/library/Library";
-import { Search } from "./features/search/Search";
-import { navigate, useRoute } from "./router";
 
 export type AuthMode = "checking" | "setup" | "login" | "app" | "unreachable";
+export type AppOutletContext = { db: ShelfieDatabase };
 
-export function App() {
+export default function App() {
   const [authMode, setAuthMode] = useState<AuthMode>(() =>
     getAuthToken() ? "app" : "checking",
   );
@@ -115,7 +113,6 @@ export function App() {
 
 function AuthedApp({ onLogout }: { onLogout: () => void }) {
   const [db, setDb] = useState<ShelfieDatabase | null>(null);
-  const route = useRoute();
 
   useEffect(() => {
     let active = true;
@@ -144,36 +141,31 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-4 border-b border-divider bg-panel px-4 py-3">
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="text-lg font-semibold text-ink"
-        >
+        <Link to="/" className="text-lg font-semibold text-ink">
           Shelfie
-        </button>
+        </Link>
         <nav className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${
-              route.view === "library"
-                ? "bg-accent text-white"
-                : "text-muted hover:bg-bg"
-            }`}
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `rounded px-3 py-1.5 text-sm font-medium ${
+                isActive ? "bg-accent text-white" : "text-muted hover:bg-bg"
+              }`
+            }
           >
             Library
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/search")}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${
-              route.view === "search"
-                ? "bg-accent text-white"
-                : "text-muted hover:bg-bg"
-            }`}
+          </NavLink>
+          <NavLink
+            to="/search"
+            className={({ isActive }) =>
+              `rounded px-3 py-1.5 text-sm font-medium ${
+                isActive ? "bg-accent text-white" : "text-muted hover:bg-bg"
+              }`
+            }
           >
             Search
-          </button>
+          </NavLink>
         </nav>
         <div className="flex-1" />
         <button
@@ -185,9 +177,7 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {route.view === "library" && <Library db={db} />}
-        {route.view === "search" && <Search db={db} />}
-        {route.view === "detail" && <Detail db={db} slug={route.slug} />}
+        <Outlet context={{ db } satisfies AppOutletContext} />
       </div>
     </div>
   );

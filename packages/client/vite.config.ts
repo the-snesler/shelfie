@@ -1,5 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
+import { reactRouter } from "@react-router/dev/vite";
 import { existsSync } from "node:fs";
 import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
@@ -21,7 +21,7 @@ const CLIENT_PORT = Number(process.env.CLIENT_PORT ?? 5173);
 const SERVER_PORT = Number(process.env.SERVER_PORT ?? process.env.PORT ?? 3001);
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), Icons({ compiler: "jsx", jsx: "react" })],
+  plugins: [tailwindcss(), reactRouter(), Icons({ compiler: "jsx", jsx: "react" })],
   server: {
     port: CLIENT_PORT,
     // Fail fast instead of silently drifting to the next free port — a

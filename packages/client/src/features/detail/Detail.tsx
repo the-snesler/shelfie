@@ -13,11 +13,12 @@ import type {
 } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useOutletContext } from "react-router";
 import IconX from "~icons/tabler/x";
+import type { AppOutletContext } from "../../App";
+import type { Route } from "./+types/Detail";
 import { authFetch } from "../../auth";
-import type { ShelfieDatabase } from "../../db/database";
 import { upsertCards } from "../../db/gameCards";
-import { hasAppHistory, navigate } from "../../router";
 import { GameCover } from "../games/GameCover";
 import { DETAIL_COVER_SCALE, selectPlatform } from "../games/platforms";
 import { gameImageUrl } from "../../images";
@@ -73,7 +74,11 @@ function formatHltb(seconds: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
+export default function Detail({ params }: Route.ComponentProps) {
+  const { db } = useOutletContext<AppOutletContext>();
+  const slug = params.slug;
+  const navigate = useNavigate();
+  const location = useLocation();
   const [metaState, setMetaState] = useState<MetaState>({
     status: "loading",
   });
@@ -120,11 +125,11 @@ export function Detail({ db, slug }: { db: ShelfieDatabase; slug: string }) {
   }, [db, igdbId]);
 
   function handleBack() {
-    if (hasAppHistory()) {
-      window.history.back();
-    } else {
-      navigate("/");
-    }
+    // location.key is "default" only for the initial history entry (deep link
+    // / hard load), where going back would leave the app — same guard the old
+    // pushCount-based hasAppHistory() provided.
+    if (location.key !== "default") navigate(-1);
+    else navigate("/");
   }
 
   if (metaState.status === "loading") {

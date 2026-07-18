@@ -2,12 +2,12 @@ import type { GameMetadata, LibraryItem, MetaStatus } from "@shelfie/shared";
 import { META_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router";
 import IconPlus from "~icons/tabler/plus";
+import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
 import { gameImageUrl } from "../../images";
-import type { ShelfieDatabase } from "../../db/database";
 import { type GameCardDoc, upsertCards } from "../../db/gameCards";
-import { navigate } from "../../router";
 import { GameCover } from "../games/GameCover";
 import { LIBRARY_COVER_SCALE, selectPlatform } from "../games/platforms";
 
@@ -71,7 +71,9 @@ function formatProgress(
   return pct > 0 ? `${pct}% · ${left}h left` : `~${left}h left`;
 }
 
-export function Library({ db }: { db: ShelfieDatabase }) {
+export default function Library() {
+  const { db } = useOutletContext<AppOutletContext>();
+  const navigate = useNavigate();
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>([]);
   const [cards, setCards] = useState<Map<string, GameCardDoc>>(new Map());
 
