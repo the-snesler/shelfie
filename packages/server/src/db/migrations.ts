@@ -189,6 +189,24 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 6,
+    name: "library-item-rating-notes-completions",
+    async up(db) {
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("rating", "real")
+        .execute();
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("completed_dates", "text", (c) => c.notNull().defaultTo("[]"))
+        .execute();
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("notes", "text", (c) => c.notNull().defaultTo(""))
+        .execute();
+    },
+  },
 ];
 
 /**

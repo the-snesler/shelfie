@@ -59,7 +59,7 @@ export function Library({ db }: { db: ShelfieDatabase }) {
   }
 
   return (
-    <div className="flex flex-wrap justify-center items-baseline gap-8 p-4">
+    <div className="flex flex-wrap justify-center items-baseline gap-8 p-4 bg-zinc-50">
       {items.map((item) => {
         const meta = cards.get(item.id);
         const cover = meta?.coverImageId

@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -32,6 +32,18 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       items: { type: "string", maxLength: 64 },
       maxItems: 32,
     },
+    rating: {
+      type: ["number", "null"],
+      minimum: 0.5,
+      maximum: 5,
+      multipleOf: 0.5,
+    },
+    completedDates: {
+      type: "array",
+      items: { type: "string", maxLength: 10 },
+      maxItems: 100,
+    },
+    notes: { type: "string", maxLength: 10000 },
     addedAt: {
       type: "number",
       minimum: 0,
@@ -52,6 +64,9 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "status",
     "progress",
     "platforms",
+    "rating",
+    "completedDates",
+    "notes",
     "addedAt",
     "updatedAt",
   ],
@@ -60,8 +75,10 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
 
 /**
  * Migration seam for `library_items`. Schema version 1 adds `platforms`;
- * existing documents default to an empty list.
+ * existing documents default to an empty list. Version 2 adds `rating`,
+ * `completedDates`, and `notes`.
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
+  2: (oldDoc) => ({ ...oldDoc, rating: null, completedDates: [], notes: "" }),
 };

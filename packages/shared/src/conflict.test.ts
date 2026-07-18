@@ -11,6 +11,9 @@ const base: ReplicatedLibraryItem = {
   addedAt: 1,
   updatedAt: 10,
   platforms: [],
+  rating: null,
+  completedDates: [],
+  notes: "",
   _deleted: false,
 };
 

@@ -11,6 +11,9 @@ const base: ReplicatedLibraryItem = {
   addedAt: 1,
   updatedAt: 2,
   platforms: [],
+  rating: null,
+  completedDates: [],
+  notes: "",
   _deleted: false,
 };
 
@@ -88,5 +91,66 @@ describe("libraryItemDocSchema timestamps", () => {
     expect(
       libraryItemDocSchema.safeParse({ ...base, updatedAt: -1 }).success,
     ).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema rating", () => {
+  it("accepts half-step ratings and null", () => {
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, rating: 0.5 }).success,
+    ).toBe(true);
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, rating: 5 }).success,
+    ).toBe(true);
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, rating: null }).success,
+    ).toBe(true);
+  });
+
+  it("rejects out-of-range or non-half-step ratings", () => {
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, rating: 0 }).success,
+    ).toBe(false);
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, rating: 5.5 }).success,
+    ).toBe(false);
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, rating: 0.25 }).success,
+    ).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema completedDates", () => {
+  it("accepts a valid ISO calendar date list", () => {
+    expect(
+      libraryItemDocSchema.safeParse({
+        ...base,
+        completedDates: ["2024-12-31"],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects malformed dates", () => {
+    expect(
+      libraryItemDocSchema.safeParse({
+        ...base,
+        completedDates: ["2024-13-01"],
+      }).success,
+    ).toBe(false);
+    expect(
+      libraryItemDocSchema.safeParse({
+        ...base,
+        completedDates: ["12/31/2024"],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema notes", () => {
+  it("accepts a plain string", () => {
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, notes: "great game" })
+        .success,
+    ).toBe(true);
   });
 });

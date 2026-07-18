@@ -36,6 +36,13 @@ export interface LibraryItem {
   /** IGDB platform names the user owns this game on; the first entry drives
    *  cover rendering. Empty until the user records one. */
   platforms: string[];
+  /** Half-star rating, 0.5–5 in 0.5 steps; null when unrated. */
+  rating: number | null;
+  /** Calendar days (ISO "YYYY-MM-DD") the user marked this finished.
+   *  Empty until the first completion. Display order is a UI concern. */
+  completedDates: string[];
+  /** Free-text notes; empty string when none. */
+  notes: string;
   /** ms epoch */
   addedAt: number;
   /** ms epoch — last-write-time; used by conflict resolution and UI sorting */

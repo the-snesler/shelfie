@@ -16,6 +16,12 @@ export interface LibraryItemsTable {
   updated_at: number;
   /** JSON-encoded string[] — IGDB platform names the user owns this on. */
   platforms: string;
+  /** Half-star rating 0.5–5; NULL when unrated. */
+  rating: number | null;
+  /** JSON-encoded string[] of ISO YYYY-MM-DD completion dates. */
+  completed_dates: string;
+  /** Free-text notes; empty string when none. */
+  notes: string;
   /** server-owned replication cursor */
   seq: number;
   /** 0 | 1 — SQLite has no native boolean */

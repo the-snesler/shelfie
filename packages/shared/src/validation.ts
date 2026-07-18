@@ -21,5 +21,10 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
   addedAt: z.number().positive(),
   updatedAt: z.number().positive(),
   platforms: z.array(z.string().min(1).max(64)).max(32),
+  rating: z.number().min(0.5).max(5).multipleOf(0.5).nullable(),
+  completedDates: z
+    .array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/))
+    .max(100),
+  notes: z.string().max(10000),
   _deleted: z.boolean(),
 });

@@ -17,6 +17,9 @@ const sample: ReplicatedLibraryItem = {
   updatedAt: 2,
   _deleted: false,
   platforms: ["PlayStation 5"],
+  rating: 4.5,
+  completedDates: ["2024-01-02"],
+  notes: "great",
 };
 
 const wishlistedSample: ReplicatedLibraryItem = {
@@ -26,6 +29,9 @@ const wishlistedSample: ReplicatedLibraryItem = {
   status: "wishlisted",
   progress: null,
   platforms: [],
+  rating: null,
+  completedDates: [],
+  notes: "",
 };
 
 describe("library item contract", () => {
@@ -53,14 +59,23 @@ describe("library item contract", () => {
     );
   });
 
-  it("is at schema version 1 with a platforms migration", () => {
-    expect(libraryItemSchema.version).toBe(1);
+  it("is at schema version 2 with platforms/rating/completions/notes migrations", () => {
+    expect(libraryItemSchema.version).toBe(2);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
-    const migrate = libraryItemMigrationStrategies[1] as (
+    expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
+    const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
-    expect(migrate({ id: "game:1", platforms: undefined })).toMatchObject({
+    expect(migrate1({ id: "game:1", platforms: undefined })).toMatchObject({
       platforms: [],
+    });
+    const migrate2 = libraryItemMigrationStrategies[2] as (
+      oldDoc: unknown,
+    ) => unknown;
+    expect(migrate2({ id: "game:1" })).toMatchObject({
+      rating: null,
+      completedDates: [],
+      notes: "",
     });
   });
 

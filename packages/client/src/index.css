@@ -79,7 +79,7 @@
   .video-game {
     --box-art-padding: 3px;
     --border-radius: 4px;
-    --case-transparency: color-mix(in srgb, var(--case-color, #e7e7e7) 80%, transparent);
+    --case-transparency: color-mix(in srgb, var(--case-color, #e7e7e7ff) 80%, transparent);
     position: relative;
     border-radius: 0 var(--border-radius) var(--border-radius) 0;
     padding-top: var(--box-art-padding);
@@ -118,8 +118,8 @@
 
   .video-game:hover {
     transform: scale(1.05);
-    box-shadow: inset 0 0 1px 1px rgba(0,0,0,0.1),
-      inset 0 0 2px 1px var(--case-color),
+    box-shadow: inset 0 0 1px rgba(0,0,0,0.1),
+      inset 0 0 1.5px 1.5px var(--case-color),
       var(--content-elevated-shadow);
   }
 
