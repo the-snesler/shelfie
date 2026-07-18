@@ -9,6 +9,7 @@ import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import type { Database, GameMetadataTable } from "../db/types.js";
 import {
+  fetchTimeToBeatsByIds,
   fetchGameDetailBySlug,
   fetchGamesByIds,
   searchGames,
@@ -234,7 +235,11 @@ export function registerGamesRoutes(
       return !row || row.fetched_at < Date.now() - METADATA_TTL_MS;
     });
     if (missingIds.length > 0) {
-      const fetched = await fetchGamesByIds(missingIds);
+      const [fetched, ttbs] = await Promise.all([
+        fetchGamesByIds(missingIds),
+        fetchTimeToBeatsByIds(missingIds),
+      ]);
+      
       for (const metadata of fetched) {
         metadata.timeToBeat = ttbs.get(metadata.igdbId) ?? null;
         const row = await upsertMetadata(database, metadata);
