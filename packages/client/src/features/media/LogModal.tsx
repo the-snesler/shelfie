@@ -134,7 +134,7 @@ export function LogModal({
               onClick={() => handleStatusChange(status)}
               className={
                 active
-                  ? "flex items-center gap-2 rounded bg-accent px-3 py-2 text-sm text-white"
+                  ? "flex items-center gap-2 rounded bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
                   : "flex items-center gap-2 rounded bg-bg px-3 py-2 text-sm text-ink ring-1 ring-divider"
               }
             >
@@ -155,7 +155,7 @@ export function LogModal({
                 onClick={() => togglePlatform(p)}
                 className={
                   item.platforms.includes(p)
-                    ? "rounded bg-accent px-2 py-1 text-xs text-white"
+                    ? "rounded bg-accent px-2 py-1 text-xs font-medium text-accent-ink"
                     : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
                 }
               >
@@ -178,7 +178,7 @@ export function LogModal({
                     onClick={() => handleFormatChange(f)}
                     className={
                       item.progressFormat === f
-                        ? "rounded bg-accent px-2 py-1 text-xs text-white"
+                        ? "rounded bg-accent px-2 py-1 text-xs font-medium text-accent-ink"
                         : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
                     }
                   >
@@ -316,7 +316,7 @@ export function LogModal({
             <button
               type="button"
               onClick={() => void addCompletionDate(datePrompt.date)}
-              className="rounded bg-accent px-3 py-1 text-sm text-white"
+              className="rounded bg-accent px-3 py-1 text-sm font-medium text-accent-ink"
             >
               Add date
             </button>

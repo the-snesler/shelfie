@@ -1,17 +1,28 @@
 @import "tailwindcss";
+@import "@fontsource-variable/fraunces";
 
 /*
- * Minimal light palette. Each token becomes a Tailwind color utility, e.g.
- * `--color-panel` -> `bg-panel` / `text-panel` / `border-panel`.
+ * Shelfie theme: a lamp-lit den. Deep espresso-charcoal chrome so cover art
+ * carries the color; walnut shelf ledges and a brass accent do the identity
+ * work. Each token becomes a Tailwind utility, e.g. `--color-panel` ->
+ * `bg-panel` / `text-panel` / `border-panel`.
  */
 @theme {
-  --color-bg: #f7f7f8;
-  --color-panel: #ffffff;
-  --color-divider: #e4e4e7;
-  --color-ink: #1c1c1f;
-  --color-muted: #71717a;
-  --color-accent: #4f46e5;
-  --color-danger: #dc2626;
+  --color-bg: oklch(0.23 0.012 55);
+  --color-panel: oklch(0.27 0.014 55);
+  --color-well: oklch(0.2 0.012 52);
+  --color-sidebar: oklch(0.185 0.012 50);
+  --color-divider: oklch(0.34 0.016 55);
+  --color-ink: oklch(0.94 0.008 80);
+  --color-muted: oklch(0.75 0.02 70);
+  --color-faint: oklch(0.58 0.018 65);
+  --color-accent: oklch(0.78 0.13 70);
+  --color-accent-ink: oklch(0.23 0.05 70);
+  --color-danger: oklch(0.68 0.18 25);
+
+  --font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
 @layer base {
@@ -24,20 +35,152 @@
     margin: 0;
     background-color: var(--color-bg);
     color: var(--color-ink);
-    font-family:
-      system-ui,
-      -apple-system,
-      "Segoe UI",
-      Roboto,
-      sans-serif;
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-accent) 35%, transparent);
   }
 }
 
 @layer utilities {
-
   body {
-    --content-base-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    --content-elevated-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    /* Cases sit on dark wood — shadows need real weight to read. */
+    --content-base-shadow:
+      0 14px 20px -6px rgb(0 0 0 / 0.45), 0 5px 8px -4px rgb(0 0 0 / 0.4);
+    --content-elevated-shadow:
+      0 30px 45px -12px rgb(0 0 0 / 0.6), 0 10px 16px -8px rgb(0 0 0 / 0.45);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 40;
+  }
+
+  /*
+   * Ambient room light: a soft lamp glow from the top, vignetting toward the
+   * edges. Applied to the main content column.
+   */
+  .room-light {
+    background-image:
+      radial-gradient(
+        120% 70% at 50% -10%,
+        oklch(0.3 0.02 65 / 0.75) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        140% 100% at 50% 115%,
+        oklch(0.14 0.01 50 / 0.8) 0%,
+        transparent 55%
+      );
+  }
+
+  /*
+   * A walnut shelf ledge: lit top edge, wood face, falloff shadow beneath.
+   * Height comes from --ledge-h; the element itself is the ledge.
+   */
+  .shelf-ledge {
+    height: var(--ledge-h, 14px);
+    border-radius: 2px 2px 4px 4px;
+    background-image:
+      linear-gradient(
+        to bottom,
+        oklch(0.52 0.07 60) 0%,
+        oklch(0.44 0.07 55) 12%,
+        oklch(0.35 0.06 50) 30%,
+        oklch(0.3 0.055 45) 68%,
+        oklch(0.22 0.045 40) 100%
+      ),
+      linear-gradient(
+        to right,
+        oklch(0.3 0.05 45) 0%,
+        oklch(0.38 0.06 55) 8%,
+        oklch(0.38 0.06 55) 92%,
+        oklch(0.3 0.05 45) 100%
+      );
+    background-blend-mode: overlay;
+    box-shadow:
+      0 1px 0 oklch(0.62 0.08 70 / 0.35) inset,
+      0 10px 18px -4px rgb(0 0 0 / 0.55),
+      0 22px 30px -12px rgb(0 0 0 / 0.4);
+  }
+
+  /*
+   * A wall of shelves. Cards inside are fixed-height (cover zone + ledge gap
+   * + label zone); the container paints a walnut ledge behind every row via
+   * a repeating gradient, so wrapped flex lines each get their own shelf.
+   * Covers bottom-align in the cover zone and "rest" on the ledge; labels
+   * hang beneath it in the under-shelf shadow.
+   */
+  .shelf-rows {
+    --shelf-cover-h: 188px;
+    --shelf-ledge-h: 14px;
+    --shelf-label-h: 46px;
+    --shelf-row-gap: 44px;
+    --shelf-period: calc(
+      var(--shelf-cover-h) + var(--shelf-ledge-h) + var(--shelf-label-h) +
+        var(--shelf-row-gap)
+    );
+    row-gap: var(--shelf-row-gap);
+    background-image:
+      /* the ledge itself: lit top edge -> wood face -> dark underside */
+      linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent var(--shelf-cover-h),
+        oklch(0.56 0.075 62) var(--shelf-cover-h),
+        oklch(0.47 0.07 56) calc(var(--shelf-cover-h) + 2px),
+        oklch(0.37 0.06 50) calc(var(--shelf-cover-h) + 5px),
+        oklch(0.29 0.055 45) calc(var(--shelf-cover-h) + 11px),
+        oklch(0.22 0.045 40) calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
+        transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
+        transparent var(--shelf-period)
+      ),
+      /* soft shadow the shelf casts on the wall below it */
+      linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
+        oklch(0 0 0 / 0.35) calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
+        transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h) + 30px),
+        transparent var(--shelf-period)
+      );
+    background-size: 100% var(--shelf-period);
+    background-repeat: repeat-y;
+  }
+
+  /* Items stand on the shelf: grow from their feet, not their center. */
+  .shelf-rows .video-game,
+  .shelf-rows .book,
+  .shelf-rows .poster {
+    transform-origin: bottom center;
+  }
+
+  /* Plain movie/TV poster: same lift-off-the-shelf hover as cases get. */
+  .poster {
+    box-shadow: var(--content-base-shadow);
+    transform: scale(1);
+    transition:
+      transform 0.2s ease-in-out,
+      box-shadow 0.2s ease-in-out;
+  }
+
+  .poster:hover {
+    transform: scale(1.05);
+    box-shadow: var(--content-elevated-shadow);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .book,
+    .book:hover,
+    .poster,
+    .poster:hover,
+    .video-game,
+    .video-game:hover,
+    .video-game::before {
+      transition: none;
+      transform: none;
+    }
   }
 
   .book {
@@ -45,7 +188,9 @@
     border-radius: 0 6px 6px 0;
     box-shadow: var(--content-base-shadow);
     transform: scale(1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition:
+      transform 0.2s ease-in-out,
+      box-shadow 0.2s ease-in-out;
   }
 
   .book:hover {
@@ -58,27 +203,33 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(to right,
-      rgba(0,0,0,0.02) 0%,
-      rgba(0,0,0,0.05) 0.75%,
-      rgba(255,255,255,0.5) 1.0%,
-      rgba(255,255,255,0.6) 1.3%,
-      rgba(255,255,255,0.5) 1.4%,
-      rgba(255,255,255,0.3) 1.5%,
-      rgba(255,255,255,0.3) 2.4%,
-      rgba(0,0,0,0.05) 2.7%,
-      rgba(0,0,0,0.05) 3.5%,
-      rgba(255,255,255,0.3) 4%,
-      rgba(255,255,255,0.3) 4.5%,
-      rgba(244,244,244,0.1) 5.4%,
-      rgba(244,244,244,0.1) 99%,
-      rgba(144,144,144,0.2) 100%);
+    background: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.02) 0%,
+      rgba(0, 0, 0, 0.05) 0.75%,
+      rgba(255, 255, 255, 0.5) 1%,
+      rgba(255, 255, 255, 0.6) 1.3%,
+      rgba(255, 255, 255, 0.5) 1.4%,
+      rgba(255, 255, 255, 0.3) 1.5%,
+      rgba(255, 255, 255, 0.3) 2.4%,
+      rgba(0, 0, 0, 0.05) 2.7%,
+      rgba(0, 0, 0, 0.05) 3.5%,
+      rgba(255, 255, 255, 0.3) 4%,
+      rgba(255, 255, 255, 0.3) 4.5%,
+      rgba(244, 244, 244, 0.1) 5.4%,
+      rgba(244, 244, 244, 0.1) 99%,
+      rgba(144, 144, 144, 0.2) 100%
+    );
   }
 
   .video-game {
     --box-art-padding: 3px;
     --border-radius: 4px;
-    --case-transparency: color-mix(in srgb, var(--case-color, #e7e7e7ff) 80%, transparent);
+    --case-transparency: color-mix(
+      in srgb,
+      var(--case-color) 80%,
+      transparent
+    );
     position: relative;
     border-radius: 0 var(--border-radius) var(--border-radius) 0;
     padding-top: var(--box-art-padding);
@@ -86,58 +237,63 @@
     padding-right: var(--box-art-padding);
     box-sizing: content-box;
     transform: scale(1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    background: 
-      linear-gradient(to bottom, transparent 0%,
-        transparent 24%, 
-        var(--case-color, #e7e7e7) 24%, 
-        var(--case-color, #e7e7e7) 26%, 
-        transparent 26%, 
-        transparent 74%, 
-        var(--case-color, #e7e7e7) 74%, 
-        var(--case-color, #e7e7e7) 76%, 
-        transparent 76%, 
+    transition:
+      transform 0.2s ease-in-out,
+      box-shadow 0.2s ease-in-out;
+    background:
+      linear-gradient(
+        to bottom,
+        transparent 0%,
+        transparent 24%,
+        var(--case-color) 24%,
+        var(--case-color) 26%,
+        transparent 26%,
+        transparent 74%,
+        var(--case-color) 74%,
+        var(--case-color) 76%,
+        transparent 76%,
         transparent 100%
       ),
-      linear-gradient(to right, var(--case-transparency) 0%, 
-        var(--case-transparency) 24%, 
-        var(--case-color, #e7e7e7) 24%, 
-        var(--case-color, #e7e7e7) 26%, 
-        var(--case-transparency) 26%, 
-        var(--case-transparency) 74%, 
-        var(--case-color, #e7e7e7) 74%, 
-        var(--case-color, #e7e7e7) 76%, 
-        var(--case-transparency) 76%, 
+      linear-gradient(
+        to right,
+        var(--case-transparency) 0%,
+        var(--case-transparency) 24%,
+        var(--case-color) 24%,
+        var(--case-color) 26%,
+        var(--case-transparency) 26%,
+        var(--case-transparency) 74%,
+        var(--case-color) 74%,
+        var(--case-color) 76%,
+        var(--case-transparency) 76%,
         var(--case-transparency) 100%
       );
-    box-shadow: inset 0 0 1px rgba(0,0,0,0.1),
+    box-shadow:
+      inset 0 0 1px rgba(0, 0, 0, 0.1),
       inset 0 0 1.5px 1.5px var(--case-color),
       var(--content-base-shadow);
   }
 
   .video-game:hover {
     transform: scale(1.05);
-    box-shadow: inset 0 0 1px rgba(0,0,0,0.1),
+    box-shadow:
+      inset 0 0 1px rgba(0, 0, 0, 0.1),
       inset 0 0 1.5px 1.5px var(--case-color),
       var(--content-elevated-shadow);
   }
 
   .video-game::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(to right,
-      rgba(0,0,0,0.5) 0%,
-      rgba(0,0,0,0) 3px);
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 3px);
   }
 
   .video-game::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
 
-    
     /* Creates a sharp white beam flanked by semi-transparent white gradients */
     background: linear-gradient(
       115deg,
@@ -149,14 +305,14 @@
       rgba(255, 255, 255, 0) 70%,
       transparent 100%
     );
-    
+
     /* Positions the sheen completely out of sight on the left side */
     transform: translateX(-50%) skewX(-15deg);
     transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-    
+
     /* Ensures it blends organically over underlying colors */
-    mix-blend-mode: overlay; 
-    pointer-events: none; /* Allows clicks to pass through to underlying items */
+    mix-blend-mode: overlay;
+    pointer-events: none;
   }
 
   /* Trigger the glare beam to slice across to the right side on hover */

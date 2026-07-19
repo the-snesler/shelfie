@@ -16,6 +16,16 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { StatusControl } from "../media/StatusControl";
+import {
+  Description,
+  DetailBackdrop,
+  DetailCard,
+  DetailHero,
+  DetailPage,
+  NotFound,
+  RatingPills,
+  TrailerChips,
+} from "./DetailChrome";
 
 type MetaState =
   | { status: "loading" }
@@ -76,44 +86,26 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
       name?: string;
     } | null;
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="self-start text-sm text-muted hover:text-ink"
-        >
-          ← Back
-        </button>
-        <div className="flex gap-4">
-          <div className="shrink-0">
+      <DetailPage onBack={handleBack}>
+        <DetailBackdrop src={null} />
+        <DetailHero
+          overlap
+          name={linkState?.name ?? null}
+          cover={
             <MediaCover
               coverUrl={linkState?.coverUrl ?? null}
               name={linkState?.name ?? "Loading…"}
               width={MEDIA_DETAIL_COVER_WIDTH}
               viewTransitionName={mediaCoverTransitionName("movie", id)}
             />
-          </div>
-          {linkState?.name && (
-            <h2 className="text-xl font-semibold text-ink">{linkState.name}</h2>
-          )}
-        </div>
-      </div>
+          }
+        />
+      </DetailPage>
     );
   }
 
   if (metaState.status === "error") {
-    return (
-      <div className="flex flex-col items-center gap-3 p-8 text-muted">
-        <p>Movie not found.</p>
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="text-accent underline"
-        >
-          Back to library
-        </button>
-      </div>
-    );
+    return <NotFound message="Movie not found" onBack={() => navigate("/")} />;
   }
 
   const meta = metaState.meta;
@@ -123,101 +115,69 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
     : null;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="self-start text-sm text-muted hover:text-ink"
-      >
-        ← Back
-      </button>
-      {backdrop && (
-        <img
-          loading="lazy"
-          src={backdrop}
-          className="aspect-video w-full rounded object-cover"
-        />
-      )}
-      <div className="flex gap-4">
-        <div className="shrink-0">
+    <DetailPage onBack={handleBack}>
+      <DetailBackdrop src={backdrop} />
+      <DetailHero
+        overlap
+        name={meta.name}
+        tagline={meta.tagline}
+        lines={[
+          [
+            meta.year,
+            meta.runtime != null && meta.runtime > 0 && `${meta.runtime} min`,
+            meta.certification,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          meta.genres.length > 0 && meta.genres.join(", "),
+          meta.director,
+        ]}
+        cover={
           <MediaCover
             coverUrl={poster}
             name={meta.name}
             width={MEDIA_DETAIL_COVER_WIDTH}
             viewTransitionName={mediaCoverTransitionName("movie", id)}
           />
+        }
+      >
+        <div className="mt-2 flex flex-col items-start gap-3">
+          <RatingPills
+            pills={[
+              meta.voteAverage != null &&
+                `TMDB ${meta.voteAverage.toFixed(1)}${
+                  meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
+                }`,
+            ]}
+          />
+          <StatusControl
+            db={db}
+            target={{
+              mediaType: "movie",
+              sourceId: String(meta.tmdbId),
+              name: meta.name,
+              platforms: [],
+            }}
+            item={item}
+          />
         </div>
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-xl font-semibold text-ink">{meta.name}</h2>
-          {meta.tagline && (
-            <p className="text-sm italic text-muted">{meta.tagline}</p>
-          )}
-          {meta.year != null && (
-            <p className="text-sm text-muted">{meta.year}</p>
-          )}
-          {meta.runtime != null && meta.runtime > 0 && (
-            <p className="text-sm text-muted">{meta.runtime} min</p>
-          )}
-          {meta.genres.length > 0 && (
-            <p className="text-sm text-muted">{meta.genres.join(", ")}</p>
-          )}
-          {meta.director && (
-            <p className="text-sm text-muted">{meta.director}</p>
-          )}
-          {meta.certification && (
-            <p className="text-sm text-muted">{meta.certification}</p>
-          )}
-        </div>
-      </div>
-      {(meta.voteAverage != null || meta.voteCount > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {meta.voteAverage != null && (
-            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
-              TMDB {meta.voteAverage.toFixed(1)}
-              {meta.voteCount > 0 && ` (${meta.voteCount})`}
-            </span>
-          )}
-        </div>
-      )}
-      <StatusControl
-        db={db}
-        target={{
-          mediaType: "movie",
-          sourceId: String(meta.tmdbId),
-          name: meta.name,
-          platforms: [],
-        }}
-        item={item}
-      />
-      {meta.videos.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
-          {meta.videos.map((video) => (
-            <li key={video.videoId}>
-              <a
-                target="_blank"
-                rel="noreferrer"
-                href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                className="text-accent underline"
-              >
-                {video.name ?? "Trailer"}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
+      </DetailHero>
+      {meta.summary && <Description>{meta.summary}</Description>}
+      <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (
-        <div className="flex flex-col gap-2 rounded border border-divider bg-panel p-4 text-sm">
-          <span className="text-muted">Cast</span>
-          <p className="text-ink">
+        <DetailCard>
+          <span className="font-display text-base font-medium text-ink">
+            Cast
+          </span>
+          <p className="leading-relaxed text-ink">
             {meta.cast
               .map((c) =>
                 c.character ? `${c.name} as ${c.character}` : c.name,
               )
               .join(" · ")}
           </p>
-        </div>
+        </DetailCard>
       )}
-    </div>
+    </DetailPage>
   );
 }

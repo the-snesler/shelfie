@@ -51,7 +51,7 @@ export function MediaCover({
       className={
         mediaType === "book"
           ? "book relative overflow-hidden bg-panel"
-          : "relative overflow-hidden rounded bg-panel"
+          : "poster relative overflow-hidden rounded bg-panel"
       }
       style={style}
     >

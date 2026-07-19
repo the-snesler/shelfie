@@ -19,6 +19,17 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { StatusControl } from "../media/StatusControl";
+import {
+  Description,
+  DetailBackdrop,
+  DetailCard,
+  DetailHero,
+  DetailPage,
+  DetailSection,
+  NotFound,
+  RatingPills,
+  TrailerChips,
+} from "./DetailChrome";
 
 type MetaState =
   | { status: "loading" }
@@ -133,44 +144,26 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       name?: string;
     } | null;
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="self-start text-sm text-muted hover:text-ink"
-        >
-          ← Back
-        </button>
-        <div className="flex gap-4">
-          <div className="shrink-0">
+      <DetailPage onBack={handleBack}>
+        <DetailBackdrop src={null} />
+        <DetailHero
+          overlap
+          name={linkState?.name ?? null}
+          cover={
             <MediaCover
               coverUrl={linkState?.coverUrl ?? null}
               name={linkState?.name ?? "Loading…"}
               width={MEDIA_DETAIL_COVER_WIDTH}
               viewTransitionName={mediaCoverTransitionName("tv", id)}
             />
-          </div>
-          {linkState?.name && (
-            <h2 className="text-xl font-semibold text-ink">{linkState.name}</h2>
-          )}
-        </div>
-      </div>
+          }
+        />
+      </DetailPage>
     );
   }
 
   if (metaState.status === "error") {
-    return (
-      <div className="flex flex-col items-center gap-3 p-8 text-muted">
-        <p>Show not found.</p>
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="text-accent underline"
-        >
-          Back to library
-        </button>
-      </div>
-    );
+    return <NotFound message="Show not found" onBack={() => navigate("/")} />;
   }
 
   const meta = metaState.meta;
@@ -190,114 +183,79 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   const seasons = orderedSeasons(meta.seasons);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="self-start text-sm text-muted hover:text-ink"
-      >
-        ← Back
-      </button>
-      {backdrop && (
-        <img
-          loading="lazy"
-          src={backdrop}
-          className="aspect-video w-full rounded object-cover"
-        />
-      )}
-      <div className="flex gap-4">
-        <div className="shrink-0">
+    <DetailPage onBack={handleBack}>
+      <DetailBackdrop src={backdrop} />
+      <DetailHero
+        overlap
+        name={meta.name}
+        tagline={meta.tagline}
+        lines={[
+          [meta.firstAirYear, meta.status, meta.certification]
+            .filter(Boolean)
+            .join(" · "),
+          meta.genres.length > 0 && meta.genres.join(", "),
+          [...meta.networks, ...meta.createdBy].filter(Boolean).join(" · "),
+        ]}
+        cover={
           <MediaCover
             coverUrl={poster}
             name={meta.name}
             width={MEDIA_DETAIL_COVER_WIDTH}
             viewTransitionName={mediaCoverTransitionName("tv", id)}
           />
+        }
+      >
+        <div className="mt-2 flex flex-col items-start gap-3">
+          <RatingPills
+            pills={[
+              meta.voteAverage != null &&
+                `TMDB ${meta.voteAverage.toFixed(1)}${
+                  meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
+                }`,
+            ]}
+          />
+          <StatusControl
+            db={db}
+            target={{
+              mediaType: "tv",
+              sourceId: String(meta.tmdbId),
+              name: meta.name,
+              platforms: [],
+            }}
+            item={item}
+          />
         </div>
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-xl font-semibold text-ink">{meta.name}</h2>
-          {meta.tagline && (
-            <p className="text-sm italic text-muted">{meta.tagline}</p>
-          )}
-          {meta.firstAirYear != null && (
-            <p className="text-sm text-muted">{meta.firstAirYear}</p>
-          )}
-          {meta.genres.length > 0 && (
-            <p className="text-sm text-muted">{meta.genres.join(", ")}</p>
-          )}
-          {meta.networks.length > 0 && (
-            <p className="text-sm text-muted">{meta.networks.join(", ")}</p>
-          )}
-          {meta.createdBy.length > 0 && (
-            <p className="text-sm text-muted">{meta.createdBy.join(", ")}</p>
-          )}
-          {meta.status && <p className="text-sm text-muted">{meta.status}</p>}
-          {meta.certification && (
-            <p className="text-sm text-muted">{meta.certification}</p>
-          )}
-        </div>
-      </div>
-      {(meta.voteAverage != null || meta.voteCount > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {meta.voteAverage != null && (
-            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
-              TMDB {meta.voteAverage.toFixed(1)}
-              {meta.voteCount > 0 && ` (${meta.voteCount})`}
-            </span>
-          )}
-        </div>
-      )}
-      <StatusControl
-        db={db}
-        target={{
-          mediaType: "tv",
-          sourceId: String(meta.tmdbId),
-          name: meta.name,
-          platforms: [],
-        }}
-        item={item}
-      />
-      {meta.videos.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
-          {meta.videos.map((video) => (
-            <li key={video.videoId}>
-              <a
-                target="_blank"
-                rel="noreferrer"
-                href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                className="text-accent underline"
-              >
-                {video.name ?? "Trailer"}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
+      </DetailHero>
+      {meta.summary && <Description>{meta.summary}</Description>}
+      <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (
-        <div className="flex flex-col gap-2 rounded border border-divider bg-panel p-4 text-sm">
-          <span className="text-muted">Cast</span>
-          <p className="text-ink">
+        <DetailCard>
+          <span className="font-display text-base font-medium text-ink">
+            Cast
+          </span>
+          <p className="leading-relaxed text-ink">
             {meta.cast
               .map((c) =>
                 c.character ? `${c.name} as ${c.character}` : c.name,
               )
               .join(" · ")}
           </p>
-        </div>
+        </DetailCard>
       )}
       {meta.numberOfEpisodes > 0 && (
-        <div className="flex flex-col gap-1">
-          <div className="h-2 w-full overflow-hidden rounded bg-bg ring-1 ring-divider">
-            <div
-              className="h-full bg-accent"
-              style={{ width: `${percent}%` }}
-            />
+        <DetailSection title="Episodes">
+          <div className="flex flex-col gap-1.5">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-well ring-1 ring-divider">
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted">
+              {watchedCount}/{meta.numberOfEpisodes} episodes · {percent}%
+            </p>
           </div>
-          <p className="text-xs text-muted">
-            {watchedCount}/{meta.numberOfEpisodes} episodes · {percent}%
-          </p>
-        </div>
+        </DetailSection>
       )}
       {seasons.length > 0 && (
         <div className="flex flex-col gap-4">
@@ -312,14 +270,14 @@ export default function TvDetail({ params }: Route.ComponentProps) {
             return (
               <div
                 key={season.seasonNumber}
-                className="flex flex-col gap-2 rounded border border-divider p-3"
+                className="flex flex-col gap-2.5 rounded-xl border border-divider bg-panel/60 p-4"
               >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold text-ink">
                     {season.seasonNumber === 0
                       ? "Specials"
                       : season.name || `Season ${season.seasonNumber}`}
-                    <span className="ml-2 text-xs font-normal text-muted">
+                    <span className="ml-2 text-xs font-normal text-faint">
                       {seasonWatched}/{keys.length}
                     </span>
                   </h3>
@@ -327,14 +285,14 @@ export default function TvDetail({ params }: Route.ComponentProps) {
                     type="button"
                     disabled={item === undefined || keys.length === 0}
                     onClick={() => toggleSeason(season)}
-                    className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider hover:bg-panel disabled:opacity-50"
+                    className="rounded-md bg-well px-2.5 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent disabled:opacity-50"
                   >
                     {allWatched
                       ? "Mark season unwatched"
                       : "Mark season watched"}
                   </button>
                 </div>
-                <ul className="flex flex-col gap-1">
+                <ul className="flex flex-col">
                   {season.episodes.map((ep) => {
                     const key = episodeKey(
                       season.seasonNumber,
@@ -342,24 +300,32 @@ export default function TvDetail({ params }: Route.ComponentProps) {
                     );
                     const watched = watchedEpisodes.includes(key);
                     return (
-                      <li key={key} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={watched}
-                          disabled={item === undefined}
-                          onChange={() =>
-                            toggleEpisode(season.seasonNumber, ep.episodeNumber)
-                          }
-                        />
-                        <span className="text-muted">
-                          S{season.seasonNumber}E{ep.episodeNumber}
-                        </span>
-                        <span className="text-ink">{ep.name}</span>
-                        {ep.airDate && (
-                          <span className="ml-auto text-xs text-muted">
-                            {ep.airDate}
+                      <li key={key}>
+                        <label className="-mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 text-sm hover:bg-well/60">
+                          <input
+                            type="checkbox"
+                            checked={watched}
+                            disabled={item === undefined}
+                            onChange={() =>
+                              toggleEpisode(
+                                season.seasonNumber,
+                                ep.episodeNumber,
+                              )
+                            }
+                            className="size-4 accent-accent"
+                          />
+                          <span className="shrink-0 text-xs text-faint tabular-nums">
+                            S{season.seasonNumber}E{ep.episodeNumber}
                           </span>
-                        )}
+                          <span className={watched ? "text-muted" : "text-ink"}>
+                            {ep.name}
+                          </span>
+                          {ep.airDate && (
+                            <span className="ml-auto shrink-0 text-xs text-faint">
+                              {ep.airDate}
+                            </span>
+                          )}
+                        </label>
                       </li>
                     );
                   })}
@@ -369,6 +335,6 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           })}
         </div>
       )}
-    </div>
+    </DetailPage>
   );
 }

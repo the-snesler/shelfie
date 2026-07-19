@@ -20,10 +20,7 @@ export const DETAIL_COVER_SCALE = 1.5;
 export const SEARCH_COVER_SCALE = 0.37;
 
 /** Computes the rendered width for a game cover at a given scale. */
-export function gameCoverWidth(
-  platform: string | null,
-  scale: number,
-): number {
+export function gameCoverWidth(platform: string | null, scale: number): number {
   const template = platform ? platformTemplates[platform] : undefined;
   const aspectRatio = template?.aspectRatio ?? DEFAULT_TEMPLATE.aspectRatio;
   const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;

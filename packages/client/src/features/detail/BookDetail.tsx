@@ -12,6 +12,16 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { StatusControl } from "../media/StatusControl";
+import {
+  Description,
+  DetailCard,
+  DetailHero,
+  DetailPage,
+  DetailRow,
+  DetailSection,
+  NotFound,
+  RatingPills,
+} from "./DetailChrome";
 
 type MetaState =
   | { status: "loading" }
@@ -73,16 +83,10 @@ export default function BookDetail({ params }: Route.ComponentProps) {
       name?: string;
     } | null;
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="self-start text-sm text-muted hover:text-ink"
-        >
-          ← Back
-        </button>
-        <div className="flex gap-4">
-          <div className="shrink-0">
+      <DetailPage onBack={handleBack}>
+        <DetailHero
+          name={linkState?.name ?? null}
+          cover={
             <MediaCover
               coverUrl={linkState?.coverUrl ?? null}
               name={linkState?.name ?? "Loading…"}
@@ -90,28 +94,14 @@ export default function BookDetail({ params }: Route.ComponentProps) {
               mediaType="book"
               viewTransitionName={mediaCoverTransitionName("book", id)}
             />
-          </div>
-          {linkState?.name && (
-            <h2 className="text-xl font-semibold text-ink">{linkState.name}</h2>
-          )}
-        </div>
-      </div>
+          }
+        />
+      </DetailPage>
     );
   }
 
   if (metaState.status === "error") {
-    return (
-      <div className="flex flex-col items-center gap-3 p-8 text-muted">
-        <p>Book not found.</p>
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="text-accent underline"
-        >
-          Back to library
-        </button>
-      </div>
-    );
+    return <NotFound message="Book not found" onBack={() => navigate("/")} />;
   }
 
   const meta = metaState.meta;
@@ -123,16 +113,21 @@ export default function BookDetail({ params }: Route.ComponentProps) {
   ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="self-start text-sm text-muted hover:text-ink"
-      >
-        ← Back
-      </button>
-      <div className="flex gap-4">
-        <div className="shrink-0">
+    <DetailPage onBack={handleBack}>
+      <DetailHero
+        name={meta.name}
+        lines={[
+          meta.authors.length > 0 && meta.authors.join(", "),
+          meta.series &&
+            `${meta.series.name}${
+              meta.series.position ? ` #${meta.series.position}` : ""
+            }`,
+          [meta.year, meta.pageCount != null && `${meta.pageCount} pages`]
+            .filter(Boolean)
+            .join(" · "),
+          meta.genres.length > 0 && meta.genres.join(", "),
+        ]}
+        cover={
           <MediaCover
             coverUrl={meta.coverUrl}
             name={meta.name}
@@ -140,62 +135,41 @@ export default function BookDetail({ params }: Route.ComponentProps) {
             mediaType="book"
             viewTransitionName={mediaCoverTransitionName("book", id)}
           />
+        }
+      >
+        <div className="mt-2 flex flex-col items-start gap-3">
+          <RatingPills
+            pills={[
+              meta.avgRating != null &&
+                `Goodreads ${meta.avgRating.toFixed(2)}${
+                  (meta.ratingsCount ?? 0) > 0 ? ` (${meta.ratingsCount})` : ""
+                }`,
+            ]}
+          />
+          <StatusControl
+            db={db}
+            target={{
+              mediaType: "book",
+              sourceId: String(meta.goodreadsId),
+              name: meta.name,
+              platforms: [],
+            }}
+            item={item}
+          />
         </div>
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-xl font-semibold text-ink">{meta.name}</h2>
-          {meta.authors.length > 0 && (
-            <p className="text-sm text-muted">{meta.authors.join(", ")}</p>
-          )}
-          {meta.series && (
-            <p className="text-sm text-muted">
-              {meta.series.name}
-              {meta.series.position && ` #${meta.series.position}`}
-            </p>
-          )}
-          {meta.year != null && (
-            <p className="text-sm text-muted">{meta.year}</p>
-          )}
-          {meta.pageCount != null && (
-            <p className="text-sm text-muted">{meta.pageCount} pages</p>
-          )}
-          {meta.genres.length > 0 && (
-            <p className="text-sm text-muted">{meta.genres.join(", ")}</p>
-          )}
-        </div>
-      </div>
-      {(meta.avgRating != null || (meta.ratingsCount ?? 0) > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {meta.avgRating != null && (
-            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
-              Goodreads {meta.avgRating.toFixed(2)}
-              {(meta.ratingsCount ?? 0) > 0 && ` (${meta.ratingsCount})`}
-            </span>
-          )}
-        </div>
-      )}
-      <StatusControl
-        db={db}
-        target={{
-          mediaType: "book",
-          sourceId: String(meta.goodreadsId),
-          name: meta.name,
-          platforms: [],
-        }}
-        item={item}
-      />
-      {meta.description && (
-        <p className="text-sm text-ink">{meta.description}</p>
-      )}
+      </DetailHero>
+      {meta.description && <Description>{meta.description}</Description>}
       {detailRows.length > 0 && (
-        <div className="flex flex-col gap-2 rounded border border-divider bg-panel p-4 text-sm">
-          {detailRows.map((row) => (
-            <div key={row.label} className="flex justify-between gap-4">
-              <span className="text-muted">{row.label}</span>
-              <span className="text-right text-ink">{row.value}</span>
-            </div>
-          ))}
-        </div>
+        <DetailSection title="Details">
+          <DetailCard>
+            {detailRows.map((row) => (
+              <DetailRow key={row.label} label={row.label}>
+                {row.value}
+              </DetailRow>
+            ))}
+          </DetailCard>
+        </DetailSection>
       )}
-    </div>
+    </DetailPage>
   );
 }

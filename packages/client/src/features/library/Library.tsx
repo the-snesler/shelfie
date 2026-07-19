@@ -10,7 +10,12 @@ import type {
 import { MEDIA_TYPES, META_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext, useViewTransitionState } from "react-router";
+import {
+  Link,
+  useOutletContext,
+  useSearchParams,
+  useViewTransitionState,
+} from "react-router";
 import IconPlus from "~icons/tabler/plus";
 import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
@@ -40,6 +45,13 @@ const META_LABELS: Record<MetaStatus, string> = {
   "in-progress": "In Progress",
   "planned": "Planned",
   "finished": "Finished",
+};
+
+const MEDIA_LABELS: Record<MediaType, string> = {
+  movie: "Movies",
+  tv: "TV Shows",
+  book: "Books",
+  game: "Games",
 };
 
 /** Route path segment (without the leading slash) each non-game media type
@@ -266,25 +278,34 @@ function LibraryItemCard({
         };
 
   return (
-    <div className="flex flex-col gap-2" style={{ width: `${cardWidth}px` }}>
-      {href ? (
-        <Link
-          to={href}
-          viewTransition
-          state={{ coverUrl: cover, platform, name }}
-          className="rounded text-left"
-        >
-          {coverBox}
-        </Link>
-      ) : (
-        <div className="cursor-default rounded text-left opacity-60">
-          {coverBox}
-        </div>
-      )}
-      <div className="flex w-full min-w-0 items-center justify-between gap-0.5">
+    <div className="flex flex-col" style={{ width: `${cardWidth}px` }}>
+      <div
+        className="flex items-end justify-center"
+        style={{ height: "var(--shelf-cover-h)" }}
+      >
+        {href ? (
+          <Link
+            to={href}
+            viewTransition
+            state={{ coverUrl: cover, platform, name }}
+            className="rounded text-left"
+          >
+            {coverBox}
+          </Link>
+        ) : (
+          <div className="cursor-default rounded text-left opacity-60">
+            {coverBox}
+          </div>
+        )}
+      </div>
+      <div style={{ height: "var(--shelf-ledge-h)" }} aria-hidden />
+      <div
+        className="flex w-full min-w-0 items-start justify-between gap-0.5 pt-1.5"
+        style={{ height: "var(--shelf-label-h)" }}
+      >
         <div className="min-w-0 flex-1 text-left">
-          <p className="text-sm font-bold text-ink truncate">{name}</p>
-          <p className="text-xs text-muted font-bold truncate">{caption}</p>
+          <p className="truncate text-[13px] font-medium text-ink">{name}</p>
+          <p className="truncate text-xs text-muted">{caption}</p>
         </div>
         <button
           type="button"
@@ -292,7 +313,7 @@ function LibraryItemCard({
           {...popover.getReferenceProps()}
           aria-label="Log activity"
           onClick={() => popover.setOpen(true)}
-          className="text-xl leading-none text-muted hover:text-accent shrink-0"
+          className="shrink-0 rounded text-xl leading-none text-faint hover:text-accent"
         >
           <IconPlus />
         </button>
@@ -416,21 +437,37 @@ export default function Library() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, idsKey]);
 
+  const [searchParams] = useSearchParams();
+  const typeParam = searchParams.get("type");
+  const activeType = (MEDIA_TYPES as readonly string[]).includes(
+    typeParam ?? "",
+  )
+    ? (typeParam as MediaType)
+    : null;
+
+  const filtered = useMemo(
+    () =>
+      activeType
+        ? items.filter((item) => item.mediaType === activeType)
+        : items,
+    [items, activeType],
+  );
+
   const grouped = useMemo(() => {
     const map = new Map<MetaStatus, RxDocument<LibraryItem>[]>();
-    for (const item of items) {
+    for (const item of filtered) {
       const g = STATUS_META_GROUP[item.status];
       const arr = map.get(g);
       if (arr) arr.push(item);
       else map.set(g, [item]);
     }
     return map;
-  }, [items]);
+  }, [filtered]);
 
   if (items.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted">
-        <p className="text-lg font-medium text-ink">Your library is empty</p>
+        <p className="font-display text-2xl text-ink">Your shelf is empty</p>
         <p className="text-sm">
           Search for a game, movie, show, or book to add your first one.
         </p>
@@ -438,24 +475,48 @@ export default function Library() {
     );
   }
 
+  const heading = activeType ? MEDIA_LABELS[activeType] : "Library";
+
   return (
-    <div className="flex flex-col gap-8 p-4 bg-zinc-50">
-      {META_STATUSES.filter((g) => grouped.get(g)?.length).map((g) => (
-        <section key={g} className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-ink">{META_LABELS[g]}</h2>
-          <div className="flex flex-wrap items-end gap-4">
-            {grouped.get(g)!.map((item) => (
-              <LibraryItemCard
-                key={item.id}
-                db={db}
-                item={item}
-                meta={cards.get(item.id)}
-                caption={cardCaption(item, cards.get(item.id))}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-8 md:px-8">
+      <header className="flex items-baseline gap-3">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
+          {heading}
+        </h1>
+        <span className="text-sm text-faint">
+          {filtered.length} on the shelf
+        </span>
+      </header>
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-16 text-center text-muted">
+          <p className="font-display text-xl text-ink">
+            No {heading.toLowerCase()} on your shelf yet
+          </p>
+          <p className="text-sm">Find some with the search bar.</p>
+        </div>
+      ) : (
+        META_STATUSES.filter((g) => grouped.get(g)?.length).map((g) => (
+          <section key={g} className="flex flex-col">
+            <h2 className="font-display text-xl font-medium text-ink">
+              {META_LABELS[g]}
+              <span className="ml-2 text-sm font-normal text-faint">
+                {grouped.get(g)!.length}
+              </span>
+            </h2>
+            <div className="shelf-rows -mt-2 flex flex-wrap items-start gap-x-6">
+              {grouped.get(g)!.map((item) => (
+                <LibraryItemCard
+                  key={item.id}
+                  db={db}
+                  item={item}
+                  meta={cards.get(item.id)}
+                  caption={cardCaption(item, cards.get(item.id))}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
     </div>
   );
 }

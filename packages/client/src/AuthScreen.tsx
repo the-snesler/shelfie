@@ -53,7 +53,7 @@ export function AuthScreen({
           <button
             type="button"
             onClick={onRetry}
-            className="mt-4 w-full rounded bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+            className="mt-4 w-full rounded bg-accent px-3 py-2 text-sm font-medium text-accent-ink hover:brightness-110"
           >
             Retry
           </button>
@@ -86,7 +86,7 @@ export function AuthScreen({
         <button
           type="submit"
           disabled={!password || busy}
-          className="mt-4 w-full rounded bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 w-full rounded bg-accent px-3 py-2 text-sm font-medium text-accent-ink hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Working…" : isSetup ? "Create" : "Log in"}
         </button>

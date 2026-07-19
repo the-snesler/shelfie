@@ -27,7 +27,7 @@ export function GameCover({
     "height": `${heightMm * scale}px`,
     "width": `${heightMm * scale * aspectRatio}px`,
     "aspectRatio": String(aspectRatio),
-    "--case-color": template?.caseColor ?? "transparent",
+    "--case-color": template?.caseColor ?? "#131314",
     "--art-padding-top": template?.paddingTop
       ? `${template.paddingTop}px`
       : "0px",

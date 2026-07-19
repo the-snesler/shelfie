@@ -14,6 +14,17 @@ import {
 } from "../games/platforms";
 import { gameImageUrl } from "../../images";
 import { StatusControl } from "../media/StatusControl";
+import {
+  Description,
+  DetailCard,
+  DetailHero,
+  DetailPage,
+  DetailRow,
+  DetailSection,
+  NotFound,
+  RatingPills,
+  TrailerChips,
+} from "./DetailChrome";
 
 const STORE_LABELS: Record<StoreName, string> = {
   official: "Official site",
@@ -109,16 +120,10 @@ export default function Detail({ params }: Route.ComponentProps) {
   if (metaState.status === "loading") {
     const linkState = location.state as DetailLinkState | null;
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="self-start text-sm text-muted hover:text-ink"
-        >
-          ← Back
-        </button>
-        <div className="flex gap-4">
-          <div className="shrink-0">
+      <DetailPage onBack={handleBack}>
+        <DetailHero
+          name={linkState?.name ?? null}
+          cover={
             <GameCover
               coverUrl={linkState?.coverUrl ?? null}
               platform={linkState?.platform ?? null}
@@ -126,28 +131,14 @@ export default function Detail({ params }: Route.ComponentProps) {
               scale={DETAIL_COVER_SCALE}
               viewTransitionName={gameCoverTransitionName(slug)}
             />
-          </div>
-          {linkState?.name && (
-            <h2 className="text-xl font-semibold text-ink">{linkState.name}</h2>
-          )}
-        </div>
-      </div>
+          }
+        />
+      </DetailPage>
     );
   }
 
   if (metaState.status === "not-found") {
-    return (
-      <div className="flex flex-col items-center gap-3 p-8 text-muted">
-        <p>Game not found.</p>
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="text-accent underline"
-        >
-          Back to library
-        </button>
-      </div>
-    );
+    return <NotFound message="Game not found" onBack={() => navigate("/")} />;
   }
 
   const meta = metaState.meta;
@@ -181,16 +172,24 @@ export default function Detail({ params }: Route.ComponentProps) {
   ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="self-start text-sm text-muted hover:text-ink"
-      >
-        ← Back
-      </button>
-      <div className="flex gap-4">
-        <div className="shrink-0">
+    <DetailPage onBack={handleBack}>
+      <DetailHero
+        name={meta.name}
+        lines={[
+          [
+            meta.firstReleaseDate &&
+              new Date(meta.firstReleaseDate * 1000).getFullYear(),
+            meta.genres.length > 0 && meta.genres.join(", "),
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          meta.platforms.length > 0 && meta.platforms.join(", "),
+          [meta.developer, meta.publisher]
+            .filter(Boolean)
+            .filter((v, i, arr) => arr.indexOf(v) === i)
+            .join(" · "),
+        ]}
+        cover={
           <GameCover
             coverUrl={cover}
             platform={detailPlatform}
@@ -198,125 +197,94 @@ export default function Detail({ params }: Route.ComponentProps) {
             scale={DETAIL_COVER_SCALE}
             viewTransitionName={gameCoverTransitionName(slug)}
           />
+        }
+      >
+        <div className="mt-2 flex flex-col items-start gap-3">
+          <RatingPills
+            pills={[
+              meta.aggregatedRating != null &&
+                `Critics ${Math.round(meta.aggregatedRating)}${
+                  meta.aggregatedRatingCount > 0
+                    ? ` (${meta.aggregatedRatingCount})`
+                    : ""
+                }`,
+              meta.rating != null && `IGDB ${(meta.rating / 10).toFixed(1)}`,
+              meta.timeToBeat?.normally != null &&
+                `HLTB ~${formatHltb(meta.timeToBeat.normally)}`,
+            ]}
+          />
+          <StatusControl
+            db={db}
+            target={{
+              mediaType: "game",
+              sourceId: String(meta.igdbId),
+              name: meta.name,
+              platforms: meta.platforms,
+            }}
+            item={item}
+          />
         </div>
-        <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="text-xl font-semibold text-ink">{meta.name}</h2>
-          {meta.firstReleaseDate && (
-            <p className="text-sm text-muted">
-              {new Date(meta.firstReleaseDate * 1000).getFullYear()}
+      </DetailHero>
+      {(meta.summary || meta.storyline) && (
+        <div className="flex flex-col gap-2">
+          {meta.summary && <Description>{meta.summary}</Description>}
+          {meta.storyline && (
+            <p className="max-w-[70ch] text-sm leading-relaxed text-muted">
+              {meta.storyline}
             </p>
           )}
-          {meta.genres.length > 0 && (
-            <p className="text-sm text-muted">{meta.genres.join(", ")}</p>
-          )}
-          {meta.platforms.length > 0 && (
-            <p className="text-sm text-muted">{meta.platforms.join(", ")}</p>
-          )}
-          {meta.developer && (
-            <p className="text-sm text-muted">{meta.developer}</p>
-          )}
-          {meta.publisher && (
-            <p className="text-sm text-muted">{meta.publisher}</p>
-          )}
-        </div>
-      </div>
-      {(meta.aggregatedRating != null ||
-        meta.rating != null ||
-        meta.timeToBeat?.normally != null) && (
-        <div className="flex flex-wrap gap-2">
-          {meta.aggregatedRating != null && (
-            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
-              Critics {Math.round(meta.aggregatedRating)}
-              {meta.aggregatedRatingCount > 0 &&
-                ` (${meta.aggregatedRatingCount})`}
-            </span>
-          )}
-          {meta.rating != null && (
-            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
-              IGDB {(meta.rating / 10).toFixed(1)}
-            </span>
-          )}
-          {meta.timeToBeat?.normally != null && (
-            <span className="rounded bg-bg px-2 py-1 text-xs ring-1 ring-divider">
-              HLTB ~{formatHltb(meta.timeToBeat.normally)}
-            </span>
-          )}
         </div>
       )}
-      <StatusControl
-        db={db}
-        target={{
-          mediaType: "game",
-          sourceId: String(meta.igdbId),
-          name: meta.name,
-          platforms: meta.platforms,
-        }}
-        item={item}
-      />
       {meta.screenshotImageIds.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto">
-          {meta.screenshotImageIds.map((id) => (
-            <a
-              key={id}
-              target="_blank"
-              rel="noreferrer"
-              href={gameImageUrl("t_1080p", id)}
-            >
-              <img
-                loading="lazy"
-                src={gameImageUrl("t_screenshot_med", id)}
-                className="h-24 w-auto rounded object-cover"
-              />
-            </a>
-          ))}
-        </div>
-      )}
-      {meta.videos.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
-          {meta.videos.map((video) => (
-            <li key={video.videoId}>
+        <DetailSection title="Screenshots">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
+            {meta.screenshotImageIds.map((id) => (
               <a
+                key={id}
                 target="_blank"
                 rel="noreferrer"
-                href={`https://www.youtube.com/watch?v=${video.videoId}`}
-                className="text-accent underline"
+                href={gameImageUrl("t_1080p", id)}
+                className="shrink-0"
               >
-                {video.name ?? "Trailer"}
+                <img
+                  loading="lazy"
+                  src={gameImageUrl("t_screenshot_med", id)}
+                  className="h-28 w-auto rounded-lg object-cover ring-1 ring-divider"
+                />
               </a>
-            </li>
-          ))}
-        </ul>
+            ))}
+          </div>
+        </DetailSection>
       )}
-      {meta.summary && <p className="text-sm text-ink">{meta.summary}</p>}
-      {meta.storyline && <p className="text-sm text-muted">{meta.storyline}</p>}
+      <TrailerChips videos={meta.videos} />
       {(detailRows.length > 0 || meta.stores.length > 0) && (
-        <div className="flex flex-col gap-2 rounded border border-divider bg-panel p-4 text-sm">
-          {detailRows.map((row) => (
-            <div key={row.label} className="flex justify-between gap-4">
-              <span className="text-muted">{row.label}</span>
-              <span className="text-right text-ink">{row.value}</span>
-            </div>
-          ))}
-          {meta.stores.length > 0 && (
-            <div className="flex justify-between gap-4">
-              <span className="text-muted">Get it</span>
-              <span className="flex flex-wrap justify-end gap-2">
-                {meta.stores.map((store) => (
-                  <a
-                    key={store.store}
-                    target="_blank"
-                    rel="noreferrer"
-                    href={store.url}
-                    className="text-accent underline"
-                  >
-                    {STORE_LABELS[store.store]}
-                  </a>
-                ))}
-              </span>
-            </div>
-          )}
-        </div>
+        <DetailSection title="Details">
+          <DetailCard>
+            {detailRows.map((row) => (
+              <DetailRow key={row.label} label={row.label}>
+                {row.value}
+              </DetailRow>
+            ))}
+            {meta.stores.length > 0 && (
+              <DetailRow label="Get it">
+                <span className="flex flex-wrap justify-end gap-2">
+                  {meta.stores.map((store) => (
+                    <a
+                      key={store.store}
+                      target="_blank"
+                      rel="noreferrer"
+                      href={store.url}
+                      className="font-medium text-accent hover:underline"
+                    >
+                      {STORE_LABELS[store.store]}
+                    </a>
+                  ))}
+                </span>
+              </DetailRow>
+            )}
+          </DetailCard>
+        </DetailSection>
       )}
-    </div>
+    </DetailPage>
   );
 }
