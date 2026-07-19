@@ -3,3 +3,5 @@
 </p>
 
 Shelfie is a media tracker that focuses on the physicality of the media, be it books, movies, or games. It is designed to feel like a personal library for your collection, and to help you keep track of what you own, what you're enjoying, and what you've experienced. Shelfie is a work in progress, and is currently focused on video games, but will eventually support other media types as well.
+
+<img width="1484" height="981" alt="Screenshot 2026-07-19 at 1 29 04 PM" src="https://github.com/user-attachments/assets/61cefb58-90e5-4952-8d0c-ea3fa5035eaa" />
