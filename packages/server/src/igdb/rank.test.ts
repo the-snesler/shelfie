@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { normalizeTitle, rankSearchGames } from "./rank.js";
 
-const first = (q: string, games: { name: string; total_rating_count?: number; hypes?: number }[]) =>
-  rankSearchGames(q, games)[0].name;
+const first = (
+  q: string,
+  games: { name: string; total_rating_count?: number; hypes?: number }[],
+) => rankSearchGames(q, games)[0].name;
 
 describe("normalizeTitle", () => {
   it("lowercases and collapses punctuation to single spaces", () => {
@@ -56,6 +58,9 @@ describe("rankSearchGames", () => {
 
   it("is a stable no-op ordering for an all-punctuation query", () => {
     const games = [{ name: "A" }, { name: "B" }];
-    expect(rankSearchGames("!!!", games).map((g) => g.name)).toEqual(["A", "B"]);
+    expect(rankSearchGames("!!!", games).map((g) => g.name)).toEqual([
+      "A",
+      "B",
+    ]);
   });
 });

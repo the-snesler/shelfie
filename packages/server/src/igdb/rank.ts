@@ -65,9 +65,7 @@ export function rankSearchGames<T extends RankableGame>(
   }));
   scored.sort(
     (a, b) =>
-      b.tier - a.tier ||
-      b.popularity - a.popularity ||
-      a.index - b.index,
+      b.tier - a.tier || b.popularity - a.popularity || a.index - b.index,
   );
   return scored.map((s) => s.game);
 }

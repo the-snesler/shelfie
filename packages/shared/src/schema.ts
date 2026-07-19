@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 3,
+  version: 4,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -40,6 +40,11 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       maxItems: 100,
     },
     notes: { type: "string", maxLength: 10000 },
+    watchedEpisodes: {
+      type: "array",
+      items: { type: "string", maxLength: 12 },
+      maxItems: 10000,
+    },
     addedAt: {
       type: "number",
       minimum: 0,
@@ -66,21 +71,42 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "notes",
     "addedAt",
     "updatedAt",
+    "watchedEpisodes",
   ],
   indexes: ["updatedAt"],
 } as const;
+
+/** Old game-centric status wording → the media-neutral canonical terms
+ *  introduced with multi-media support (schema v4). Mirrored by server
+ *  migration 8, which remaps the SQLite rows identically. */
+const LEGACY_STATUS_MAP: Record<string, string> = {
+  playing: "active",
+  played: "dropped",
+  beaten: "finished",
+};
 
 /**
  * Migration seam for `library_items`. Schema version 1 adds `platforms`;
  * existing documents default to an empty list. Version 2 adds `rating`,
  * `completedDates`, and `notes`. Version 3 splits `progress` into
  * `progressFormat` + `progressValue` (percent data preserved as-is).
+ * Version 4 renames game-centric statuses to media-neutral terms and adds
+ * `watchedEpisodes`.
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
   2: (oldDoc) => ({ ...oldDoc, rating: null, completedDates: [], notes: "" }),
   3: (oldDoc) => {
     const { progress, ...rest } = oldDoc;
-    return { ...rest, progressFormat: "percent", progressValue: progress ?? null };
+    return {
+      ...rest,
+      progressFormat: "percent",
+      progressValue: progress ?? null,
+    };
   },
+  4: (oldDoc) => ({
+    ...oldDoc,
+    status: LEGACY_STATUS_MAP[oldDoc.status] ?? oldDoc.status,
+    watchedEpisodes: [],
+  }),
 };

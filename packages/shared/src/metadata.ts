@@ -19,7 +19,7 @@ export interface SearchResult {
 /** Earliest known release date for one platform of a game. */
 export interface PlatformRelease {
   platform: string; // IGDB platform name, matches an entry in `platforms`
-  date: number;     // epoch seconds
+  date: number; // epoch seconds
 }
 
 /** A single row from `GET /api/games?ids=`, backed by the server's `game_metadata` cache table. */

@@ -10,10 +10,12 @@ export type {
 export {
   ITEM_STATUSES,
   META_STATUSES,
+  MEDIA_TYPES,
   STATUS_META_GROUP,
   LOG_FORMATS,
   LOG_FORMATS_BY_MEDIA,
   defaultLogFormat,
+  episodeKey,
 } from "./types.js";
 export {
   createLwwConflictHandler,
@@ -31,3 +33,23 @@ export type {
   StoreName,
   TimeToBeat,
 } from "./metadata.js";
+export type {
+  MovieSearchResult,
+  MovieMetadata,
+  MovieDetail,
+  MediaVideo,
+  CastMember,
+} from "./movies.js";
+export type {
+  TvSearchResult,
+  TvMetadata,
+  TvDetail,
+  TvSeason,
+  TvEpisode,
+} from "./tv.js";
+export type {
+  BookSearchResult,
+  BookMetadata,
+  BookDetail,
+  BookSeries,
+} from "./books.js";

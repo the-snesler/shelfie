@@ -1,4 +1,8 @@
-import type { GameMetadata, PlatformRelease, TimeToBeat } from "@shelfie/shared";
+import type {
+  GameMetadata,
+  PlatformRelease,
+  TimeToBeat,
+} from "@shelfie/shared";
 import type { RxJsonSchema } from "rxdb";
 import type { ShelfieDatabase } from "./database";
 
@@ -30,7 +34,12 @@ export const gameCardSchema: RxJsonSchema<GameCardDoc> = {
   type: "object",
   properties: {
     id: { type: "string", maxLength: 64 },
-    igdbId: { type: "number", minimum: 0, maximum: 9007199254740991, multipleOf: 1 },
+    igdbId: {
+      type: "number",
+      minimum: 0,
+      maximum: 9007199254740991,
+      multipleOf: 1,
+    },
     slug: { type: ["string", "null"], maxLength: 128 },
     name: { type: "string", maxLength: 256 },
     coverImageId: { type: ["string", "null"], maxLength: 64 },

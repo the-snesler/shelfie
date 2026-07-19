@@ -16,7 +16,10 @@ export function StarRating({
   const display = hover ?? value;
 
   return (
-    <div className="flex items-center gap-1" onMouseLeave={() => setHover(null)}>
+    <div
+      className="flex items-center gap-1"
+      onMouseLeave={() => setHover(null)}
+    >
       {[1, 2, 3, 4, 5].map((i) => {
         const filled = display != null && display >= i;
         const half = !filled && display != null && display >= i - 0.5;

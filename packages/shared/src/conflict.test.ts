@@ -6,7 +6,7 @@ const base: ReplicatedLibraryItem = {
   id: "game:1942",
   mediaType: "game",
   sourceId: "1942",
-  status: "playing",
+  status: "active",
   progressFormat: "hours",
   progressValue: 10,
   addedAt: 1,
@@ -15,6 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   completedDates: [],
   notes: "",
+  watchedEpisodes: [],
   _deleted: false,
 };
 

@@ -6,7 +6,7 @@ const base: ReplicatedLibraryItem = {
   id: "game:1942",
   mediaType: "game",
   sourceId: "1942",
-  status: "playing",
+  status: "active",
   progressFormat: "hours",
   progressValue: 50,
   addedAt: 1,
@@ -15,6 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   completedDates: [],
   notes: "",
+  watchedEpisodes: [],
   _deleted: false,
 };
 
@@ -80,9 +81,22 @@ describe("libraryItemDocSchema progress fields", () => {
 
   it("rejects an unknown progressFormat", () => {
     expect(
-      libraryItemDocSchema.safeParse({ ...base, progressFormat: "pages" })
+      libraryItemDocSchema.safeParse({ ...base, progressFormat: "chapters" })
         .success,
     ).toBe(false);
+  });
+
+  it("accepts a pages progressValue", () => {
+    expect(
+      libraryItemDocSchema.safeParse({
+        ...base,
+        id: "book:12345",
+        mediaType: "book",
+        sourceId: "12345",
+        progressFormat: "pages",
+        progressValue: 210,
+      }).success,
+    ).toBe(true);
   });
 });
 
@@ -90,6 +104,43 @@ describe("libraryItemDocSchema status", () => {
   it("rejects an unknown status", () => {
     const doc = { ...base, status: "unknown" };
     expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema mediaType", () => {
+  it("accepts every media type", () => {
+    for (const mediaType of ["game", "movie", "tv", "book"] as const) {
+      const doc = {
+        ...base,
+        id: `${mediaType}:1942`,
+        mediaType,
+      };
+      expect(libraryItemDocSchema.safeParse(doc).success).toBe(true);
+    }
+  });
+
+  it("rejects an unknown mediaType", () => {
+    const doc = { ...base, id: "album:1", mediaType: "album" };
+    expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema watchedEpisodes", () => {
+  it("accepts episode keys including specials", () => {
+    const doc = {
+      ...base,
+      id: "tv:1396",
+      mediaType: "tv",
+      watchedEpisodes: ["s1e1", "s0e12", "s10e999"],
+    };
+    expect(libraryItemDocSchema.safeParse(doc).success).toBe(true);
+  });
+
+  it("rejects malformed episode keys", () => {
+    for (const key of ["1x3", "s1", "e3", "S1E3", "s1e"]) {
+      const doc = { ...base, watchedEpisodes: [key] };
+      expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
+    }
   });
 });
 

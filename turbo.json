@@ -1,6 +1,18 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": [
+    "SERVER_PORT",
+    "CLIENT_PORT",
+    "PORT",
+    "DATA_DIR",
+    "DATABASE_URL",
+    "STATIC_DIR",
+    "IGDB_CLIENT_ID",
+    "IGDB_CLIENT_SECRET",
+    "TMDB_TOKEN",
+    "GOODREADS_APPSYNC_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

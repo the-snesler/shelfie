@@ -24,14 +24,15 @@ export function GameCover({
   const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;
 
   const style = {
-    height: `${heightMm * scale}px`,
-    width: `${heightMm * scale * aspectRatio}px`,
-    aspectRatio: String(aspectRatio),
+    "height": `${heightMm * scale}px`,
+    "width": `${heightMm * scale * aspectRatio}px`,
+    "aspectRatio": String(aspectRatio),
     "--case-color": template?.caseColor ?? "transparent",
     "--art-padding-top": template?.paddingTop
       ? `${template.paddingTop}px`
       : "0px",
-    viewTransitionName: viewTransitionName ?? "none",
+    "--scale": scale,
+    "viewTransitionName": viewTransitionName ?? "none",
   } as React.CSSProperties;
 
   return (
@@ -43,7 +44,8 @@ export function GameCover({
         <img
           src={coverUrl}
           alt={name}
-          className="h-full w-full object-cover pt-(--art-padding-top)"
+          style={{ "--scale": scale } as React.CSSProperties}
+          className="h-full w-full object-cover pt-[calc(var(--scale)*var(--art-padding-top))]"
           loading="lazy"
         />
       ) : (

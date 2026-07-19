@@ -13,7 +13,7 @@ import {
   selectPlatform,
 } from "../games/platforms";
 import { gameImageUrl } from "../../images";
-import { StatusControl } from "../games/StatusControl";
+import { StatusControl } from "../media/StatusControl";
 
 const STORE_LABELS: Record<StoreName, string> = {
   official: "Official site",
@@ -245,8 +245,9 @@ export default function Detail({ params }: Route.ComponentProps) {
       )}
       <StatusControl
         db={db}
-        game={{
-          igdbId: meta.igdbId,
+        target={{
+          mediaType: "game",
+          sourceId: String(meta.igdbId),
           name: meta.name,
           platforms: meta.platforms,
         }}

@@ -24,6 +24,9 @@ export interface LibraryItemsTable {
   completed_dates: string;
   /** Free-text notes; empty string when none. */
   notes: string;
+  /** JSON-encoded string[] of watched TV episode keys ("s1e3"); "[]" for
+   *  non-TV items. */
+  watched_episodes: string;
   /** server-owned replication cursor */
   seq: number;
   /** 0 | 1 — SQLite has no native boolean */
@@ -76,6 +79,108 @@ export interface GameMetadataTable {
   detail_fetched_at: number | null;
 }
 
+/**
+ * Server-only TMDB movie metadata cache. Never synced — populated lazily by
+ * the movies API. Card columns are always set; detail columns stay NULL
+ * until the first detail fetch (`detail_fetched_at`).
+ */
+export interface MovieMetadataTable {
+  tmdb_id: number;
+  name: string;
+  /** bare TMDB image path, e.g. "/gDzOcq0.jpg" */
+  poster_path: string | null;
+  /** JSON-encoded string[] */
+  genres: string;
+  year: number | null;
+  director: string | null;
+  /** minutes */
+  runtime: number | null;
+  summary: string | null;
+  backdrop_path: string | null;
+  tagline: string | null;
+  certification: string | null;
+  vote_average: number | null;
+  vote_count: number | null;
+  /** JSON-encoded MediaVideo[] */
+  videos: string | null;
+  /** JSON-encoded CastMember[] ("cast" is a SQL keyword) */
+  cast_members: string | null;
+  imdb_id: string | null;
+  /** epoch ms — when the card tier was last (re)fetched from TMDB */
+  fetched_at: number;
+  /** epoch ms — NULL means the detail tier has never been fetched */
+  detail_fetched_at: number | null;
+}
+
+/** Server-only TMDB TV metadata cache; same card/detail split as movies. */
+export interface TvMetadataTable {
+  tmdb_id: number;
+  name: string;
+  poster_path: string | null;
+  /** JSON-encoded string[] */
+  genres: string;
+  first_air_year: number | null;
+  /** TMDB series status, e.g. "Returning Series" | "Ended" */
+  status: string | null;
+  /** excludes season 0 (Specials) */
+  number_of_seasons: number;
+  /** excludes specials; denominator for derived watch progress */
+  number_of_episodes: number;
+  /** JSON-encoded string[] */
+  networks: string;
+  /** JSON-encoded string[] */
+  created_by: string;
+  summary: string | null;
+  backdrop_path: string | null;
+  tagline: string | null;
+  /** US content rating, e.g. "TV-MA" */
+  certification: string | null;
+  vote_average: number | null;
+  vote_count: number | null;
+  /** JSON-encoded MediaVideo[] */
+  videos: string | null;
+  /** JSON-encoded CastMember[] */
+  cast_members: string | null;
+  /** JSON-encoded TvSeason[] incl. episodes; the episode catalog */
+  seasons: string | null;
+  /** ISO YYYY-MM-DD */
+  last_air_date: string | null;
+  /** 0 | 1 — SQLite has no native boolean */
+  in_production: number | null;
+  imdb_id: string | null;
+  fetched_at: number;
+  detail_fetched_at: number | null;
+}
+
+/** Server-only Goodreads book metadata cache; same card/detail split. */
+export interface BookMetadataTable {
+  /** Goodreads legacy numeric book id (from /book/show/{id}-{slug}). */
+  goodreads_id: number;
+  name: string;
+  /** full gr-assets CDN URL; loaded directly by the client */
+  cover_url: string | null;
+  /** JSON-encoded string[] */
+  authors: string;
+  year: number | null;
+  page_count: number | null;
+  description: string | null;
+  publisher: string | null;
+  /** ISO YYYY-MM-DD */
+  publication_date: string | null;
+  isbn13: string | null;
+  series_name: string | null;
+  /** Goodreads series position; may be fractional like "1.5" */
+  series_position: string | null;
+  /** JSON-encoded string[] */
+  genres: string | null;
+  /** Goodreads community average, 0–5 */
+  avg_rating: number | null;
+  ratings_count: number | null;
+  language: string | null;
+  fetched_at: number;
+  detail_fetched_at: number | null;
+}
+
 /** Single-user password record. Exactly one row is expected, keyed by "owner". */
 export interface AuthOwnerTable {
   id: string;
@@ -107,6 +212,9 @@ export interface MigrationsTable {
 export interface Database {
   library_items: LibraryItemsTable;
   game_metadata: GameMetadataTable;
+  movie_metadata: MovieMetadataTable;
+  tv_metadata: TvMetadataTable;
+  book_metadata: BookMetadataTable;
   auth_owner: AuthOwnerTable;
   auth_sessions: AuthSessionsTable;
   migrations: MigrationsTable;

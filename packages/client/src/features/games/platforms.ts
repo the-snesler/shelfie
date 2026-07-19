@@ -15,9 +15,20 @@ export const platformTemplates: Record<string, PlatformTemplate> = templates;
 export const DEFAULT_TEMPLATE = { aspectRatio: 0.71, heightMm: 172 } as const;
 
 /** px per mm of case height, per surface. */
-export const LIBRARY_COVER_SCALE = 1.1;
+export const LIBRARY_COVER_SCALE = 1.0;
 export const DETAIL_COVER_SCALE = 1.5;
 export const SEARCH_COVER_SCALE = 0.37;
+
+/** Computes the rendered width for a game cover at a given scale. */
+export function gameCoverWidth(
+  platform: string | null,
+  scale: number,
+): number {
+  const template = platform ? platformTemplates[platform] : undefined;
+  const aspectRatio = template?.aspectRatio ?? DEFAULT_TEMPLATE.aspectRatio;
+  const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;
+  return heightMm * scale * aspectRatio + 4; // +4px for the case padding
+}
 
 /** Shared `view-transition-name` for a game's cover, keyed by its route
  *  slug — the one identifier every surface (library card, search result,

@@ -3,7 +3,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { createAuthMiddleware, registerAuthRoutes } from "./auth/index.js";
+import { registerBooksRoutes } from "./books/routes.js";
 import { registerGamesRoutes } from "./games/routes.js";
+import { registerMoviesRoutes } from "./movies/routes.js";
+import { registerTvRoutes } from "./tv/routes.js";
 import { registerImageRoutes } from "./images/routes.js";
 import type { ReplicatedDoc, SyncCollection } from "./sync/collection.js";
 import { libraryItemsSync } from "./sync/library-items.js";
@@ -33,6 +36,9 @@ export function createApp(): Hono {
   registerSyncRoutes(app, libraryItemsSync);
 
   registerGamesRoutes(app);
+  registerMoviesRoutes(app);
+  registerTvRoutes(app);
+  registerBooksRoutes(app);
 
   // In prod the single container serves the built client from STATIC_DIR, with
   // an SPA fallback to index.html for any non-API, non-file route. Must be

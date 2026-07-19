@@ -1,5 +1,8 @@
 import type { LibraryItem } from "@shelfie/shared";
+import type { BookCardDoc } from "./bookCards";
 import type { GameCardDoc } from "./gameCards";
+import type { MovieCardDoc } from "./movieCards";
+import type { TvCardDoc } from "./tvCards";
 import {
   addRxPlugin,
   createRxDatabase,
@@ -29,6 +32,9 @@ export type LibraryItemCollection = RxCollection<LibraryItem>;
 export interface ShelfieCollections {
   library_items: LibraryItemCollection;
   game_metadata: RxCollection<GameCardDoc>;
+  movie_metadata: RxCollection<MovieCardDoc>;
+  tv_metadata: RxCollection<TvCardDoc>;
+  book_metadata: RxCollection<BookCardDoc>;
 }
 export type ShelfieDatabase = RxDatabase<ShelfieCollections>;
 

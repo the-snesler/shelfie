@@ -326,7 +326,8 @@ export async function fetchTimeToBeatsByIds(
     if (!res.ok) return out;
     const rows = (await res.json()) as IgdbTimeToBeat[];
     for (const row of rows) {
-      if (row.game_id !== undefined) out.set(row.game_id, timeToBeatFromRow(row));
+      if (row.game_id !== undefined)
+        out.set(row.game_id, timeToBeatFromRow(row));
     }
   } catch {
     // best-effort: swallow, return whatever was collected

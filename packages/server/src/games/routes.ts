@@ -239,7 +239,7 @@ export function registerGamesRoutes(
         fetchGamesByIds(missingIds),
         fetchTimeToBeatsByIds(missingIds),
       ]);
-      
+
       for (const metadata of fetched) {
         metadata.timeToBeat = ttbs.get(metadata.igdbId) ?? null;
         const row = await upsertMetadata(database, metadata);

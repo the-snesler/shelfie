@@ -11,7 +11,7 @@ const sample: ReplicatedLibraryItem = {
   id: "game:1942",
   mediaType: "game",
   sourceId: "1942",
-  status: "playing",
+  status: "active",
   progressFormat: "hours",
   progressValue: 42,
   addedAt: 1,
@@ -21,6 +21,7 @@ const sample: ReplicatedLibraryItem = {
   rating: 4.5,
   completedDates: ["2024-01-02"],
   notes: "great",
+  watchedEpisodes: [],
 };
 
 const wishlistedSample: ReplicatedLibraryItem = {
@@ -34,6 +35,18 @@ const wishlistedSample: ReplicatedLibraryItem = {
   rating: null,
   completedDates: [],
   notes: "",
+};
+
+const tvSample: ReplicatedLibraryItem = {
+  ...sample,
+  id: "tv:1396",
+  mediaType: "tv",
+  sourceId: "1396",
+  status: "active",
+  progressFormat: "percent",
+  progressValue: null,
+  platforms: [],
+  watchedEpisodes: ["s1e1", "s1e2", "s0e1"],
 };
 
 describe("library item contract", () => {
@@ -59,13 +72,15 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(wishlistedSample)).toEqual(
       wishlistedSample,
     );
+    expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 3 with platforms/rating/completions/notes/progress-format migrations", () => {
-    expect(libraryItemSchema.version).toBe(3);
+  it("is at schema version 4 with platforms/rating/completions/notes/progress-format/multi-media migrations", () => {
+    expect(libraryItemSchema.version).toBe(4);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
+    expect(Object.keys(libraryItemMigrationStrategies)).toContain("4");
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
@@ -92,6 +107,23 @@ describe("library item contract", () => {
       id: "game:1",
       progressFormat: "percent",
       progressValue: null,
+    });
+    const migrate4 = libraryItemMigrationStrategies[4] as (
+      oldDoc: unknown,
+    ) => unknown;
+    expect(migrate4({ id: "game:1", status: "playing" })).toEqual({
+      id: "game:1",
+      status: "active",
+      watchedEpisodes: [],
+    });
+    expect(migrate4({ id: "game:1", status: "played" })).toMatchObject({
+      status: "dropped",
+    });
+    expect(migrate4({ id: "game:1", status: "beaten" })).toMatchObject({
+      status: "finished",
+    });
+    expect(migrate4({ id: "game:1", status: "wishlisted" })).toMatchObject({
+      status: "wishlisted",
     });
   });
 

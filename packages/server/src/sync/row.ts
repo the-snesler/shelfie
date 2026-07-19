@@ -10,7 +10,8 @@ export function libraryItemRowToDoc(
     mediaType: row.media_type as ReplicatedLibraryItem["mediaType"],
     sourceId: row.source_id,
     status: row.status as ReplicatedLibraryItem["status"],
-    progressFormat: row.progress_format as ReplicatedLibraryItem["progressFormat"],
+    progressFormat:
+      row.progress_format as ReplicatedLibraryItem["progressFormat"],
     progressValue: row.progress_value,
     addedAt: row.added_at,
     updatedAt: row.updated_at,
@@ -18,6 +19,7 @@ export function libraryItemRowToDoc(
     rating: row.rating,
     completedDates: JSON.parse(row.completed_dates) as string[],
     notes: row.notes,
+    watchedEpisodes: JSON.parse(row.watched_episodes) as string[],
     _deleted: row.deleted === 1,
   };
 }
@@ -40,6 +42,7 @@ export function libraryItemDocToRow(
     rating: doc.rating,
     completed_dates: JSON.stringify(doc.completedDates),
     notes: doc.notes,
+    watched_episodes: JSON.stringify(doc.watchedEpisodes),
     seq,
     deleted: doc._deleted ? 1 : 0,
   };

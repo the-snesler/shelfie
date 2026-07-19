@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ITEM_STATUSES, LOG_FORMATS } from "./types.js";
+import { ITEM_STATUSES, LOG_FORMATS, MEDIA_TYPES } from "./types.js";
 import type { ReplicatedLibraryItem } from "./types.js";
 
 /**
@@ -12,10 +12,10 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
   // Mediatype-prefixed id, e.g. "game:1942" — kept in lockstep with
   // `${mediaType}:${sourceId}` construction on write.
   id: z.string().regex(/^[a-z]+:\d+$/),
-  mediaType: z.literal("game"),
+  mediaType: z.enum(MEDIA_TYPES),
   sourceId: z.string().min(1).max(64),
   status: z.enum(ITEM_STATUSES),
-  // Only meaningful when status === "playing", but always present (never
+  // Only meaningful for in-progress statuses, but always present (never
   // absent) so the RxDB schema's `required` list stays simple.
   progressFormat: z.enum(LOG_FORMATS),
   progressValue: z.number().min(0).nullable(),
@@ -27,5 +27,8 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
     .array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/))
     .max(100),
   notes: z.string().max(10000),
+  // TV episode keys ("s<season>e<episode>", see episodeKey()); [] for
+  // every other media type.
+  watchedEpisodes: z.array(z.string().regex(/^s\d{1,3}e\d{1,4}$/)).max(10000),
   _deleted: z.boolean(),
 });

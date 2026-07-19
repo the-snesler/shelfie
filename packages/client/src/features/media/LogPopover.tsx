@@ -7,7 +7,7 @@ import type { LibraryItem } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import type { ShelfieDatabase } from "../../db/database";
 import { LogModal } from "./LogModal";
-import type { LogGame } from "./libraryActions";
+import type { LogTarget } from "./libraryActions";
 import type { LogPopoverState } from "./useLogPopover";
 
 /** Renders `LogModal`'s form content as a panel anchored to whatever
@@ -17,12 +17,12 @@ import type { LogPopoverState } from "./useLogPopover";
 export function LogPopover({
   popover,
   db,
-  game,
+  target,
   item,
 }: {
   popover: LogPopoverState;
   db: ShelfieDatabase;
-  game: LogGame;
+  target: LogTarget;
   item: RxDocument<LibraryItem> | null;
 }) {
   const {
@@ -55,7 +55,7 @@ export function LogPopover({
           />
           <LogModal
             db={db}
-            game={game}
+            target={target}
             item={item}
             onClose={() => setOpen(false)}
           />

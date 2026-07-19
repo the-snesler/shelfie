@@ -57,9 +57,8 @@ export function useLogPopover(): LogPopoverState {
       size({
         padding: 8,
         apply({ availableHeight, elements }) {
-          const scrollEl = elements.floating.querySelector<HTMLElement>(
-            "[data-log-scroll]",
-          );
+          const scrollEl =
+            elements.floating.querySelector<HTMLElement>("[data-log-scroll]");
           if (scrollEl) {
             scrollEl.style.maxHeight = `${Math.max(availableHeight, 160)}px`;
           }

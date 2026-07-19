@@ -9,14 +9,16 @@
  * the wire during replication, captured by {@link ReplicatedLibraryItem}.
  */
 
-/** All statuses a library item can carry. */
+/** All statuses a library item can carry — media-neutral canonical terms.
+ *  Per-media display wording (e.g. active → "Playing"/"Watching"/"Reading")
+ *  and which subset a media type exposes live client-side. */
 export const ITEM_STATUSES = [
   "wishlisted",
   "backlogged",
-  "playing",
+  "active",
   "paused",
-  "played",
-  "beaten",
+  "dropped",
+  "finished",
   "completed",
 ] as const;
 
@@ -32,31 +34,43 @@ export type MetaStatus = (typeof META_STATUSES)[number];
 export const STATUS_META_GROUP: Record<ItemStatus, MetaStatus> = {
   wishlisted: "planned",
   backlogged: "planned",
-  playing: "in-progress",
+  active: "in-progress",
   paused: "in-progress",
-  played: "finished",
-  beaten: "finished",
+  dropped: "finished",
+  finished: "finished",
   completed: "finished",
 };
 
-/** The kind of media a library item tracks. Union will grow (movies, books, …). */
-export type MediaType = "game";
+/** The kinds of media a library item can track. */
+export const MEDIA_TYPES = ["game", "movie", "tv", "book"] as const;
+export type MediaType = (typeof MEDIA_TYPES)[number];
 
-/** Progress log formats. Append new units (e.g. "pages", "episodes", "minutes")
- *  here; adding one never bumps the RxDB schema (progressFormat is a plain
- *  string there, mirroring `status`). */
-export const LOG_FORMATS = ["percent", "hours"] as const;
+/** Progress log formats. Append new units here; adding one never bumps the
+ *  RxDB schema (progressFormat is a plain string there, mirroring `status`). */
+export const LOG_FORMATS = ["percent", "hours", "pages"] as const;
 export type LogFormat = (typeof LOG_FORMATS)[number];
 
-/** Allowed formats per media type; the FIRST entry is the default for a new
- *  item of that type. Grows as media types and formats are added. */
+/** Allowed manual log formats per media type; the FIRST entry is the default
+ *  for a new item of that type. Empty means the media type has no manual
+ *  progress log: movies are binary watched/unwatched, and TV progress is
+ *  derived from `watchedEpisodes`. */
 export const LOG_FORMATS_BY_MEDIA: Record<MediaType, readonly LogFormat[]> = {
   game: ["hours", "percent"],
+  movie: [],
+  tv: [],
+  book: ["pages", "percent", "hours"],
 };
 
-/** Default log format for a newly added item of the given media type. */
+/** Default log format for a newly added item of the given media type.
+ *  Media types without a manual log fall back to an inert "percent". */
 export function defaultLogFormat(mediaType: MediaType): LogFormat {
-  return LOG_FORMATS_BY_MEDIA[mediaType][0];
+  return LOG_FORMATS_BY_MEDIA[mediaType][0] ?? "percent";
+}
+
+/** Canonical watched-episode key for `LibraryItem.watchedEpisodes`, e.g.
+ *  episodeKey(1, 3) === "s1e3". Season 0 is TMDB's "Specials" convention. */
+export function episodeKey(season: number, episode: number): string {
+  return `s${season}e${episode}`;
 }
 
 export interface LibraryItem {
@@ -81,6 +95,10 @@ export interface LibraryItem {
   completedDates: string[];
   /** Free-text notes; empty string when none. */
   notes: string;
+  /** TV only: episode keys (see {@link episodeKey}) the user has watched.
+   *  Always [] for other media types. TV progress/derived state comes from
+   *  this set plus the show's episode count from metadata. */
+  watchedEpisodes: string[];
   /** ms epoch */
   addedAt: number;
   /** ms epoch — last-write-time; used by conflict resolution and UI sorting */

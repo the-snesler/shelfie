@@ -2,14 +2,14 @@
 /**
  * Bootstraps a freshly-cloned Shelfie instance for local dev: claims the
  * owner password (so the app isn't stuck behind the setup wall) and adds a
- * handful of real games to the library, so a new worktree isn't a blank
- * slate.
+ * handful of real games, movies, TV shows, and books to the library, so a
+ * new worktree isn't a blank slate.
  *
- * Games are resolved through the server's own /api/games/search (backed by
- * IGDB), so seeded items always have real cover art and metadata rather than
- * guessed-at ids. Requires IGDB_CLIENT_ID/IGDB_CLIENT_SECRET to be set (see
- * root .env) — a search miss is logged and skipped rather than failing the
- * whole run.
+ * Items are resolved through the server's own search routes (IGDB for games,
+ * TMDB for movies/TV, Goodreads for books), so seeded items always have real
+ * cover art and metadata rather than guessed-at ids. Requires
+ * IGDB_CLIENT_ID/IGDB_CLIENT_SECRET and TMDB_TOKEN to be set (see root .env)
+ * — a search miss is logged and skipped rather than failing the whole run.
  *
  * Safe to re-run: the password step logs in instead of erroring once setup
  * is done, and re-seeding the same library item ids is a no-op (the sync
@@ -29,63 +29,124 @@ const SERVER_URL =
   `http://localhost:${process.env.SERVER_PORT ?? process.env.PORT ?? 3001}`;
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
-// query: title to search IGDB for. status/progressFormat/progressValue: seeded library item state.
+// mediaType+query: what to search for. status/progressFormat/progressValue:
+// seeded library item state. watchedEpisodes: TV-only episode keys.
 const SEEDS = [
   {
+    mediaType: "game",
     query: "The Legend of Zelda: Breath of the Wild",
-    status: "playing",
+    status: "active",
     progressFormat: "hours",
     progressValue: 24,
   },
   {
+    mediaType: "game",
     query: "Hollow Knight",
     status: "completed",
     progressFormat: "percent",
     progressValue: 100,
   },
   {
+    mediaType: "game",
     query: "Elden Ring",
     status: "backlogged",
     progressFormat: "hours",
     progressValue: null,
   },
   {
+    mediaType: "game",
     query: "Stardew Valley",
     status: "wishlisted",
     progressFormat: "hours",
     progressValue: null,
   },
   {
+    mediaType: "game",
     query: "Celeste",
     status: "completed",
     progressFormat: "percent",
     progressValue: 100,
   },
   {
+    mediaType: "game",
     query: "Splatoon Raiders",
-    status: "playing",
+    status: "active",
     progressFormat: "hours",
     progressValue: 12,
   },
   {
+    mediaType: "game",
     query: "Super Mario Galaxy",
     status: "completed",
     progressFormat: "percent",
     progressValue: 100,
   },
   {
+    mediaType: "game",
     query: "Super Mario Sunshine",
     status: "backlogged",
     progressFormat: "hours",
     progressValue: null,
   },
   {
+    mediaType: "game",
     query: "Super Mario 64",
     status: "completed",
     progressFormat: "percent",
     progressValue: 100,
   },
+  {
+    mediaType: "movie",
+    query: "Dune",
+    status: "finished",
+    progressFormat: "percent",
+    progressValue: null,
+  },
+  {
+    mediaType: "movie",
+    query: "Blade Runner 2049",
+    status: "backlogged",
+    progressFormat: "percent",
+    progressValue: null,
+  },
+  {
+    mediaType: "tv",
+    query: "Breaking Bad",
+    status: "active",
+    progressFormat: "percent",
+    progressValue: null,
+    watchedEpisodes: ["s1e1", "s1e2", "s1e3", "s1e4"],
+  },
+  {
+    mediaType: "tv",
+    query: "Severance",
+    status: "backlogged",
+    progressFormat: "percent",
+    progressValue: null,
+  },
+  {
+    mediaType: "book",
+    query: "Project Hail Mary",
+    status: "active",
+    progressFormat: "pages",
+    progressValue: 210,
+  },
+  {
+    mediaType: "book",
+    query: "The Hobbit",
+    status: "finished",
+    progressFormat: "pages",
+    progressValue: null,
+  },
 ];
+
+// Per-media search route and the id field its results carry.
+const SEARCH_BY_MEDIA = {
+  game: { path: "/api/games/search", idField: "igdbId" },
+  movie: { path: "/api/movies/search", idField: "tmdbId" },
+  tv: { path: "/api/tv/search", idField: "tmdbId" },
+  book: { path: "/api/books/search", idField: "goodreadsId" },
+};
 
 async function main() {
   const token = await claimToken();
@@ -98,16 +159,18 @@ async function main() {
 
   const items = [];
   for (const seed of SEEDS) {
-    const igdbId = await searchGameId(seed.query, token);
-    if (igdbId == null) {
-      console.warn(`No IGDB match for "${seed.query}" — skipping.`);
+    const sourceId = await searchSourceId(seed.mediaType, seed.query, token);
+    if (sourceId == null) {
+      console.warn(
+        `No ${seed.mediaType} match for "${seed.query}" — skipping.`,
+      );
       continue;
     }
     const ts = at();
     items.push({
-      id: `game:${igdbId}`,
-      mediaType: "game",
-      sourceId: String(igdbId),
+      id: `${seed.mediaType}:${sourceId}`,
+      mediaType: seed.mediaType,
+      sourceId: String(sourceId),
       status: seed.status,
       progressFormat: seed.progressFormat,
       progressValue: seed.progressValue,
@@ -115,6 +178,7 @@ async function main() {
       rating: null,
       completedDates: [],
       notes: "",
+      watchedEpisodes: seed.watchedEpisodes ?? [],
       addedAt: ts,
       updatedAt: ts,
       _deleted: false,
@@ -123,7 +187,7 @@ async function main() {
 
   if (items.length === 0) {
     throw new Error(
-      "No games resolved via IGDB search — check IGDB_CLIENT_ID/IGDB_CLIENT_SECRET in .env.",
+      "No items resolved via search — check IGDB_CLIENT_ID/IGDB_CLIENT_SECRET and TMDB_TOKEN in .env.",
     );
   }
 
@@ -154,15 +218,15 @@ async function claimToken() {
   return (await res.json()).token;
 }
 
-/** Looks up the top IGDB search hit for a title via the server's own search route. */
-async function searchGameId(query, token) {
-  const res = await fetch(
-    `${SERVER_URL}/api/games/search?q=${encodeURIComponent(query)}`,
-    { headers: { authorization: `Bearer ${token}` } },
-  );
+/** Looks up the top search hit's source id via the server's own search routes. */
+async function searchSourceId(mediaType, query, token) {
+  const { path, idField } = SEARCH_BY_MEDIA[mediaType];
+  const res = await fetch(`${SERVER_URL}${path}?q=${encodeURIComponent(query)}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
   if (!res.ok) return null;
   const results = await res.json();
-  return results[0]?.igdbId ?? null;
+  return results[0]?.[idField] ?? null;
 }
 
 /** Pushes docs through the same sync/push endpoint the client uses. */

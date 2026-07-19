@@ -200,7 +200,9 @@ const migrations: Migration[] = [
         .execute();
       await db.schema
         .alterTable("library_items")
-        .addColumn("completed_dates", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("completed_dates", "text", (c) =>
+          c.notNull().defaultTo("[]"),
+        )
         .execute();
       await db.schema
         .alterTable("library_items")
@@ -214,7 +216,9 @@ const migrations: Migration[] = [
     async up(db) {
       await db.schema
         .alterTable("library_items")
-        .addColumn("progress_format", "text", (c) => c.notNull().defaultTo("percent"))
+        .addColumn("progress_format", "text", (c) =>
+          c.notNull().defaultTo("percent"),
+        )
         .execute();
       await db.schema
         .alterTable("library_items")
@@ -224,7 +228,111 @@ const migrations: Migration[] = [
       // "percent" (the column default). Raw SQL because `progress` is being
       // removed from the Kysely Database type.
       await sql`UPDATE library_items SET progress_value = progress`.execute(db);
-      await db.schema.alterTable("library_items").dropColumn("progress").execute();
+      await db.schema
+        .alterTable("library_items")
+        .dropColumn("progress")
+        .execute();
+    },
+  },
+  {
+    id: 8,
+    name: "library-item-multi-media",
+    async up(db) {
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("watched_episodes", "text", (c) =>
+          c.notNull().defaultTo("[]"),
+        )
+        .execute();
+      // Rename game-centric statuses to the media-neutral canonical terms.
+      // Mirrors the client's RxDB migration strategy 4 exactly, so rows a
+      // client already pulled converge to identical values after both
+      // migrations run. Deliberately does NOT bump seq/updated_at: this is a
+      // value remap, not a user write.
+      await sql`UPDATE library_items SET status = CASE status
+        WHEN 'playing' THEN 'active'
+        WHEN 'played' THEN 'dropped'
+        WHEN 'beaten' THEN 'finished'
+        ELSE status END`.execute(db);
+    },
+  },
+  {
+    id: 9,
+    name: "movie-tv-book-metadata-tables",
+    async up(db) {
+      await db.schema
+        .createTable("movie_metadata")
+        .addColumn("tmdb_id", "integer", (c) => c.primaryKey())
+        .addColumn("name", "text", (c) => c.notNull())
+        .addColumn("poster_path", "text")
+        .addColumn("genres", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("year", "integer")
+        .addColumn("director", "text")
+        .addColumn("runtime", "integer")
+        .addColumn("summary", "text")
+        .addColumn("backdrop_path", "text")
+        .addColumn("tagline", "text")
+        .addColumn("certification", "text")
+        .addColumn("vote_average", "real")
+        .addColumn("vote_count", "integer")
+        .addColumn("videos", "text")
+        .addColumn("cast_members", "text")
+        .addColumn("imdb_id", "text")
+        .addColumn("fetched_at", "integer", (c) => c.notNull())
+        .addColumn("detail_fetched_at", "integer")
+        .execute();
+      await db.schema
+        .createTable("tv_metadata")
+        .addColumn("tmdb_id", "integer", (c) => c.primaryKey())
+        .addColumn("name", "text", (c) => c.notNull())
+        .addColumn("poster_path", "text")
+        .addColumn("genres", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("first_air_year", "integer")
+        .addColumn("status", "text")
+        .addColumn("number_of_seasons", "integer", (c) =>
+          c.notNull().defaultTo(0),
+        )
+        .addColumn("number_of_episodes", "integer", (c) =>
+          c.notNull().defaultTo(0),
+        )
+        .addColumn("networks", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("created_by", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("summary", "text")
+        .addColumn("backdrop_path", "text")
+        .addColumn("tagline", "text")
+        .addColumn("certification", "text")
+        .addColumn("vote_average", "real")
+        .addColumn("vote_count", "integer")
+        .addColumn("videos", "text")
+        .addColumn("cast_members", "text")
+        .addColumn("seasons", "text")
+        .addColumn("last_air_date", "text")
+        .addColumn("in_production", "integer")
+        .addColumn("imdb_id", "text")
+        .addColumn("fetched_at", "integer", (c) => c.notNull())
+        .addColumn("detail_fetched_at", "integer")
+        .execute();
+      await db.schema
+        .createTable("book_metadata")
+        .addColumn("goodreads_id", "integer", (c) => c.primaryKey())
+        .addColumn("name", "text", (c) => c.notNull())
+        .addColumn("cover_url", "text")
+        .addColumn("authors", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("year", "integer")
+        .addColumn("page_count", "integer")
+        .addColumn("description", "text")
+        .addColumn("publisher", "text")
+        .addColumn("publication_date", "text")
+        .addColumn("isbn13", "text")
+        .addColumn("series_name", "text")
+        .addColumn("series_position", "text")
+        .addColumn("genres", "text")
+        .addColumn("avg_rating", "real")
+        .addColumn("ratings_count", "integer")
+        .addColumn("language", "text")
+        .addColumn("fetched_at", "integer", (c) => c.notNull())
+        .addColumn("detail_fetched_at", "integer")
+        .execute();
     },
   },
 ];

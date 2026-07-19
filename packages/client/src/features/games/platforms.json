@@ -4,7 +4,7 @@
     "aspectRatio": 0.803,
     "heightMm": 173,
     "caseColor": "#0F52CA",
-    "paddingTop": 22
+    "paddingTop": 20
   },
   "Nintendo Switch": {
     "overlay": "/assets/games/switch-cover.png",
@@ -17,6 +17,6 @@
     "aspectRatio": 0.615,
     "heightMm": 169,
     "caseColor": "#F23132",
-    "paddingTop": 22
+    "paddingTop": 20
   }
 }

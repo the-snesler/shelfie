@@ -1,17 +1,24 @@
-import {
-  ITEM_STATUSES,
-  LOG_FORMATS_BY_MEDIA,
-  STATUS_META_GROUP,
-} from "@shelfie/shared";
+import { LOG_FORMATS_BY_MEDIA, STATUS_META_GROUP } from "@shelfie/shared";
 import type { ItemStatus, LibraryItem, LogFormat } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useState } from "react";
 import IconX from "~icons/tabler/x";
 import type { ShelfieDatabase } from "../../db/database";
 import { StarRating } from "../detail/StarRating";
-import type { LogGame } from "./libraryActions";
+import type { LogTarget } from "./libraryActions";
 import { newLibraryItem } from "./libraryActions";
-import { COMPLETION_STATUSES, STATUS_ICONS, STATUS_LABELS } from "./status";
+import {
+  COMPLETION_STATUSES,
+  STATUS_ICONS,
+  STATUS_LABELS,
+  STATUSES_BY_MEDIA,
+} from "./status";
+
+const FORMAT_LABELS: Record<LogFormat, string> = {
+  hours: "Hours",
+  percent: "Percent",
+  pages: "Pages",
+};
 
 /** Local-time YYYY-MM-DD (avoids the UTC off-by-one of toISOString). */
 function toLocalIsoDate(d: Date): string {
@@ -19,17 +26,17 @@ function toLocalIsoDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Shared detailed-editing popup: status, platform, progress, rating,
- *  completion dates and notes for one library item. Reached from the
- *  library grid's `+` button and the Detail page's split status button. */
+/** Shared detailed-editing popup: status, platform (games only), progress,
+ *  rating, completion dates and notes for one library item. Reached from
+ *  the library grid's `+` button and a Detail page's split status button. */
 export function LogModal({
   db,
-  game,
+  target,
   item,
   onClose,
 }: {
   db: ShelfieDatabase;
-  game: LogGame;
+  target: LogTarget;
   item: RxDocument<LibraryItem> | null;
   onClose: () => void;
 }) {
@@ -39,7 +46,7 @@ export function LogModal({
     if (item) {
       void item.incrementalPatch({ status, updatedAt: Date.now() });
     } else {
-      void db.library_items.insert(newLibraryItem(game, status));
+      void db.library_items.insert(newLibraryItem(target, status));
     }
     if (COMPLETION_STATUSES[status]) {
       setDatePrompt({ date: toLocalIsoDate(new Date()) });
@@ -65,7 +72,9 @@ export function LogModal({
 
   async function addCompletionDate(date: string) {
     if (!date) return;
-    const doc = await db.library_items.findOne(`game:${game.igdbId}`).exec();
+    const doc = await db.library_items
+      .findOne(`${target.mediaType}:${target.sourceId}`)
+      .exec();
     setDatePrompt(null);
     if (!doc || doc.completedDates.includes(date)) return;
     await doc.incrementalPatch({
@@ -89,7 +98,7 @@ export function LogModal({
 
   function handleFormatChange(format: LogFormat) {
     if (!item || item.progressFormat === format) return;
-    // No cross-unit conversion (42% ≠ 42h) — reset value on switch.
+    // No cross-unit conversion (42% ≠ 42h ≠ 42p) — reset value on switch.
     void item.incrementalPatch({
       progressFormat: format,
       progressValue: null,
@@ -97,13 +106,14 @@ export function LogModal({
     });
   }
 
+  const statuses = STATUSES_BY_MEDIA[target.mediaType];
+  const labels = STATUS_LABELS[target.mediaType];
+  const formats = LOG_FORMATS_BY_MEDIA[target.mediaType];
+
   return (
-    <div
-      data-log-scroll
-      className="flex flex-col gap-3 overflow-y-auto p-4"
-    >
+    <div data-log-scroll className="flex flex-col gap-3 overflow-y-auto p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-ink">{game.name}</h2>
+        <h2 className="text-lg font-semibold text-ink">{target.name}</h2>
         <button
           type="button"
           aria-label="Close"
@@ -114,7 +124,7 @@ export function LogModal({
         </button>
       </div>
       <div className="flex flex-col gap-1">
-        {ITEM_STATUSES.map((status) => {
+        {statuses.map((status) => {
           const Icon = STATUS_ICONS[status];
           const active = item?.status === status;
           return (
@@ -129,16 +139,16 @@ export function LogModal({
               }
             >
               <Icon />
-              {STATUS_LABELS[status]}
+              {labels[status]}
             </button>
           );
         })}
       </div>
-      {item && game.platforms.length > 0 && (
+      {item && target.mediaType === "game" && target.platforms.length > 0 && (
         <fieldset className="flex flex-col gap-1 text-sm font-medium text-muted">
           <legend>Platform</legend>
           <div className="flex flex-wrap gap-2">
-            {game.platforms.map((p) => (
+            {target.platforms.map((p) => (
               <button
                 key={p}
                 type="button"
@@ -155,64 +165,84 @@ export function LogModal({
           </div>
         </fieldset>
       )}
-      {item && STATUS_META_GROUP[item.status] !== "planned" && (
-        <div className="flex flex-col gap-2">
-          {LOG_FORMATS_BY_MEDIA.game.length > 1 && (
-            <div className="flex gap-2">
-              {LOG_FORMATS_BY_MEDIA.game.map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => handleFormatChange(f)}
-                  className={
-                    item.progressFormat === f
-                      ? "rounded bg-accent px-2 py-1 text-xs text-white"
-                      : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
-                  }
-                >
-                  {f === "hours" ? "Hours" : "Percent"}
-                </button>
-              ))}
-            </div>
-          )}
-          {item.progressFormat === "hours" ? (
-            <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-              Hours played ({item.progressValue ?? 0}h)
-              <input
-                type="number"
-                min={0}
-                step={0.5}
-                value={item.progressValue ?? 0}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  void item.incrementalPatch({
-                    progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
-                    updatedAt: Date.now(),
-                  });
-                }}
-                className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-              />
-            </label>
-          ) : (
-            <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-              Progress ({item.progressValue ?? 0}%)
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={item.progressValue ?? 0}
-                onChange={(e) => {
-                  void item.incrementalPatch({
-                    progressValue: Number(e.target.value),
-                    updatedAt: Date.now(),
-                  });
-                }}
-              />
-            </label>
-          )}
-        </div>
-      )}
+      {item &&
+        formats.length > 0 &&
+        STATUS_META_GROUP[item.status] !== "planned" && (
+          <div className="flex flex-col gap-2">
+            {formats.length > 1 && (
+              <div className="flex gap-2">
+                {formats.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => handleFormatChange(f)}
+                    className={
+                      item.progressFormat === f
+                        ? "rounded bg-accent px-2 py-1 text-xs text-white"
+                        : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
+                    }
+                  >
+                    {FORMAT_LABELS[f]}
+                  </button>
+                ))}
+              </div>
+            )}
+            {item.progressFormat === "hours" ? (
+              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
+                Hours played ({item.progressValue ?? 0}h)
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={item.progressValue ?? 0}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    void item.incrementalPatch({
+                      progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
+                      updatedAt: Date.now(),
+                    });
+                  }}
+                  className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
+                />
+              </label>
+            ) : item.progressFormat === "pages" ? (
+              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
+                Pages read ({item.progressValue ?? 0}p)
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={item.progressValue ?? 0}
+                  onChange={(e) => {
+                    const n = Math.trunc(Number(e.target.value));
+                    void item.incrementalPatch({
+                      progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
+                      updatedAt: Date.now(),
+                    });
+                  }}
+                  className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
+                />
+              </label>
+            ) : (
+              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
+                Progress ({item.progressValue ?? 0}%)
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={item.progressValue ?? 0}
+                  onChange={(e) => {
+                    void item.incrementalPatch({
+                      progressValue: Number(e.target.value),
+                      updatedAt: Date.now(),
+                    });
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        )}
       {item && (
         <div className="flex flex-col gap-1 text-sm font-medium text-muted">
           Rating
