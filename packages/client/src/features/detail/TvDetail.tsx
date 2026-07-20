@@ -91,17 +91,20 @@ export default function TvDetail({ params }: Route.ComponentProps) {
     else navigate("/", { viewTransition: true });
   }
 
-  /** Persists a full replacement `watchedEpisodes` list — patches the
-   *  existing item, or (first toggle on an unowned show) creates one as
-   *  `active`, same lazy-add behavior as StatusControl's default click. */
-  async function applyWatched(next: string[]) {
+  /** Persists a `watchedEpisodes` update by deriving the next array from
+   *  the document's current data at write time via `incrementalModify`
+   *  (RxDB serializes these per document, so rapid toggles compose
+   *  instead of racing) — or the insert path for a show not yet in the
+   *  library, same lazy-add behavior as StatusControl's default click. */
+  async function applyWatched(updater: (current: string[]) => string[]) {
     if (metaState.status !== "loaded") return;
     const meta = metaState.meta;
     if (item) {
-      await item.incrementalPatch({
-        watchedEpisodes: next,
+      await item.incrementalModify((docData) => ({
+        ...docData,
+        watchedEpisodes: updater(docData.watchedEpisodes),
         updatedAt: Date.now(),
-      });
+      }));
     } else {
       const base = newLibraryItem(
         {
@@ -112,30 +115,33 @@ export default function TvDetail({ params }: Route.ComponentProps) {
         },
         "active",
       );
-      await db.library_items.insert({ ...base, watchedEpisodes: next });
+      await db.library_items.insert({
+        ...base,
+        watchedEpisodes: updater([]),
+      });
     }
   }
 
   function toggleEpisode(season: number, episode: number) {
     const key = episodeKey(season, episode);
-    const current = item?.watchedEpisodes ?? [];
-    const next = current.includes(key)
-      ? current.filter((k) => k !== key)
-      : [...current, key];
-    void applyWatched(next);
+    void applyWatched((current) =>
+      current.includes(key)
+        ? current.filter((k) => k !== key)
+        : [...current, key],
+    );
   }
 
   function toggleSeason(season: TvSeason) {
-    const current = item?.watchedEpisodes ?? [];
     const keys = season.episodes.map((ep) =>
       episodeKey(season.seasonNumber, ep.episodeNumber),
     );
-    const allWatched =
-      keys.length > 0 && keys.every((k) => current.includes(k));
-    const next = allWatched
-      ? current.filter((k) => !keys.includes(k))
-      : [...current, ...keys.filter((k) => !current.includes(k))];
-    void applyWatched(next);
+    void applyWatched((current) => {
+      const allWatched =
+        keys.length > 0 && keys.every((k) => current.includes(k));
+      return allWatched
+        ? current.filter((k) => !keys.includes(k))
+        : [...current, ...keys.filter((k) => !current.includes(k))];
+    });
   }
 
   if (metaState.status === "loading") {

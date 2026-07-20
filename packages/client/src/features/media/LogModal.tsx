@@ -55,11 +55,16 @@ export function LogModal({
 
   function togglePlatform(p: string) {
     if (!item) return;
-    const has = item.platforms.includes(p);
-    const platforms = has
-      ? item.platforms.filter((x) => x !== p)
-      : [...item.platforms, p];
-    void item.incrementalPatch({ platforms, updatedAt: Date.now() });
+    void item.incrementalModify((docData) => {
+      const has = docData.platforms.includes(p);
+      return {
+        ...docData,
+        platforms: has
+          ? docData.platforms.filter((x) => x !== p)
+          : [...docData.platforms, p],
+        updatedAt: Date.now(),
+      };
+    });
   }
 
   function handleRemove() {
@@ -85,10 +90,11 @@ export function LogModal({
 
   function removeCompletionDate(date: string) {
     if (!item) return;
-    void item.incrementalPatch({
-      completedDates: item.completedDates.filter((d) => d !== date),
+    void item.incrementalModify((docData) => ({
+      ...docData,
+      completedDates: docData.completedDates.filter((d) => d !== date),
       updatedAt: Date.now(),
-    });
+    }));
   }
 
   function handleRating(value: number | null) {
