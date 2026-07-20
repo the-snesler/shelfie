@@ -227,7 +227,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - `packages/client/src/features/media/libraryActions.ts` — `LogTarget` + `newLibraryItem()`, the single choke point every add-to-library path goes through.
 - `packages/client/src/db/replication.ts` — client-side RxDB replication wiring against the sync routes.
 - `packages/client/src/auth.ts` — `authFetch()`, the required wrapper for all authenticated client requests.
-- `.env` (root, gitignored) — `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` / `TMDB_TOKEN` (TMDB API Read Access Token, Bearer). Optional: `GOODREADS_APPSYNC_KEY` (overrides the built-in AppSync api key if Goodreads rotates it). Server also reads `SERVER_PORT` (falls back to `PORT`), `DATABASE_URL`, `DATA_DIR`, `STATIC_DIR`; client (`vite.config.ts`) reads `CLIENT_PORT` and `SERVER_PORT` for its own port and proxy target (all optional, sensible defaults).
+- `.env` (root, gitignored) — `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` / `TMDB_TOKEN` (TMDB API Read Access Token, Bearer). Optional: `GOODREADS_APPSYNC_KEY` (overrides the built-in AppSync api key if Goodreads rotates it). Server also reads `SERVER_PORT` (falls back to `PORT`), `DATABASE_URL`, `DATA_DIR`, `STATIC_DIR`; client (`vite.config.ts`) reads `CLIENT_PORT` and `SERVER_PORT` for its own port and proxy target (all optional, sensible defaults). `.env.example` (root, committed) is the template — `cp .env.example .env` and fill in real values.
 - `turbo.json` — task graph (`build`/`typecheck`/`lint` depend on `^build`; `test`/`dev` don't) + `globalPassThroughEnv` (the allowlist that lets `SERVER_PORT`/`DATA_DIR`/API keys reach tasks under Turbo 2 strict env mode).
 
 ## Runtime/Tooling Preferences
@@ -238,7 +238,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - No path aliases anywhere (`tsconfig.base.json` and every package tsconfig) — cross-package imports go through the `@shelfie/shared` workspace package name, never TS `paths`.
 - TypeScript is strict everywhere (`strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` in `tsconfig.base.json`).
 - No ESLint/Biome configured despite the `lint` script existing — don't assume lint is catching anything until one is added.
-- No CI (`.github/workflows` absent), no Dockerfile — this repo is dev-only today; `aside`'s prod deployment patterns (single-container Docker build, `STATIC_DIR` static serving) are already partially wired server-side (`app.ts`) but not yet exercised by a Dockerfile here.
+- CI (`.github/workflows/ci.yml`) gates every PR: a `checks` job runs `pnpm typecheck` → `pnpm build` → `pnpm test` across the workspace, then a `docker` job builds the Docker image (no push) on PRs and publishes it to GHCR (`ghcr.io/<repo>`) on pushes to `main` via `macbre/push-to-ghcr`. `Dockerfile` (root) is a multi-stage build — deps → build (Turbo `shared`→`client`→`server`) → `pnpm deploy` a prod-only server bundle → a slim runtime stage that serves the built client (`STATIC_DIR=./public`) and API from one container/port (`3001`), persisting SQLite to a `/data` volume. `docker-compose.yml` + `.dockerignore` also live at root; `aside`'s prod deployment patterns (single-container Docker build, `STATIC_DIR` static serving) are the ones this Dockerfile follows.
 
 ## Testing & QA
 
