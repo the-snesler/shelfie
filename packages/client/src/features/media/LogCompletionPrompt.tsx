@@ -36,7 +36,7 @@ export function LogCompletionPrompt({
         <button
           type="button"
           onClick={onSelectToday}
-          className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
+          className="rounded bg-bg px-3 py-1.5 text-sm text-ink ring-1 ring-divider"
         >
           Just now
         </button>

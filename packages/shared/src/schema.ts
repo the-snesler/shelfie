@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 4,
+  version: 5,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -73,7 +73,7 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "updatedAt",
     "watchedEpisodes",
   ],
-  indexes: ["updatedAt"],
+  indexes: ["updatedAt", "status"],
 } as const;
 
 /** Old game-centric status wording → the media-neutral canonical terms
@@ -91,7 +91,9 @@ const LEGACY_STATUS_MAP: Record<string, string> = {
  * `completedDates`, and `notes`. Version 3 splits `progress` into
  * `progressFormat` + `progressValue` (percent data preserved as-is).
  * Version 4 renames game-centric statuses to media-neutral terms and adds
- * `watchedEpisodes`.
+ * `watchedEpisodes`. Version 5 adds an index on `status` (Library grid
+ * excludes finished items via an index-backed query) — no document shape
+ * change, so the migration is the identity function.
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
@@ -109,4 +111,5 @@ export const libraryItemMigrationStrategies: MigrationStrategies = {
     status: LEGACY_STATUS_MAP[oldDoc.status] ?? oldDoc.status,
     watchedEpisodes: [],
   }),
+  5: (oldDoc) => oldDoc,
 };

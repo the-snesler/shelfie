@@ -9,6 +9,7 @@ export type {
 } from "./types.js";
 export {
   ITEM_STATUSES,
+  NON_FINISHED_STATUSES,
   META_STATUSES,
   MEDIA_TYPES,
   STATUS_META_GROUP,

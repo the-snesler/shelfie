@@ -5,9 +5,17 @@ import type {
   MediaType,
   MetaStatus,
   MovieMetadata,
+  TvDetail as TvDetailDto,
   TvMetadata,
+  TvSeason,
 } from "@shelfie/shared";
-import { MEDIA_TYPES, META_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
+import {
+  episodeKey,
+  MEDIA_TYPES,
+  META_STATUSES,
+  NON_FINISHED_STATUSES,
+  STATUS_META_GROUP,
+} from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -44,12 +52,7 @@ import {
 } from "../media/libraryActions";
 import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
-
-const META_LABELS: Record<MetaStatus, string> = {
-  "in-progress": "In Progress",
-  "planned": "Planned",
-  "finished": "Finished",
-};
+import { META_STATUS_LABELS } from "../media/status";
 
 const MEDIA_LABELS: Record<MediaType, string> = {
   movie: "Movies",
@@ -141,6 +144,44 @@ function tvCaption(
   return `${watched}/${meta.numberOfEpisodes} ep`;
 }
 
+/** Poster rendered height (2:3 at MEDIA_LIBRARY_COVER_WIDTH) and the 16:9
+ *  still width matched to it — the still stands the same height as the poster. */
+const TV_STILL_HEIGHT = Math.round(MEDIA_LIBRARY_COVER_WIDTH * 0.9); // 180
+const TV_STILL_WIDTH = Math.round((TV_STILL_HEIGHT * 16) / 9); // 320
+const TV_STILL_GAP = -56;
+
+type NextEpisode = {
+  season: number;
+  episode: number;
+  name: string;
+  stillPath: string | null;
+};
+
+/** First non-special episode (season >= 1) in air order not present in
+ *  `watched`. null when every non-special episode is watched. */
+function nextUnwatched(
+  seasons: TvSeason[],
+  watched: string[],
+): NextEpisode | null {
+  const ordered = [...seasons]
+    .filter((s) => s.seasonNumber !== 0)
+    .sort((a, b) => a.seasonNumber - b.seasonNumber)
+    .flatMap((s) =>
+      [...s.episodes]
+        .sort((a, b) => a.episodeNumber - b.episodeNumber)
+        .map((ep) => ({
+          season: s.seasonNumber,
+          episode: ep.episodeNumber,
+          name: ep.name,
+          stillPath: ep.stillPath,
+        })),
+    );
+  for (const ep of ordered) {
+    if (!watched.includes(episodeKey(ep.season, ep.episode))) return ep;
+  }
+  return null;
+}
+
 function bookCaption(
   item: LibraryItem,
   meta: BookCardDoc | undefined,
@@ -180,11 +221,13 @@ function LibraryItemCard({
   item,
   meta,
   caption,
+  catalog,
 }: {
   db: ShelfieDatabase;
   item: RxDocument<LibraryItem>;
   meta: CardMeta | undefined;
   caption: string | null;
+  catalog?: TvSeason[];
 }) {
   const popover = useLogPopover();
 
@@ -197,6 +240,11 @@ function LibraryItemCard({
   const bookMeta =
     item.mediaType === "book" ? (meta as BookCardDoc | undefined) : undefined;
   const posterMeta = movieMeta ?? tvMeta;
+
+  const nextUp =
+    item.mediaType === "tv" && catalog
+      ? nextUnwatched(catalog, item.watchedEpisodes)
+      : null;
 
   const name =
     gameMeta?.name ??
@@ -223,8 +271,9 @@ function LibraryItemCard({
         )
       : null;
 
-  const cardWidth =
-    item.mediaType === "game"
+  const cardWidth = nextUp
+    ? MEDIA_LIBRARY_COVER_WIDTH + TV_STILL_GAP + TV_STILL_WIDTH
+    : item.mediaType === "game"
       ? gameCoverWidth(platform, LIBRARY_COVER_SCALE)
       : MEDIA_LIBRARY_COVER_WIDTH;
 
@@ -266,6 +315,21 @@ function LibraryItemCard({
       />
     );
 
+  const stillUrl =
+    nextUp?.stillPath != null ? tmdbImageUrl(nextUp.stillPath, "w300") : null;
+
+  async function markNextWatched() {
+    if (!nextUp) return;
+    const key = episodeKey(nextUp.season, nextUp.episode);
+    await item.incrementalModify((docData) => ({
+      ...docData,
+      watchedEpisodes: docData.watchedEpisodes.includes(key)
+        ? docData.watchedEpisodes
+        : [...docData.watchedEpisodes, key],
+      updatedAt: Date.now(),
+    }));
+  }
+
   const logTarget: LogTarget =
     item.mediaType === "game"
       ? {
@@ -285,10 +349,14 @@ function LibraryItemCard({
           ),
         };
 
+  const displayCaption = nextUp
+    ? `S${nextUp.season}E${nextUp.episode} ${nextUp.name}${caption ? ` · ${caption}` : ""}`
+    : caption;
+
   return (
     <div className="flex flex-col" style={{ width: `${cardWidth}px` }}>
       <div
-        className="flex items-end justify-center"
+        className="flex items-end"
         style={{ height: "var(--shelf-cover-h)" }}
       >
         {href ? (
@@ -305,6 +373,28 @@ function LibraryItemCard({
             {coverBox}
           </div>
         )}
+        {nextUp && href && (
+          <Link
+            to={href}
+            viewTransition
+            state={{ coverUrl: cover, platform, name }}
+            className="overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
+            style={{ height: `${TV_STILL_HEIGHT}px`, aspectRatio: "16 / 9" }}
+          >
+            {stillUrl ? (
+              <img
+                src={stillUrl}
+                alt={nextUp.name}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center p-2 text-center text-xs text-muted">
+                {nextUp.name}
+              </div>
+            )}
+          </Link>
+        )}
       </div>
       <div style={{ height: "var(--shelf-ledge-h)" }} aria-hidden />
       <div
@@ -313,20 +403,32 @@ function LibraryItemCard({
       >
         <div className="min-w-0 flex-1 text-left">
           <p className="truncate text-[13px] font-medium text-ink">{name}</p>
-          <p className="truncate text-xs text-muted">{caption}</p>
+          <p className="truncate text-xs text-muted">{displayCaption}</p>
         </div>
-        <button
-          type="button"
-          ref={popover.refs.setReference}
-          {...popover.getReferenceProps()}
-          aria-label="Log activity"
-          onClick={() => popover.setOpen(true)}
-          className="shrink-0 rounded text-xl leading-none text-faint hover:text-accent"
-        >
-          <IconPlus />
-        </button>
+        {nextUp ? (
+          <input
+            type="checkbox"
+            checked={false}
+            aria-label={`Mark S${nextUp.season}E${nextUp.episode} watched`}
+            onChange={() => void markNextWatched()}
+            className="mt-0.5 size-5 shrink-0 cursor-pointer appearance-none rounded-full border-2 border-current bg-transparent text-faint hover:text-accent"
+          />
+        ) : (
+          <button
+            type="button"
+            ref={popover.refs.setReference}
+            {...popover.getReferenceProps()}
+            aria-label="Log activity"
+            onClick={() => popover.setOpen(true)}
+            className="shrink-0 rounded text-xl leading-none text-faint hover:text-accent"
+          >
+            <IconPlus />
+          </button>
+        )}
       </div>
-      <LogPopover popover={popover} db={db} target={logTarget} item={item} />
+      {!nextUp && (
+        <LogPopover popover={popover} db={db} target={logTarget} item={item} />
+      )}
     </div>
   );
 }
@@ -339,6 +441,7 @@ function LibraryItemCard({
  *  when it snapshots the new DOM, not whatever arrives a tick later. */
 let cachedItems: RxDocument<LibraryItem>[] = [];
 let cachedCards: Map<string, CardMeta> = new Map();
+let cachedTvCatalogs: Map<string, TvSeason[]> = new Map();
 
 /** Replaces every entry under `prefix` (a media type's `"<type>:"` id
  *  namespace) with a fresh snapshot from that type's collection, leaving
@@ -360,12 +463,16 @@ export default function Library() {
   const { db } = useOutletContext<AppOutletContext>();
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>(cachedItems);
   const [cards, setCards] = useState<Map<string, CardMeta>>(cachedCards);
+  const [tvCatalogs, setTvCatalogs] =
+    useState<Map<string, TvSeason[]>>(cachedTvCatalogs);
 
   useEffect(() => {
-    const sub = db.library_items.find().$.subscribe((found) => {
-      cachedItems = [...found];
-      setItems(cachedItems);
-    });
+    const sub = db.library_items
+      .find({ selector: { status: { $in: [...NON_FINISHED_STATUSES] } } })
+      .$.subscribe((found) => {
+        cachedItems = [...found];
+        setItems(cachedItems);
+      });
     return () => sub.unsubscribe();
   }, [db]);
 
@@ -416,6 +523,23 @@ export default function Library() {
   }, [items]);
   const idsKey = MEDIA_TYPES.map((t) => idsByType[t] ?? "").join("|");
 
+  const inProgressTvIds = useMemo(
+    () =>
+      [
+        ...new Set(
+          items
+            .filter(
+              (i) =>
+                i.mediaType === "tv" &&
+                STATUS_META_GROUP[i.status] === "in-progress",
+            )
+            .map((i) => i.sourceId),
+        ),
+      ].sort(),
+    [items],
+  );
+  const tvCatalogKey = inProgressTvIds.join(",");
+
   useEffect(() => {
     if (idsByType.game) {
       void authFetch(`/api/games?ids=${idsByType.game}`)
@@ -444,6 +568,29 @@ export default function Library() {
     // idsKey is the stable dependency; idsByType is derived from it each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, idsKey]);
+
+  useEffect(() => {
+    let active = true;
+    for (const id of inProgressTvIds) {
+      if (cachedTvCatalogs.has(`tv:${id}`)) continue;
+      void authFetch(`/api/tv/by-id/${encodeURIComponent(id)}`)
+        .then((res) => (res.ok ? (res.json() as Promise<TvDetailDto>) : null))
+        .then((meta) => {
+          if (!active || !meta) return;
+          cachedTvCatalogs = new Map(cachedTvCatalogs).set(
+            `tv:${meta.tmdbId}`,
+            meta.seasons,
+          );
+          setTvCatalogs(cachedTvCatalogs);
+        })
+        .catch(() => {});
+    }
+    return () => {
+      active = false;
+    };
+    // tvCatalogKey is the stable dep; inProgressTvIds is derived from it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tvCatalogKey]);
 
   const [searchParams] = useSearchParams();
   const typeParam = searchParams.get("type");
@@ -506,7 +653,7 @@ export default function Library() {
         META_STATUSES.filter((g) => grouped.get(g)?.length).map((g) => (
           <section key={g} className="flex flex-col">
             <h2 className="font-display text-xl font-medium text-ink">
-              {META_LABELS[g]}
+              {META_STATUS_LABELS[g]}
               <span className="ml-2 text-sm font-normal text-faint">
                 {grouped.get(g)!.length}
               </span>
@@ -519,6 +666,11 @@ export default function Library() {
                   item={item}
                   meta={cards.get(item.id)}
                   caption={cardCaption(item, cards.get(item.id))}
+                  catalog={
+                    item.mediaType === "tv"
+                      ? tvCatalogs.get(item.id)
+                      : undefined
+                  }
                 />
               ))}
             </div>

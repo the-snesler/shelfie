@@ -75,12 +75,13 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 4 with platforms/rating/completions/notes/progress-format/multi-media migrations", () => {
-    expect(libraryItemSchema.version).toBe(4);
+  it("is at schema version 5 with platforms/rating/completions/notes/progress-format/multi-media/status-index migrations", () => {
+    expect(libraryItemSchema.version).toBe(5);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("4");
+    expect(Object.keys(libraryItemMigrationStrategies)).toContain("5");
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
@@ -125,6 +126,17 @@ describe("library item contract", () => {
     expect(migrate4({ id: "game:1", status: "wishlisted" })).toMatchObject({
       status: "wishlisted",
     });
+    const migrate5 = libraryItemMigrationStrategies[5] as (
+      oldDoc: unknown,
+    ) => unknown;
+    expect(migrate5({ id: "game:1", status: "active" })).toEqual({
+      id: "game:1",
+      status: "active",
+    });
+  });
+
+  it("indexes status for the Library grid's finished-exclusion query", () => {
+    expect(libraryItemSchema.indexes).toContain("status");
   });
 
   it("keeps status a plain string in the RxDB schema (enum lives in zod)", () => {
