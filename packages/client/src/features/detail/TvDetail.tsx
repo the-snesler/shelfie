@@ -12,7 +12,7 @@ import type { Route } from "./+types/TvDetail";
 import { authFetch } from "../../auth";
 import { upsertTvCards } from "../../db/tvCards";
 import { tmdbImageUrl } from "../../images";
-import { newLibraryItem } from "../media/libraryActions";
+import { newLibraryItem, releaseDateFromYear } from "../media/libraryActions";
 import {
   MediaCover,
   MEDIA_DETAIL_COVER_WIDTH,
@@ -227,6 +227,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
               sourceId: String(meta.tmdbId),
               name: meta.name,
               platforms: [],
+              releaseDate: releaseDateFromYear(meta.firstAirYear),
             }}
             item={item}
           />

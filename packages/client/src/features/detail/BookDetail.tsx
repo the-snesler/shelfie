@@ -153,6 +153,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
               sourceId: String(meta.goodreadsId),
               name: meta.name,
               platforms: [],
+              releaseDate: meta.publicationDate,
             }}
             item={item}
           />

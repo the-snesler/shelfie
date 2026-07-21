@@ -38,6 +38,10 @@ import {
   MEDIA_LIBRARY_COVER_WIDTH,
   mediaCoverTransitionName,
 } from "../media/MediaCover";
+import {
+  releaseDateFromEpoch,
+  releaseDateFromYear,
+} from "../media/libraryActions";
 import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
 
@@ -269,12 +273,16 @@ function LibraryItemCard({
           sourceId: item.sourceId,
           name,
           platforms: gameMeta?.platforms ?? [],
+          releaseDate: releaseDateFromEpoch(gameMeta?.firstReleaseDate ?? null),
         }
       : {
           mediaType: item.mediaType,
           sourceId: item.sourceId,
           name,
           platforms: [],
+          releaseDate: releaseDateFromYear(
+            movieMeta?.year ?? tvMeta?.firstAirYear ?? bookMeta?.year ?? null,
+          ),
         };
 
   return (

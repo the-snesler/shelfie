@@ -13,6 +13,7 @@ export default [
     route("movies/:id", "features/detail/MovieDetail.tsx"),
     route("tv/:id", "features/detail/TvDetail.tsx"),
     route("books/:id", "features/detail/BookDetail.tsx"),
+    route("logbook", "features/logbook/Logbook.tsx"),
     route("*", "catch-all.tsx"),
   ]),
 ] satisfies RouteConfig;

@@ -1,12 +1,12 @@
-import type { ItemStatus, MediaType } from "@shelfie/shared";
+import type { ItemStatus, MediaType, MetaStatus } from "@shelfie/shared";
 import { ITEM_STATUSES } from "@shelfie/shared";
 import type { FunctionComponent, SVGProps } from "react";
 import IconHeart from "~icons/tabler/heart";
 import IconStack from "~icons/tabler/stack-2";
-import IconGamepad from "~icons/tabler/device-gamepad-2";
+import IconPlay from "~icons/tabler/player-play";
 import IconPause from "~icons/tabler/player-pause";
 import IconCircleCheck from "~icons/tabler/circle-check";
-import IconTrophy from "~icons/tabler/trophy";
+import IconCircleDashedX from "~icons/tabler/circle-dashed-x";
 import IconRosette from "~icons/tabler/rosette-discount-check";
 
 type IconComponent = FunctionComponent<SVGProps<SVGSVGElement>>;
@@ -53,6 +53,12 @@ export const STATUS_LABELS: Record<MediaType, Record<ItemStatus, string>> = {
   },
 };
 
+export const META_STATUS_LABELS: Record<MetaStatus, string> = {
+  "planned": "Planned",
+  "in-progress": "In Progress",
+  "finished": "Finished",
+};
+
 /** Which statuses each media type's status list/picker exposes, in display
  *  order. Games expose the full canonical set; other media trim statuses
  *  that don't make sense for them (e.g. movies skip `paused`/`completed`). */
@@ -66,10 +72,10 @@ export const STATUSES_BY_MEDIA: Record<MediaType, readonly ItemStatus[]> = {
 export const STATUS_ICONS: Record<ItemStatus, IconComponent> = {
   wishlisted: IconHeart,
   backlogged: IconStack,
-  active: IconGamepad,
+  active: IconPlay,
   paused: IconPause,
-  dropped: IconCircleCheck,
-  finished: IconTrophy,
+  dropped: IconCircleDashedX,
+  finished: IconCircleCheck,
   completed: IconRosette,
 };
 
@@ -83,7 +89,7 @@ export const COMPLETION_STATUSES: Record<ItemStatus, boolean> = {
   backlogged: false,
   active: false,
   paused: false,
-  dropped: true,
+  dropped: false,
   finished: true,
   completed: true,
 };

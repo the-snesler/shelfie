@@ -13,6 +13,7 @@ import {
   selectPlatform,
 } from "../games/platforms";
 import { gameImageUrl } from "../../images";
+import { releaseDateFromEpoch } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
 import {
   Description,
@@ -220,6 +221,7 @@ export default function Detail({ params }: Route.ComponentProps) {
               sourceId: String(meta.igdbId),
               name: meta.name,
               platforms: meta.platforms,
+              releaseDate: releaseDateFromEpoch(meta.firstReleaseDate),
             }}
             item={item}
           />

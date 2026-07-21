@@ -15,6 +15,7 @@ import {
   MEDIA_DETAIL_COVER_WIDTH,
   mediaCoverTransitionName,
 } from "../media/MediaCover";
+import { releaseDateFromYear } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
 import {
   Description,
@@ -157,6 +158,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
               sourceId: String(meta.tmdbId),
               name: meta.name,
               platforms: [],
+              releaseDate: releaseDateFromYear(meta.year),
             }}
             item={item}
           />

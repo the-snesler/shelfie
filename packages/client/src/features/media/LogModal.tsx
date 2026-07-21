@@ -1,18 +1,28 @@
 import { LOG_FORMATS_BY_MEDIA, STATUS_META_GROUP } from "@shelfie/shared";
-import type { ItemStatus, LibraryItem, LogFormat } from "@shelfie/shared";
+import type {
+  ItemStatus,
+  LibraryItem,
+  LogFormat,
+  MetaStatus,
+} from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useState } from "react";
-import IconX from "~icons/tabler/x";
 import type { ShelfieDatabase } from "../../db/database";
-import { StarRating } from "../detail/StarRating";
 import type { LogTarget } from "./libraryActions";
 import { newLibraryItem } from "./libraryActions";
 import {
   COMPLETION_STATUSES,
-  STATUS_ICONS,
   STATUS_LABELS,
   STATUSES_BY_MEDIA,
 } from "./status";
+import { LogCompletedDates } from "./LogCompletedDates";
+import { LogCompletionPrompt } from "./LogCompletionPrompt";
+import { LogHeader } from "./LogHeader";
+import { LogNotesField } from "./LogNotesField";
+import { LogPlatformSection } from "./LogPlatformSection";
+import { LogProgressSection } from "./LogProgressSection";
+import { LogRatingSection } from "./LogRatingSection";
+import { LogStatusSection } from "./LogStatusSection";
 
 const FORMAT_LABELS: Record<LogFormat, string> = {
   hours: "Hours",
@@ -40,16 +50,30 @@ export function LogModal({
   item: RxDocument<LibraryItem> | null;
   onClose: () => void;
 }) {
-  const [datePrompt, setDatePrompt] = useState<{ date: string } | null>(null);
+  const [datePrompt, setDatePrompt] = useState<{
+    status: ItemStatus;
+    date: string;
+    picking: boolean;
+  } | null>(null);
 
   function handleStatusChange(status: ItemStatus) {
+    // Completion statuses defer the actual write until a date is chosen
+    // (see commitCompletion) — writing immediately would move the item to
+    // a different library-grid section right away, unmounting this popover
+    // mid-prompt.
+    if (COMPLETION_STATUSES[status]) {
+      setDatePrompt({
+        status,
+        date: toLocalIsoDate(new Date()),
+        picking: false,
+      });
+      return;
+    }
+    setDatePrompt(null);
     if (item) {
       void item.incrementalPatch({ status, updatedAt: Date.now() });
     } else {
       void db.library_items.insert(newLibraryItem(target, status));
-    }
-    if (COMPLETION_STATUSES[status]) {
-      setDatePrompt({ date: toLocalIsoDate(new Date()) });
     }
   }
 
@@ -75,17 +99,36 @@ export function LogModal({
     onClose();
   }
 
-  async function addCompletionDate(date: string) {
-    if (!date) return;
-    const doc = await db.library_items
-      .findOne(`${target.mediaType}:${target.sourceId}`)
-      .exec();
+  /** Commits the pending status (set by handleStatusChange, held in
+   *  datePrompt.status) together with the chosen completion date in one
+   *  write — the status change and the answer to "when did you finish
+   *  it?" land atomically, only once the prompt is answered. `date` is
+   *  null for "Unknown date" (status set, no date recorded). */
+  async function commitCompletion(date: string | null) {
+    const status = datePrompt?.status;
+    if (!status) return;
     setDatePrompt(null);
-    if (!doc || doc.completedDates.includes(date)) return;
-    await doc.incrementalPatch({
-      completedDates: [...doc.completedDates, date],
-      updatedAt: Date.now(),
-    });
+    if (item) {
+      const doc = await db.library_items
+        .findOne(`${target.mediaType}:${target.sourceId}`)
+        .exec();
+      if (!doc) return;
+      const completedDates =
+        date && !doc.completedDates.includes(date)
+          ? [...doc.completedDates, date]
+          : doc.completedDates;
+      await doc.incrementalPatch({
+        status,
+        completedDates,
+        updatedAt: Date.now(),
+      });
+    } else {
+      const base = newLibraryItem(target, status);
+      await db.library_items.insert({
+        ...base,
+        completedDates: date ? [date] : [],
+      });
+    }
   }
 
   function removeCompletionDate(date: string) {
@@ -113,222 +156,73 @@ export function LogModal({
   }
 
   const statuses = STATUSES_BY_MEDIA[target.mediaType];
+  const groupedStatuses = Object.entries(
+    statuses.reduce(
+      (acc, status) => {
+        acc[STATUS_META_GROUP[status]] = [
+          ...(acc[STATUS_META_GROUP[status]] ?? []),
+          status,
+        ];
+        return acc;
+      },
+      {} as Record<MetaStatus, ItemStatus[]>,
+    ),
+  ) as [MetaStatus, ItemStatus[]][];
   const labels = STATUS_LABELS[target.mediaType];
   const formats = LOG_FORMATS_BY_MEDIA[target.mediaType];
 
+  const releaseDate = target.releaseDate;
+
   return (
-    <div data-log-scroll className="flex flex-col gap-3 overflow-y-auto p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-ink">{target.name}</h2>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={onClose}
-          className="text-muted hover:text-ink"
-        >
-          <IconX />
-        </button>
-      </div>
-      <div className="flex flex-col gap-1">
-        {statuses.map((status) => {
-          const Icon = STATUS_ICONS[status];
-          const active = item?.status === status;
-          return (
-            <button
-              key={status}
-              type="button"
-              onClick={() => handleStatusChange(status)}
-              className={
-                active
-                  ? "flex items-center gap-2 rounded bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
-                  : "flex items-center gap-2 rounded bg-bg px-3 py-2 text-sm text-ink ring-1 ring-divider"
-              }
-            >
-              <Icon />
-              {labels[status]}
-            </button>
-          );
-        })}
-      </div>
-      {item && target.mediaType === "game" && target.platforms.length > 0 && (
-        <fieldset className="flex flex-col gap-1 text-sm font-medium text-muted">
-          <legend>Platform</legend>
-          <div className="flex flex-wrap gap-2">
-            {target.platforms.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => togglePlatform(p)}
-                className={
-                  item.platforms.includes(p)
-                    ? "rounded bg-accent px-2 py-1 text-xs font-medium text-accent-ink"
-                    : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
+    <div data-log-scroll className="flex flex-col gap-3 overflow-y-auto p-3">
+      <LogHeader targetName={target.name} onClose={onClose} />
+      <LogStatusSection
+        statuses={groupedStatuses}
+        labels={labels}
+        activeStatus={datePrompt?.status ?? item?.status ?? null}
+        onSelectStatus={handleStatusChange}
+      />
+      <LogCompletionPrompt
+        prompt={datePrompt}
+        releaseDate={releaseDate ?? null}
+        onSelectToday={() => void commitCompletion(toLocalIsoDate(new Date()))}
+        onSelectReleaseDate={() => void commitCompletion(releaseDate ?? null)}
+        onChooseOtherDate={(status) =>
+          setDatePrompt({
+            status: status as ItemStatus,
+            date: toLocalIsoDate(new Date()),
+            picking: true,
+          })
+        }
+        onDateChange={(date) =>
+          setDatePrompt((current) =>
+            current
+              ? {
+                  status: current.status,
+                  date,
+                  picking: true,
                 }
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      )}
-      {item &&
-        formats.length > 0 &&
-        STATUS_META_GROUP[item.status] !== "planned" && (
-          <div className="flex flex-col gap-2">
-            {formats.length > 1 && (
-              <div className="flex gap-2">
-                {formats.map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => handleFormatChange(f)}
-                    className={
-                      item.progressFormat === f
-                        ? "rounded bg-accent px-2 py-1 text-xs font-medium text-accent-ink"
-                        : "rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider"
-                    }
-                  >
-                    {FORMAT_LABELS[f]}
-                  </button>
-                ))}
-              </div>
-            )}
-            {item.progressFormat === "hours" ? (
-              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-                Hours played ({item.progressValue ?? 0}h)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  value={item.progressValue ?? 0}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    void item.incrementalPatch({
-                      progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
-                      updatedAt: Date.now(),
-                    });
-                  }}
-                  className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-                />
-              </label>
-            ) : item.progressFormat === "pages" ? (
-              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-                Pages read ({item.progressValue ?? 0}p)
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={item.progressValue ?? 0}
-                  onChange={(e) => {
-                    const n = Math.trunc(Number(e.target.value));
-                    void item.incrementalPatch({
-                      progressValue: Number.isFinite(n) && n >= 0 ? n : 0,
-                      updatedAt: Date.now(),
-                    });
-                  }}
-                  className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-                />
-              </label>
-            ) : (
-              <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-                Progress ({item.progressValue ?? 0}%)
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={item.progressValue ?? 0}
-                  onChange={(e) => {
-                    void item.incrementalPatch({
-                      progressValue: Number(e.target.value),
-                      updatedAt: Date.now(),
-                    });
-                  }}
-                />
-              </label>
-            )}
-          </div>
-        )}
-      {item && (
-        <div className="flex flex-col gap-1 text-sm font-medium text-muted">
-          Rating
-          <StarRating value={item.rating} onChange={handleRating} />
-        </div>
-      )}
-      {item && item.completedDates.length > 0 && (
-        <div className="flex flex-col gap-1 text-sm font-medium text-muted">
-          Completed
-          <div className="flex flex-wrap gap-2">
-            {[...item.completedDates]
-              .sort()
-              .reverse()
-              .map((date) => (
-                <button
-                  key={date}
-                  type="button"
-                  onClick={() => removeCompletionDate(date)}
-                  title="Click to remove"
-                  className="group flex items-center gap-1 rounded bg-bg px-2 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent"
-                >
-                  {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                  <IconX className="opacity-0 group-hover:opacity-100" />
-                </button>
-              ))}
-          </div>
-        </div>
-      )}
-      {item && (
-        <label className="flex flex-col gap-1 text-sm font-medium text-muted">
-          Notes
-          <textarea
-            key={item.id}
-            defaultValue={item.notes}
-            onBlur={(e) => {
-              if (e.target.value !== item.notes) {
-                void item.incrementalPatch({
-                  notes: e.target.value,
-                  updatedAt: Date.now(),
-                });
-              }
-            }}
-            rows={4}
-            className="rounded bg-bg px-3 py-2 text-ink ring-1 ring-divider"
-          />
-        </label>
-      )}
-      {datePrompt && (
-        <div className="flex flex-col gap-3 rounded border border-divider bg-bg p-4">
-          <p className="text-sm font-medium text-ink">
-            When did you finish it?
-          </p>
-          <input
-            type="date"
-            value={datePrompt.date}
-            onChange={(e) => setDatePrompt({ date: e.target.value })}
-            className="rounded bg-panel px-3 py-2 text-ink ring-1 ring-divider"
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setDatePrompt(null)}
-              className="rounded px-3 py-1 text-sm text-muted hover:text-ink"
-            >
-              Skip
-            </button>
-            <button
-              type="button"
-              onClick={() => void addCompletionDate(datePrompt.date)}
-              className="rounded bg-accent px-3 py-1 text-sm font-medium text-accent-ink"
-            >
-              Add date
-            </button>
-          </div>
-        </div>
-      )}
+              : current,
+          )
+        }
+        onCommitDate={(date) => void commitCompletion(date)}
+        onCommitUnknown={() => void commitCompletion(null)}
+      />
+      <LogPlatformSection
+        mediaType={target.mediaType}
+        platforms={target.platforms}
+        selectedPlatforms={item?.platforms ?? []}
+        onTogglePlatform={togglePlatform}
+      />
+      <LogProgressSection
+        item={item}
+        formats={formats}
+        formatLabels={FORMAT_LABELS}
+        onChangeFormat={handleFormatChange}
+      />
+      <LogRatingSection item={item} onChange={handleRating} />
+      <LogCompletedDates item={item} onRemove={removeCompletionDate} />
+      <LogNotesField item={item} />
       {item && (
         <button
           type="button"
