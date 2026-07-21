@@ -9,6 +9,7 @@ import {
   useFloating,
   useInteractions,
   useRole,
+  useTransitionStyles,
 } from "@floating-ui/react";
 import type {
   ExtendedRefs,
@@ -26,10 +27,12 @@ import { useRef, useState } from "react";
 export interface LogPopoverState {
   open: boolean;
   setOpen: (open: boolean) => void;
+  isMounted: boolean;
+  transitionStyles: React.CSSProperties;
   refs: ExtendedRefs<ReferenceType>;
   floatingStyles: React.CSSProperties;
   context: FloatingContext;
-  arrowRef: React.RefObject<SVGSVGElement>;
+  arrowRef: React.RefObject<SVGSVGElement | null>;
   getReferenceProps: UseInteractionsReturn["getReferenceProps"];
   getFloatingProps: UseInteractionsReturn["getFloatingProps"];
 }
@@ -43,12 +46,12 @@ export interface LogPopoverState {
  * `<LogPopover popover={...} />`, which renders the anchored panel.
  */
 export function useLogPopover(): LogPopoverState {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const arrowRef = useRef<SVGSVGElement>(null);
 
-  const { refs, floatingStyles, context } = useFloating({
-    open,
-    onOpenChange: setOpen,
+  const { refs, floatingStyles, context, middlewareData } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
     placement: "bottom-start",
     middleware: [
       offset(10),
@@ -64,11 +67,33 @@ export function useLogPopover(): LogPopoverState {
           }
         },
       }),
-      arrow({ element: arrowRef }),
+      arrow({ padding: 10, element: arrowRef }),
     ],
     whileElementsMounted: autoUpdate,
   });
 
+  const ARROW_WIDTH = 16;
+  const ARROW_HEIGHT = 14;
+  const arrowX = middlewareData.arrow?.x ?? 0;
+  const arrowY = middlewareData.arrow?.y ?? 0;
+  const transformX = arrowX + ARROW_WIDTH / 2;
+  const transformY = arrowY + ARROW_HEIGHT;
+
+  const { isMounted, styles: transitionStyles } = useTransitionStyles(context, {
+    initial: () => ({
+      transform: "scale(0.95)",
+      opacity: 0,
+    }),
+    common: ({ side }) => ({
+      transformOrigin: {
+        top: `${transformX}px calc(100% + ${ARROW_HEIGHT}px)`,
+        bottom: `${transformX}px ${-ARROW_HEIGHT}px`,
+        left: `calc(100% + ${ARROW_HEIGHT}px) ${transformY}px`,
+        right: `${-ARROW_HEIGHT}px ${transformY}px`,
+      }[side],
+    }),
+  });
+  
   const dismiss = useDismiss(context);
   const role = useRole(context);
   const { getReferenceProps, getFloatingProps } = useInteractions([
@@ -77,8 +102,10 @@ export function useLogPopover(): LogPopoverState {
   ]);
 
   return {
-    open,
-    setOpen,
+    open: isOpen,
+    setOpen: setIsOpen,
+    isMounted,
+    transitionStyles,
     refs,
     floatingStyles,
     context,

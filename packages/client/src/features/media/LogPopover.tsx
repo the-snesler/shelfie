@@ -26,8 +26,9 @@ export function LogPopover({
   item: RxDocument<LibraryItem> | null;
 }) {
   const {
-    open,
     setOpen,
+    isMounted,
+    transitionStyles,
     refs,
     floatingStyles,
     context,
@@ -35,32 +36,36 @@ export function LogPopover({
     getFloatingProps,
   } = popover;
 
-  if (!open) return null;
-
   return (
     <FloatingPortal>
-      <FloatingFocusManager context={context}>
-        <div
-          ref={refs.setFloating}
-          style={floatingStyles}
-          {...getFloatingProps()}
-          className="z-50 w-80 rounded border border-divider bg-panel shadow-lg"
-        >
-          <FloatingArrow
-            ref={arrowRef}
-            context={context}
-            className="fill-panel"
-            strokeWidth={1}
-            stroke="var(--color-divider)"
-          />
-          <LogModal
-            db={db}
-            target={target}
-            item={item}
-            onClose={() => setOpen(false)}
-          />
-        </div>
-      </FloatingFocusManager>
+      {isMounted && (
+        <FloatingFocusManager context={context}>
+          <div
+            ref={refs.setFloating}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            <div
+              style={transitionStyles}
+              className="w-80 rounded border border-divider bg-panel relative"
+            >
+              <LogModal
+                db={db}
+                target={target}
+                item={item}
+                onClose={() => setOpen(false)}
+              />
+              <FloatingArrow
+                ref={arrowRef}
+                context={context}
+                className="fill-panel"
+                strokeWidth={1}
+                stroke="var(--color-divider)"
+              />
+            </div>
+          </div>
+        </FloatingFocusManager>
+      )}
     </FloatingPortal>
   );
 }
