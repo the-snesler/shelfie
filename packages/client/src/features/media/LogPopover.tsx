@@ -44,6 +44,7 @@ export function LogPopover({
             ref={refs.setFloating}
             style={floatingStyles}
             {...getFloatingProps()}
+            className="z-50"
           >
             <div
               style={transitionStyles}

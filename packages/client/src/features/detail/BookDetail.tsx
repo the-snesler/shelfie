@@ -14,6 +14,7 @@ import {
 import { StatusControl } from "../media/StatusControl";
 import {
   Description,
+  DetailBodySkeleton,
   DetailCard,
   DetailHero,
   DetailPage,
@@ -96,6 +97,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
             />
           }
         />
+        <DetailBodySkeleton />
       </DetailPage>
     );
   }

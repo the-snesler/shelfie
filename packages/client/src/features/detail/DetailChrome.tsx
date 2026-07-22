@@ -207,3 +207,24 @@ export function NotFound({
     </div>
   );
 }
+
+export function SkeletonBlock({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-well/70 ${className ?? ""}`} />;
+}
+
+/** Body placeholder rendered under the hero while a detail screen's fetch
+ *  is in flight — a description paragraph and a section, roughed in with
+ *  pulsing bars so the page reads as loading instead of a bare cover. */
+export function DetailBodySkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <SkeletonBlock className="h-3 w-3/4" />
+        <SkeletonBlock className="h-3 w-full" />
+        <SkeletonBlock className="h-3 w-5/6" />
+        <SkeletonBlock className="h-3 w-2/3" />
+      </div>
+      <SkeletonBlock className="h-40" />
+    </div>
+  );
+}

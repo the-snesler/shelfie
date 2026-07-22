@@ -25,6 +25,7 @@ import {
   useViewTransitionState,
 } from "react-router";
 import IconPlus from "~icons/tabler/plus";
+import { AnimatePresence, motion } from "motion/react";
 import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
 import { gameImageUrl, tmdbImageUrl } from "../../images";
@@ -53,6 +54,7 @@ import {
 import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
 import { META_STATUS_LABELS } from "../media/status";
+import { formatRuntime } from "../media/duration";
 
 const MEDIA_LABELS: Record<MediaType, string> = {
   movie: "Movies",
@@ -125,7 +127,8 @@ function gameCaption(
 }
 
 function movieCaption(meta: MovieCardDoc | undefined): string | null {
-  if (meta?.runtime != null) return `${meta.runtime}m`;
+  const runtime = formatRuntime(meta?.runtime ?? null);
+  if (runtime) return runtime;
   if (meta?.year != null) return String(meta.year);
   return null;
 }
@@ -162,6 +165,7 @@ type NextEpisode = {
 function nextUnwatched(
   seasons: TvSeason[],
   watched: string[],
+  skipKey?: string,
 ): NextEpisode | null {
   const ordered = [...seasons]
     .filter((s) => s.seasonNumber !== 0)
@@ -177,7 +181,8 @@ function nextUnwatched(
         })),
     );
   for (const ep of ordered) {
-    if (!watched.includes(episodeKey(ep.season, ep.episode))) return ep;
+    const key = episodeKey(ep.season, ep.episode);
+    if (key !== skipKey && !watched.includes(key)) return ep;
   }
   return null;
 }
@@ -318,6 +323,26 @@ function LibraryItemCard({
   const stillUrl =
     nextUp?.stillPath != null ? tmdbImageUrl(nextUp.stillPath, "w300") : null;
 
+  const followingUp =
+    catalog && nextUp
+      ? nextUnwatched(
+          catalog,
+          item.watchedEpisodes,
+          episodeKey(nextUp.season, nextUp.episode),
+        )
+      : null;
+  const followingStillUrl = followingUp?.stillPath
+    ? tmdbImageUrl(followingUp.stillPath, "w300")
+    : null;
+
+  useEffect(() => {
+    if (!followingStillUrl) return;
+    const image = new Image();
+    image.decoding = "async";
+    image.src = followingStillUrl;
+    void image.decode().catch(() => {});
+  }, [followingStillUrl]);
+
   async function markNextWatched() {
     if (!nextUp) return;
     const key = episodeKey(nextUp.season, nextUp.episode);
@@ -378,21 +403,32 @@ function LibraryItemCard({
             to={href}
             viewTransition
             state={{ coverUrl: cover, platform, name }}
-            className="overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
+            className="relative overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
             style={{ height: `${TV_STILL_HEIGHT}px`, aspectRatio: "16 / 9" }}
           >
-            {stillUrl ? (
-              <img
-                src={stillUrl}
-                alt={nextUp.name}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center p-2 text-center text-xs text-muted">
-                {nextUp.name}
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={episodeKey(nextUp.season, nextUp.episode)}
+                initial={{ opacity: 0, x: 28 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -28 }}
+                transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                className="absolute inset-0"
+              >
+                {stillUrl ? (
+                  <img
+                    src={stillUrl}
+                    alt={nextUp.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center p-2 text-center text-xs text-muted">
+                    {nextUp.name}
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </Link>
         )}
       </div>
@@ -403,7 +439,24 @@ function LibraryItemCard({
       >
         <div className="min-w-0 flex-1 text-left">
           <p className="truncate text-[13px] font-medium text-ink">{name}</p>
-          <p className="truncate text-xs text-muted">{displayCaption}</p>
+          {nextUp ? (
+            <div className="relative h-4 overflow-hidden">
+              <AnimatePresence initial={false}>
+                <motion.p
+                  key={episodeKey(nextUp.season, nextUp.episode)}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  className="absolute inset-x-0 top-0 truncate text-xs text-muted"
+                >
+                  {displayCaption}
+                </motion.p>
+              </AnimatePresence>
+            </div>
+          ) : (
+            <p className="truncate text-xs text-muted">{displayCaption}</p>
+          )}
         </div>
         {nextUp ? (
           <input

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import {
   clearAuthToken,
   getAuthStatus,
@@ -10,6 +10,7 @@ import {
 import { AuthScreen } from "./AuthScreen";
 import { getDatabase, type ShelfieDatabase } from "./db/database";
 import { startReplication, stopReplication } from "./db/replication";
+import IconMenu2 from "~icons/tabler/menu-2";
 import { Sidebar } from "./features/layout/Sidebar";
 
 export type AuthMode = "checking" | "setup" | "login" | "app" | "unreachable";
@@ -87,6 +88,8 @@ export default function App() {
 
 function AuthedApp({ onLogout }: { onLogout: () => void }) {
   const [db, setDb] = useState<ShelfieDatabase | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     let active = true;
@@ -104,6 +107,10 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
     };
   }, []);
 
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
+
   if (!db) {
     return (
       <div className="flex h-full items-center justify-center text-muted">
@@ -113,8 +120,25 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className="flex h-full">
-      <Sidebar onLogout={onLogout} />
+    <div className="flex h-full flex-col md:flex-row">
+      <div className="flex items-center gap-3 border-b border-divider bg-sidebar px-4 py-3 md:hidden">
+        <button
+          type="button"
+          onClick={() => setNavOpen(true)}
+          title="Open menu"
+          className="rounded-md p-1.5 text-muted hover:bg-well hover:text-ink"
+        >
+          <IconMenu2 className="size-5" />
+        </button>
+        <span className="font-display text-lg font-semibold tracking-tight text-ink">
+          Shelfie
+        </span>
+      </div>
+      <Sidebar
+        onLogout={onLogout}
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+      />
       <main className="room-light min-h-0 min-w-0 flex-1 overflow-y-auto">
         <Outlet context={{ db } satisfies AppOutletContext} />
       </main>

@@ -22,6 +22,7 @@ import { StatusControl } from "../media/StatusControl";
 import {
   Description,
   DetailBackdrop,
+  DetailBodySkeleton,
   DetailCard,
   DetailHero,
   DetailPage,
@@ -164,6 +165,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
             />
           }
         />
+        <DetailBodySkeleton />
       </DetailPage>
     );
   }

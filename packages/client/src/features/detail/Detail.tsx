@@ -13,10 +13,12 @@ import {
   selectPlatform,
 } from "../games/platforms";
 import { gameImageUrl } from "../../images";
+import { Lightbox } from "./Lightbox";
 import { releaseDateFromEpoch } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
 import {
   Description,
+  DetailBodySkeleton,
   DetailCard,
   DetailHero,
   DetailPage,
@@ -69,6 +71,7 @@ export default function Detail({ params }: Route.ComponentProps) {
   const [item, setItem] = useState<RxDocument<LibraryItem> | null | undefined>(
     undefined,
   );
+  const [lightbox, setLightbox] = useState<number | null>(null);
 
   useEffect(() => {
     setMetaState({ status: "loading" });
@@ -134,6 +137,7 @@ export default function Detail({ params }: Route.ComponentProps) {
             />
           }
         />
+        <DetailBodySkeleton />
       </DetailPage>
     );
   }
@@ -240,23 +244,32 @@ export default function Detail({ params }: Route.ComponentProps) {
       {meta.screenshotImageIds.length > 0 && (
         <DetailSection title="Screenshots">
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-            {meta.screenshotImageIds.map((id) => (
-              <a
+            {meta.screenshotImageIds.map((id, i) => (
+              <button
                 key={id}
-                target="_blank"
-                rel="noreferrer"
-                href={gameImageUrl("t_1080p", id)}
+                type="button"
+                onClick={() => setLightbox(i)}
                 className="shrink-0"
               >
                 <img
                   loading="lazy"
                   src={gameImageUrl("t_screenshot_med", id)}
-                  className="h-28 w-auto rounded-lg object-cover ring-1 ring-divider"
+                  className="h-28 w-auto rounded-lg object-contain ring-1 ring-divider"
                 />
-              </a>
+              </button>
             ))}
           </div>
         </DetailSection>
+      )}
+      {lightbox !== null && (
+        <Lightbox
+          images={meta.screenshotImageIds.map((id) =>
+            gameImageUrl("t_1080p", id),
+          )}
+          index={lightbox}
+          onClose={() => setLightbox(null)}
+          onIndexChange={setLightbox}
+        />
       )}
       <TrailerChips videos={meta.videos} />
       {(detailRows.length > 0 || meta.stores.length > 0) && (

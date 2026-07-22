@@ -16,10 +16,12 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { releaseDateFromYear } from "../media/libraryActions";
+import { formatRuntime } from "../media/duration";
 import { StatusControl } from "../media/StatusControl";
 import {
   Description,
   DetailBackdrop,
+  DetailBodySkeleton,
   DetailCard,
   DetailHero,
   DetailPage,
@@ -101,6 +103,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
             />
           }
         />
+        <DetailBodySkeleton />
       </DetailPage>
     );
   }
@@ -125,7 +128,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
         lines={[
           [
             meta.year,
-            meta.runtime != null && meta.runtime > 0 && `${meta.runtime} min`,
+            formatRuntime(meta.runtime),
             meta.certification,
           ]
             .filter(Boolean)
