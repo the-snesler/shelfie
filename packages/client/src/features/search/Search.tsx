@@ -52,11 +52,11 @@ const SEARCH_ENDPOINTS: Record<MediaType, string> = {
 /** Section order in the unfiltered ("All") view. */
 const MEDIA_ORDER: readonly MediaType[] = ["game", "movie", "tv", "book"];
 
-const SECTION_LABELS: Record<MediaType, string> = {
-  game: "Games",
-  movie: "Movies",
-  tv: "TV Shows",
-  book: "Books",
+const MEDIA_LABELS: Record<MediaType, string> = {
+  game: "Game",
+  movie: "Movie",
+  tv: "TV Show",
+  book: "Book",
 };
 
 /** Max rows per section in the "All" view; pick a filter for the full list. */
@@ -89,23 +89,33 @@ function OnShelfBadge() {
  *  name/meta + library badge. Own component so `useViewTransitionState` gets
  *  a stable hook call per result rather than inside a `.map()` callback. */
 function SearchResultRow({
+  db,
   result,
   inLibrary,
+  typeLabel,
 }: {
+  db: ShelfieDatabase;
   result: SearchResult;
   inLibrary: boolean;
+  typeLabel?: string;
 }) {
   const href = `/games/${encodeURIComponent(result.slug)}`;
   const isTransitioning = useViewTransitionState(href);
   const platform = selectPlatform([], result.platforms, []);
+  const target: LogTarget = {
+    mediaType: "game",
+    sourceId: String(result.igdbId),
+    name: result.name,
+    platforms: result.platforms,
+  };
 
   return (
-    <li>
+    <li className="flex w-full items-center gap-4 rounded-lg p-2 hover:bg-well/70">
       <Link
         to={href}
         viewTransition
         state={{ coverUrl: result.coverUrl, platform, name: result.name }}
-        className="flex w-full items-center gap-4 rounded-lg p-2 text-left hover:bg-well/70"
+        className="flex min-w-0 flex-1 items-center gap-4 text-left"
       >
         <div className="shrink-0">
           <GameCover
@@ -121,11 +131,26 @@ function SearchResultRow({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-ink">{result.name}</p>
           <p className="truncate text-xs text-muted">
-            {[result.year, ...result.platforms].filter(Boolean).join(" · ")}
+            {[typeLabel, result.year, ...result.platforms]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
-        {inLibrary && <OnShelfBadge />}
       </Link>
+      {inLibrary ? (
+        <OnShelfBadge />
+      ) : (
+        <button
+          type="button"
+          aria-label="Add to library"
+          onClick={() =>
+            void db.library_items.insert(newLibraryItem(target, "backlogged"))
+          }
+          className="shrink-0 rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
+        >
+          <IconPlus />
+        </button>
+      )}
     </li>
   );
 }
@@ -142,6 +167,7 @@ function MediaSearchResultRow({
   meta,
   sourceId,
   inLibrary,
+  typeLabel,
 }: {
   db: ShelfieDatabase;
   mediaType: Exclude<MediaType, "game">;
@@ -151,9 +177,11 @@ function MediaSearchResultRow({
   meta: string | null;
   sourceId: string;
   inLibrary: boolean;
+  typeLabel?: string;
 }) {
   const target: LogTarget = { mediaType, sourceId, name, platforms: [] };
   const isTransitioning = useViewTransitionState(href);
+  const subtitle = [typeLabel, meta].filter(Boolean).join(" · ");
 
   return (
     <li className="flex w-full items-center gap-4 rounded-lg p-2 hover:bg-well/70">
@@ -178,7 +206,9 @@ function MediaSearchResultRow({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-ink">{name}</p>
-          {meta && <p className="truncate text-xs text-muted">{meta}</p>}
+          {subtitle && (
+            <p className="truncate text-xs text-muted">{subtitle}</p>
+          )}
         </div>
       </Link>
       {inLibrary ? (
@@ -217,7 +247,9 @@ export default function Search() {
   const [buckets, setBuckets] = useState<ResultBuckets>(
     query.trim() === cachedDebounced ? cachedBuckets : EMPTY_BUCKETS,
   );
-  const [pending, setPending] = useState(0);
+  const [settled, setSettled] = useState<ReadonlySet<MediaType>>(
+    query.trim() === cachedDebounced ? new Set(MEDIA_ORDER) : new Set(),
+  );
   const [failed, setFailed] = useState<ReadonlySet<MediaType>>(new Set());
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
 
@@ -240,13 +272,10 @@ export default function Search() {
     cachedBuckets = EMPTY_BUCKETS;
     setBuckets(EMPTY_BUCKETS);
     setFailed(new Set());
-    if (!debounced) {
-      setPending(0);
-      return;
-    }
+    setSettled(new Set());
+    if (!debounced) return;
 
     let active = true;
-    setPending(MEDIA_ORDER.length);
     for (const mediaType of MEDIA_ORDER) {
       void authFetch(
         `${SEARCH_ENDPOINTS[mediaType]}?q=${encodeURIComponent(debounced)}`,
@@ -269,7 +298,7 @@ export default function Search() {
           }
         })
         .finally(() => {
-          if (active) setPending((n) => n - 1);
+          if (active) setSettled((prev) => new Set(prev).add(mediaType));
         });
     }
     return () => {
@@ -282,8 +311,9 @@ export default function Search() {
     setFilter(next);
   }
 
-  const loading = pending > 0;
   const visible = filter === "all" ? MEDIA_ORDER : [filter];
+  const visibleSettled = visible.every((mediaType) => settled.has(mediaType));
+  const loading = !!debounced && !visibleSettled;
   const visibleCount = visible.reduce(
     (sum, mediaType) => sum + buckets[mediaType].length,
     0,
@@ -291,115 +321,103 @@ export default function Search() {
   const allVisibleFailed =
     visible.length > 0 && visible.every((mediaType) => failed.has(mediaType));
 
-  function renderSection(mediaType: MediaType) {
-    const cap = filter === "all" ? ALL_VIEW_SECTION_CAP : Infinity;
-    let rows: React.ReactNode[];
+  function renderRow(
+    mediaType: MediaType,
+    index: number,
+    withType: boolean,
+  ): React.ReactNode {
+    const typeLabel = withType ? MEDIA_LABELS[mediaType] : undefined;
     switch (mediaType) {
-      case "game":
-        rows = buckets.game
-          .slice(0, cap)
-          .map((result) => (
-            <SearchResultRow
-              key={`game:${result.igdbId}`}
-              result={result}
-              inLibrary={existingIds.has(`game:${result.igdbId}`)}
-            />
-          ));
-        break;
-      case "movie":
-        rows = buckets.movie
-          .slice(0, cap)
-          .map((result) => (
-            <MediaSearchResultRow
-              key={`movie:${result.tmdbId}`}
-              db={db}
-              mediaType="movie"
-              href={`/movies/${result.tmdbId}`}
-              coverUrl={
-                result.posterPath
-                  ? tmdbImageUrl(result.posterPath, "w342")
-                  : null
-              }
-              name={result.name}
-              meta={result.year != null ? String(result.year) : null}
-              sourceId={String(result.tmdbId)}
-              inLibrary={existingIds.has(`movie:${result.tmdbId}`)}
-            />
-          ));
-        break;
-      case "tv":
-        rows = buckets.tv
-          .slice(0, cap)
-          .map((result) => (
-            <MediaSearchResultRow
-              key={`tv:${result.tmdbId}`}
-              db={db}
-              mediaType="tv"
-              href={`/tv/${result.tmdbId}`}
-              coverUrl={
-                result.posterPath
-                  ? tmdbImageUrl(result.posterPath, "w342")
-                  : null
-              }
-              name={result.name}
-              meta={result.year != null ? String(result.year) : null}
-              sourceId={String(result.tmdbId)}
-              inLibrary={existingIds.has(`tv:${result.tmdbId}`)}
-            />
-          ));
-        break;
-      case "book":
-        rows = buckets.book
-          .slice(0, cap)
-          .map((result) => (
-            <MediaSearchResultRow
-              key={`book:${result.goodreadsId}`}
-              db={db}
-              mediaType="book"
-              href={`/books/${result.goodreadsId}`}
-              coverUrl={result.coverUrl}
-              name={result.name}
-              meta={
-                [result.authors.join(", "), result.year]
-                  .filter(Boolean)
-                  .join(" · ") || null
-              }
-              sourceId={String(result.goodreadsId)}
-              inLibrary={existingIds.has(`book:${result.goodreadsId}`)}
-            />
-          ));
-        break;
+      case "game": {
+        const result = buckets.game[index];
+        return (
+          <SearchResultRow
+            key={`game:${result.igdbId}`}
+            db={db}
+            result={result}
+            typeLabel={typeLabel}
+            inLibrary={existingIds.has(`game:${result.igdbId}`)}
+          />
+        );
+      }
+      case "movie": {
+        const result = buckets.movie[index];
+        return (
+          <MediaSearchResultRow
+            key={`movie:${result.tmdbId}`}
+            db={db}
+            mediaType="movie"
+            href={`/movies/${result.tmdbId}`}
+            coverUrl={
+              result.posterPath ? tmdbImageUrl(result.posterPath, "w342") : null
+            }
+            name={result.name}
+            meta={result.year != null ? String(result.year) : null}
+            typeLabel={typeLabel}
+            sourceId={String(result.tmdbId)}
+            inLibrary={existingIds.has(`movie:${result.tmdbId}`)}
+          />
+        );
+      }
+      case "tv": {
+        const result = buckets.tv[index];
+        return (
+          <MediaSearchResultRow
+            key={`tv:${result.tmdbId}`}
+            db={db}
+            mediaType="tv"
+            href={`/tv/${result.tmdbId}`}
+            coverUrl={
+              result.posterPath ? tmdbImageUrl(result.posterPath, "w342") : null
+            }
+            name={result.name}
+            meta={result.year != null ? String(result.year) : null}
+            typeLabel={typeLabel}
+            sourceId={String(result.tmdbId)}
+            inLibrary={existingIds.has(`tv:${result.tmdbId}`)}
+          />
+        );
+      }
+      case "book": {
+        const result = buckets.book[index];
+        return (
+          <MediaSearchResultRow
+            key={`book:${result.goodreadsId}`}
+            db={db}
+            mediaType="book"
+            href={`/books/${result.goodreadsId}`}
+            coverUrl={result.coverUrl}
+            name={result.name}
+            meta={
+              [result.authors.join(", "), result.year]
+                .filter(Boolean)
+                .join(" · ") || null
+            }
+            typeLabel={typeLabel}
+            sourceId={String(result.goodreadsId)}
+            inLibrary={existingIds.has(`book:${result.goodreadsId}`)}
+          />
+        );
+      }
     }
-    if (rows.length === 0) return null;
-    const total =
-      mediaType === "game"
-        ? buckets.game.length
-        : mediaType === "movie"
-          ? buckets.movie.length
-          : mediaType === "tv"
-            ? buckets.tv.length
-            : buckets.book.length;
-    return (
-      <section key={mediaType} className="flex flex-col gap-1">
-        {filter === "all" && (
-          <div className="flex items-baseline justify-between px-2">
-            <h3 className="font-display text-lg font-medium text-ink">
-              {SECTION_LABELS[mediaType]}
-            </h3>
-            {total > ALL_VIEW_SECTION_CAP && (
-              <button
-                type="button"
-                onClick={() => selectFilter(mediaType)}
-                className="text-xs font-medium text-accent hover:underline"
-              >
-                View all {total}
-              </button>
-            )}
-          </div>
-        )}
-        <ul className="flex flex-col">{rows}</ul>
-      </section>
-    );
+  }
+
+  const rows: React.ReactNode[] = [];
+  if (filter === "all") {
+    for (let i = 0; ; i++) {
+      let any = false;
+      for (const mediaType of MEDIA_ORDER) {
+        if (i < ALL_VIEW_SECTION_CAP && i < buckets[mediaType].length) {
+          rows.push(renderRow(mediaType, i, true));
+          any = true;
+        }
+      }
+      if (!any) break;
+    }
+  } else {
+    for (let i = 0; i < buckets[filter].length; i++) {
+      rows.push(renderRow(filter, i, false));
+    }
   }
 
   return (
@@ -460,7 +478,7 @@ export default function Search() {
       {!loading && debounced && visibleCount === 0 && !allVisibleFailed && (
         <p className="px-2 text-sm text-muted">No results for “{debounced}”.</p>
       )}
-      <div className="flex flex-col gap-6">{visible.map(renderSection)}</div>
+      {!loading && <ul className="flex flex-col">{rows}</ul>}
     </div>
   );
 }
