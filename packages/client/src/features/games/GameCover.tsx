@@ -24,15 +24,15 @@ export function GameCover({
   const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;
 
   const style = {
-    "height": `${heightMm * scale}px`,
-    "width": `${heightMm * scale * aspectRatio}px`,
-    "aspectRatio": String(aspectRatio),
+    height: `${heightMm * scale}px`,
+    width: `${heightMm * scale * aspectRatio}px`,
+    aspectRatio: String(aspectRatio),
     "--case-color": template?.caseColor ?? "#131314",
     "--art-padding-top": template?.paddingTop
       ? `${template.paddingTop}px`
       : "0px",
     "--scale": scale,
-    "viewTransitionName": viewTransitionName ?? "none",
+    viewTransitionName: viewTransitionName ?? "none",
   } as React.CSSProperties;
 
   return (

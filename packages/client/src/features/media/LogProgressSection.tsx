@@ -1,4 +1,8 @@
-import { STATUS_META_GROUP, type LibraryItem, type LogFormat } from "@shelfie/shared";
+import {
+  STATUS_META_GROUP,
+  type LibraryItem,
+  type LogFormat,
+} from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 
 const HOURS_STEP = 0.5;
@@ -14,7 +18,11 @@ export function LogProgressSection({
   formatLabels: Record<LogFormat, string>;
   onChangeFormat: (format: LogFormat) => void;
 }) {
-  if (!item || formats.length === 0 || STATUS_META_GROUP[item.status] === "planned") {
+  if (
+    !item ||
+    formats.length === 0 ||
+    STATUS_META_GROUP[item.status] === "planned"
+  ) {
     return null;
   }
 

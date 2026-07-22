@@ -1,7 +1,11 @@
 import type { LibraryItem } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 
-export function LogNotesField({ item }: { item: RxDocument<LibraryItem> | null }) {
+export function LogNotesField({
+  item,
+}: {
+  item: RxDocument<LibraryItem> | null;
+}) {
   if (!item) return null;
 
   return (

@@ -1,12 +1,10 @@
 import type { ItemStatus } from "@shelfie/shared";
 
-export type LogCompletionPromptState =
-  | {
-      status: ItemStatus;
-      date: string;
-      picking: boolean;
-    }
-  | null;
+export type LogCompletionPromptState = {
+  status: ItemStatus;
+  date: string;
+  picking: boolean;
+} | null;
 
 export function LogCompletionPrompt({
   prompt,

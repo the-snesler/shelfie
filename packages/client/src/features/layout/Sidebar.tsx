@@ -1,11 +1,5 @@
-
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import IconMovie from "~icons/tabler/movie";
 import IconDeviceTv from "~icons/tabler/device-tv";
 import IconBook2 from "~icons/tabler/book-2";
@@ -112,9 +106,7 @@ export function Sidebar({
               O
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-ink">
-                Owner
-              </div>
+              <div className="truncate text-sm font-medium text-ink">Owner</div>
             </div>
             <button
               type="button"
@@ -130,7 +122,6 @@ export function Sidebar({
     </>
   );
 }
-
 
 function SidebarSearch() {
   const location = useLocation();

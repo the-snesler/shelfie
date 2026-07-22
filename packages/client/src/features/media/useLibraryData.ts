@@ -100,7 +100,9 @@ export function cardCover(
   switch (mediaType) {
     case "game": {
       const c = card as GameCardDoc | undefined;
-      return c?.coverImageId ? gameImageUrl("t_cover_big", c.coverImageId) : null;
+      return c?.coverImageId
+        ? gameImageUrl("t_cover_big", c.coverImageId)
+        : null;
     }
     case "book": {
       const c = card as BookCardDoc | undefined;

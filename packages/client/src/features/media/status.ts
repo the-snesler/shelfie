@@ -54,9 +54,9 @@ export const STATUS_LABELS: Record<MediaType, Record<ItemStatus, string>> = {
 };
 
 export const META_STATUS_LABELS: Record<MetaStatus, string> = {
-  "planned": "Planned",
+  planned: "Planned",
   "in-progress": "In Progress",
-  "finished": "Finished",
+  finished: "Finished",
 };
 
 /** Which statuses each media type's status list/picker exposes, in display

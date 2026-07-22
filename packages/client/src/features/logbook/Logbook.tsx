@@ -46,7 +46,9 @@ function StaticStars({ value }: { value: number | null }) {
           <Icon
             key={i}
             className={
-              filled || half ? "size-3.5 text-amber-400" : "size-3.5 text-divider"
+              filled || half
+                ? "size-3.5 text-amber-400"
+                : "size-3.5 text-divider"
             }
           />
         );
@@ -137,7 +139,10 @@ function LogbookList({ entries }: { entries: LogEntry[] }) {
           </h2>
           <div className="flex flex-col">
             {monthEntries.map((entry, i) => (
-              <LogbookRow key={`${entry.item.id}:${entry.date}:${i}`} entry={entry} />
+              <LogbookRow
+                key={`${entry.item.id}:${entry.date}:${i}`}
+                entry={entry}
+              />
             ))}
           </div>
         </section>
@@ -169,7 +174,8 @@ function StatsPanel({
     const rated = items.filter((item) => item.rating != null);
     const avgRating =
       rated.length > 0
-        ? rated.reduce((sum, item) => sum + (item.rating ?? 0), 0) / rated.length
+        ? rated.reduce((sum, item) => sum + (item.rating ?? 0), 0) /
+          rated.length
         : null;
 
     const now = new Date();
@@ -230,7 +236,10 @@ function StatsPanel({
         <h3 className="text-sm font-medium text-muted">Logged over time</h3>
         <div className="flex h-40 items-end gap-1">
           {stats.months.map((m) => (
-            <div key={m.key} className="flex flex-1 flex-col items-center gap-1">
+            <div
+              key={m.key}
+              className="flex flex-1 flex-col items-center gap-1"
+            >
               <div
                 title={`${m.label}: ${m.count}`}
                 className={`w-full rounded-t ${m.count === 0 ? "bg-divider" : "bg-accent"}`}

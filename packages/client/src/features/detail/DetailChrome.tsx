@@ -209,7 +209,9 @@ export function NotFound({
 }
 
 export function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-well/70 ${className ?? ""}`} />;
+  return (
+    <div className={`animate-pulse rounded-lg bg-well/70 ${className ?? ""}`} />
+  );
 }
 
 /** Body placeholder rendered under the hero while a detail screen's fetch

@@ -93,7 +93,7 @@ export function useLogPopover(): LogPopoverState {
       }[side],
     }),
   });
-  
+
   const dismiss = useDismiss(context);
   const role = useRole(context);
   const { getReferenceProps, getFloatingProps } = useInteractions([

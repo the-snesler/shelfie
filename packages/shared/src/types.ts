@@ -44,9 +44,8 @@ export const STATUS_META_GROUP: Record<ItemStatus, MetaStatus> = {
 /** Statuses whose meta group is not "finished" — the Library grid queries
  *  for exactly this set (index-backed on `status`) so it never has to load
  *  or filter out the finished majority client-side. */
-export const NON_FINISHED_STATUSES: readonly ItemStatus[] = ITEM_STATUSES.filter(
-  (s) => STATUS_META_GROUP[s] !== "finished",
-);
+export const NON_FINISHED_STATUSES: readonly ItemStatus[] =
+  ITEM_STATUSES.filter((s) => STATUS_META_GROUP[s] !== "finished");
 
 /** The kinds of media a library item can track. */
 export const MEDIA_TYPES = ["game", "movie", "tv", "book"] as const;
