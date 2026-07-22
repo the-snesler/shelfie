@@ -83,7 +83,14 @@ export type NextEpisode = {
   episode: number;
   name: string;
   stillPath: string | null;
+  airDate: string | null;
 };
+
+/** True only when the episode has a known air date on or before today.
+ *  TMDB emits "" (not null) for unknown dates, so test truthiness, not just null. */
+export function hasAired(ep: NextEpisode): boolean {
+  return !!ep.airDate && ep.airDate <= new Date().toISOString().slice(0, 10);
+}
 
 /** First non-special episode (season >= 1) in air order not present in
  *  `watched`. null when every non-special episode is watched. */
@@ -103,6 +110,7 @@ export function nextUnwatched(
           episode: ep.episodeNumber,
           name: ep.name,
           stillPath: ep.stillPath,
+          airDate: ep.airDate,
         })),
     );
   for (const ep of ordered) {

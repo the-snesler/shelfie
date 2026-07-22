@@ -30,7 +30,7 @@ import {
 } from "../media/libraryActions";
 import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
-import { nextUnwatched } from "./libraryCaptions";
+import { hasAired, nextUnwatched } from "./libraryCaptions";
 import type { CardMeta } from "./useLibraryData";
 
 /** Route path segment (without the leading slash) each non-game media type
@@ -80,6 +80,8 @@ export function LibraryItemCard({
       ? nextUnwatched(catalog, item.watchedEpisodes)
       : null;
 
+  const airedNext = nextUp && hasAired(nextUp) ? nextUp : null;
+
   const name =
     gameMeta?.name ??
     movieMeta?.name ??
@@ -105,7 +107,7 @@ export function LibraryItemCard({
         )
       : null;
 
-  const cardWidth = nextUp
+  const cardWidth = airedNext
     ? MEDIA_LIBRARY_COVER_WIDTH + TV_STILL_GAP + TV_STILL_WIDTH
     : item.mediaType === "game"
       ? gameCoverWidth(platform, LIBRARY_COVER_SCALE)
@@ -150,14 +152,16 @@ export function LibraryItemCard({
     );
 
   const stillUrl =
-    nextUp?.stillPath != null ? tmdbImageUrl(nextUp.stillPath, "w300") : null;
+    airedNext?.stillPath != null
+      ? tmdbImageUrl(airedNext.stillPath, "w300")
+      : null;
 
   const followingUp =
-    catalog && nextUp
+    catalog && airedNext
       ? nextUnwatched(
           catalog,
           item.watchedEpisodes,
-          episodeKey(nextUp.season, nextUp.episode),
+          episodeKey(airedNext.season, airedNext.episode),
         )
       : null;
   const followingStillUrl = followingUp?.stillPath
@@ -173,8 +177,8 @@ export function LibraryItemCard({
   }, [followingStillUrl]);
 
   async function markNextWatched() {
-    if (!nextUp) return;
-    const key = episodeKey(nextUp.season, nextUp.episode);
+    if (!airedNext) return;
+    const key = episodeKey(airedNext.season, airedNext.episode);
     await item.incrementalModify((docData) => ({
       ...docData,
       watchedEpisodes: docData.watchedEpisodes.includes(key)
@@ -203,9 +207,11 @@ export function LibraryItemCard({
           ),
         };
 
-  const displayCaption = nextUp
-    ? `S${nextUp.season}E${nextUp.episode} ${nextUp.name}${caption ? ` · ${caption}` : ""}`
-    : caption;
+  const displayCaption = airedNext
+    ? `S${airedNext.season}E${airedNext.episode} ${airedNext.name}${caption ? ` · ${caption}` : ""}`
+    : nextUp
+      ? `S${nextUp.season}E${nextUp.episode} · ${caption}`
+      : caption;
 
   return (
     <div className="flex flex-col" style={{ width: `${cardWidth}px` }}>
@@ -227,7 +233,7 @@ export function LibraryItemCard({
             {coverBox}
           </div>
         )}
-        {nextUp && href && (
+        {airedNext && href && (
           <Link
             to={href}
             viewTransition
@@ -237,7 +243,7 @@ export function LibraryItemCard({
           >
             <AnimatePresence initial={false}>
               <motion.div
-                key={episodeKey(nextUp.season, nextUp.episode)}
+                key={episodeKey(airedNext.season, airedNext.episode)}
                 initial={{ opacity: 0, x: 28 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -28 }}
@@ -247,13 +253,13 @@ export function LibraryItemCard({
                 {stillUrl ? (
                   <img
                     src={stillUrl}
-                    alt={nextUp.name}
+                    alt={airedNext.name}
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center p-2 text-center text-xs text-muted">
-                    {nextUp.name}
+                    {airedNext.name}
                   </div>
                 )}
               </motion.div>
@@ -268,11 +274,11 @@ export function LibraryItemCard({
       >
         <div className="min-w-0 flex-1 text-left">
           <p className="truncate text-[13px] font-medium text-ink">{name}</p>
-          {nextUp ? (
+          {airedNext ? (
             <div className="relative h-4 overflow-hidden">
               <AnimatePresence initial={false}>
                 <motion.p
-                  key={episodeKey(nextUp.season, nextUp.episode)}
+                  key={episodeKey(airedNext.season, airedNext.episode)}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
@@ -287,11 +293,11 @@ export function LibraryItemCard({
             <p className="truncate text-xs text-muted">{displayCaption}</p>
           )}
         </div>
-        {nextUp ? (
+        {airedNext ? (
           <input
             type="checkbox"
             checked={false}
-            aria-label={`Mark S${nextUp.season}E${nextUp.episode} watched`}
+            aria-label={`Mark S${airedNext.season}E${airedNext.episode} watched`}
             onChange={() => void markNextWatched()}
             className="mt-0.5 size-5 shrink-0 cursor-pointer appearance-none rounded-full border-2 border-current bg-transparent text-faint hover:text-accent"
           />
@@ -308,7 +314,7 @@ export function LibraryItemCard({
           </button>
         )}
       </div>
-      {!nextUp && (
+      {!airedNext && (
         <LogPopover popover={popover} db={db} target={logTarget} item={item} />
       )}
     </div>
