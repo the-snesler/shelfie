@@ -1,10 +1,8 @@
-import type { GameDetail, LibraryItem, StoreName } from "@shelfie/shared";
-import type { RxDocument } from "rxdb";
-import { useEffect, useState } from "react";
+import type { GameDetail, StoreName } from "@shelfie/shared";
+import { useState } from "react";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/Detail";
-import { authFetch } from "../../auth";
 import { upsertCards } from "../../db/gameCards";
 import { GameCover } from "../games/GameCover";
 import {
@@ -16,6 +14,8 @@ import { gameImageUrl } from "../../images";
 import { Lightbox } from "./Lightbox";
 import { releaseDateFromEpoch } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
+import { useBackNavigation } from "./useBackNavigation";
+import { useDetailFetch } from "./useDetailFetch";
 import {
   Description,
   DetailBodySkeleton,
@@ -36,11 +36,6 @@ const STORE_LABELS: Record<StoreName, string> = {
   gog: "GOG",
   itch: "itch.io",
 };
-
-type MetaState =
-  | { status: "loading" }
-  | { status: "not-found" }
-  | { status: "loaded"; meta: GameDetail };
 
 /** Minimal cover data passed via `<Link state>` from the library/search
  *  cards that navigate here, so the first paint (before the detail fetch
@@ -65,61 +60,14 @@ export default function Detail({ params }: Route.ComponentProps) {
   const slug = params.slug;
   const navigate = useNavigate();
   const location = useLocation();
-  const [metaState, setMetaState] = useState<MetaState>({
-    status: "loading",
+  const { metaState, item } = useDetailFetch<GameDetail>({
+    db,
+    url: `/api/games/by-slug/${encodeURIComponent(slug)}`,
+    libraryItemId: (meta) => `game:${meta.igdbId}`,
+    upsertCards,
   });
-  const [item, setItem] = useState<RxDocument<LibraryItem> | null | undefined>(
-    undefined,
-  );
   const [lightbox, setLightbox] = useState<number | null>(null);
-
-  useEffect(() => {
-    setMetaState({ status: "loading" });
-    let active = true;
-    void authFetch(`/api/games/by-slug/${encodeURIComponent(slug)}`)
-      .then(async (res) => {
-        if (!active) return;
-        if (res.status === 404) {
-          setMetaState({ status: "not-found" });
-          return;
-        }
-        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-        const meta = (await res.json()) as GameDetail;
-        setMetaState({ status: "loaded", meta });
-        void upsertCards(db, [meta]);
-      })
-      .catch(() => {
-        if (active) setMetaState({ status: "not-found" });
-      });
-    return () => {
-      active = false;
-    };
-  }, [db, slug]);
-
-  const igdbId = metaState.status === "loaded" ? metaState.meta.igdbId : null;
-  useEffect(() => {
-    if (igdbId === null) {
-      setItem(undefined);
-      return;
-    }
-    const sub = db.library_items
-      .findOne(`game:${igdbId}`)
-      .$.subscribe((doc) => {
-        setItem(doc ?? null);
-      });
-    return () => sub.unsubscribe();
-  }, [db, igdbId]);
-
-  function handleBack() {
-    // location.key is "default" only for the initial history entry (deep link
-    // / hard load), where going back would leave the app — same guard the old
-    // pushCount-based hasAppHistory() provided. `navigate(-1)`'s delta
-    // overload takes no options, but react-router replays a POP navigation's
-    // view transition automatically when the matching forward nav used one
-    // (see `appliedViewTransitions` in its router), so the cover still morphs.
-    if (location.key !== "default") navigate(-1);
-    else navigate("/", { viewTransition: true });
-  }
+  const handleBack = useBackNavigation();
 
   if (metaState.status === "loading") {
     const linkState = location.state as DetailLinkState | null;
@@ -142,7 +90,7 @@ export default function Detail({ params }: Route.ComponentProps) {
     );
   }
 
-  if (metaState.status === "not-found") {
+  if (metaState.status === "error") {
     return <NotFound message="Game not found" onBack={() => navigate("/")} />;
   }
 

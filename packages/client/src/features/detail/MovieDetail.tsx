@@ -1,13 +1,7 @@
-import type {
-  LibraryItem,
-  MovieDetail as MovieDetailDto,
-} from "@shelfie/shared";
-import type { RxDocument } from "rxdb";
-import { useEffect, useState } from "react";
+import type { MovieDetail as MovieDetailDto } from "@shelfie/shared";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/MovieDetail";
-import { authFetch } from "../../auth";
 import { upsertMovieCards } from "../../db/movieCards";
 import { tmdbImageUrl } from "../../images";
 import {
@@ -18,6 +12,8 @@ import {
 import { releaseDateFromYear } from "../media/libraryActions";
 import { formatRuntime } from "../media/duration";
 import { StatusControl } from "../media/StatusControl";
+import { useBackNavigation } from "./useBackNavigation";
+import { useDetailFetch } from "./useDetailFetch";
 import {
   Description,
   DetailBackdrop,
@@ -30,58 +26,18 @@ import {
   TrailerChips,
 } from "./DetailChrome";
 
-type MetaState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "loaded"; meta: MovieDetailDto };
-
 export default function MovieDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
-  const [metaState, setMetaState] = useState<MetaState>({ status: "loading" });
-  const [item, setItem] = useState<RxDocument<LibraryItem> | null | undefined>(
-    undefined,
-  );
-
-  useEffect(() => {
-    setMetaState({ status: "loading" });
-    let active = true;
-    void authFetch(`/api/movies/by-id/${encodeURIComponent(id)}`)
-      .then(async (res) => {
-        if (!active) return;
-        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-        const meta = (await res.json()) as MovieDetailDto;
-        setMetaState({ status: "loaded", meta });
-        void upsertMovieCards(db, [meta]);
-      })
-      .catch(() => {
-        if (active) setMetaState({ status: "error" });
-      });
-    return () => {
-      active = false;
-    };
-  }, [db, id]);
-
-  const tmdbId = metaState.status === "loaded" ? metaState.meta.tmdbId : null;
-  useEffect(() => {
-    if (tmdbId === null) {
-      setItem(undefined);
-      return;
-    }
-    const sub = db.library_items
-      .findOne(`movie:${tmdbId}`)
-      .$.subscribe((doc) => {
-        setItem(doc ?? null);
-      });
-    return () => sub.unsubscribe();
-  }, [db, tmdbId]);
-
-  function handleBack() {
-    if (location.key !== "default") navigate(-1);
-    else navigate("/", { viewTransition: true });
-  }
+  const { metaState, item } = useDetailFetch<MovieDetailDto>({
+    db,
+    url: `/api/movies/by-id/${encodeURIComponent(id)}`,
+    libraryItemId: (meta) => `movie:${meta.tmdbId}`,
+    upsertCards: upsertMovieCards,
+  });
+  const handleBack = useBackNavigation();
 
   if (metaState.status === "loading") {
     const linkState = location.state as {
@@ -126,11 +82,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
         name={meta.name}
         tagline={meta.tagline}
         lines={[
-          [
-            meta.year,
-            formatRuntime(meta.runtime),
-            meta.certification,
-          ]
+          [meta.year, formatRuntime(meta.runtime), meta.certification]
             .filter(Boolean)
             .join(" · "),
           meta.genres.length > 0 && meta.genres.join(", "),

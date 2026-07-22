@@ -10,8 +10,8 @@ import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import type { Database, TvMetadataTable } from "../db/types.js";
 import { fetchTvCard, fetchTvDetail, searchTv } from "../tmdb/client.js";
-
-const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
+import { registerMetadataRoutes } from "../metadata/routes.js";
 
 function metadataRowToDto(row: TvMetadataTable): TvMetadata {
   return {
@@ -161,85 +161,73 @@ async function upsertDetail(
   return row;
 }
 
-function parseIds(raw: string): number[] {
-  return raw
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-    .map((part) => Number(part))
-    .filter((id) => Number.isInteger(id));
-}
+const tvMetadataCollection: MetadataCollection<TvMetadata, TvDetail> = {
+  basePath: "/api/tv",
 
-export function registerTvRoutes(
-  app: Hono,
-  database: Kysely<Database> = defaultDb,
-): void {
-  app.get("/api/tv/search", async (c) => {
-    const q = c.req.query("q");
-    if (!q || q.trim().length === 0) {
-      return c.json({ error: "q is required" }, 400);
-    }
-    const results = await searchTv(q);
-    return c.json(results);
-  });
+  search: searchTv,
 
-  app.get("/api/tv", async (c) => {
-    const idsParam = c.req.query("ids");
-    const ids = idsParam ? parseIds(idsParam) : [];
-    if (ids.length === 0) return c.json<TvMetadata[]>([]);
+  cardId: (card) => card.tmdbId,
 
+  async fetchCachedCards(database, ids) {
     const cached = await database
       .selectFrom("tv_metadata")
       .selectAll()
       .where("tmdb_id", "in", ids)
       .execute();
-    const cachedById = new Map(cached.map((row) => [row.tmdb_id, row]));
 
-    const missingIds = ids.filter((id) => {
-      const row = cachedById.get(id);
-      return !row || row.fetched_at < Date.now() - METADATA_TTL_MS;
-    });
-    if (missingIds.length > 0) {
-      // TMDB has no batch-by-id endpoint; fan the missing ids out through
-      // the client's throttle queue.
-      const fetched = await Promise.all(
-        missingIds.map((id) => fetchTvCard(id)),
-      );
-      for (const metadata of fetched) {
-        const row = await upsertMetadata(database, metadata);
-        cachedById.set(metadata.tmdbId, row);
-      }
+    const result = new Map<number, CachedCard<TvMetadata>>();
+    for (const row of cached) {
+      result.set(row.tmdb_id, {
+        card: metadataRowToDto(row),
+        fetchedAt: row.fetched_at,
+      });
     }
+    return result;
+  },
 
-    const results: TvMetadata[] = [];
-    for (const id of ids) {
-      const row = cachedById.get(id);
-      if (row) results.push(metadataRowToDto(row));
+  async fetchMissingCards(database, missingIds) {
+    // TMDB has no batch-by-id endpoint; fan the missing ids out through
+    // the client's throttle queue.
+    const fetched = await Promise.all(missingIds.map((id) => fetchTvCard(id)));
+    const cards: TvMetadata[] = [];
+    for (const metadata of fetched) {
+      const row = await upsertMetadata(database, metadata);
+      cards.push(metadataRowToDto(row));
     }
-    return c.json(results);
-  });
+    return cards;
+  },
 
-  app.get("/api/tv/by-id/:id", async (c) => {
-    const id = Number(c.req.param("id"));
-    if (!Number.isInteger(id)) {
-      return c.json({ error: "invalid id" }, 400);
-    }
+  detail: {
+    path: "by-id/:id",
+    param: "id",
 
-    const cached = await database
-      .selectFrom("tv_metadata")
-      .selectAll()
-      .where("tmdb_id", "=", id)
-      .executeTakeFirst();
-    if (
-      cached &&
-      cached.detail_fetched_at !== null &&
-      cached.detail_fetched_at >= Date.now() - METADATA_TTL_MS
-    ) {
-      return c.json(metadataRowToDetail(cached));
-    }
+    parseKey(raw) {
+      const id = Number(raw);
+      return Number.isInteger(id) ? id : undefined;
+    },
 
-    const detail = await fetchTvDetail(id);
-    await upsertDetail(database, detail);
-    return c.json(detail);
-  });
+    async fetchCached(database, id) {
+      const cached = await database
+        .selectFrom("tv_metadata")
+        .selectAll()
+        .where("tmdb_id", "=", id)
+        .executeTakeFirst();
+      if (!cached) return null;
+      return {
+        detail: metadataRowToDetail(cached),
+        detailFetchedAt: cached.detail_fetched_at,
+      };
+    },
+
+    fetchFromSource: (id) => fetchTvDetail(id),
+
+    upsert: (database, detail) => upsertDetail(database, detail),
+  },
+};
+
+export function registerTvRoutes(
+  app: Hono,
+  database: Kysely<Database> = defaultDb,
+): void {
+  registerMetadataRoutes(app, database, tvMetadataCollection);
 }

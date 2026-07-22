@@ -14,8 +14,8 @@ import {
   fetchGamesByIds,
   searchGames,
 } from "../igdb/client.js";
-
-const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
+import { registerMetadataRoutes } from "../metadata/routes.js";
 
 function metadataRowToDto(
   row: GameMetadataTable & { slug: string },
@@ -187,101 +187,86 @@ async function upsertDetail(
   return row;
 }
 
-function parseIds(raw: string): number[] {
-  return raw
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-    .map((part) => Number(part))
-    .filter((id) => Number.isInteger(id));
-}
+/**
+ * Wires the games API into the shared cache-first route registrar. Rows
+ * cached before migration 002 have a NULL slug — `fetchCachedCards` and the
+ * by-slug detail lookup both treat those legacy rows as absent so every
+ * response consistently carries a slug.
+ */
+const gamesMetadataCollection: MetadataCollection<
+  GameMetadata,
+  GameDetail,
+  string
+> = {
+  basePath: "/api/games",
 
-export function registerGamesRoutes(
-  app: Hono,
-  database: Kysely<Database> = defaultDb,
-): void {
-  app.get("/api/games/search", async (c) => {
-    const q = c.req.query("q");
-    if (!q || q.trim().length === 0) {
-      return c.json({ error: "q is required" }, 400);
-    }
-    const results = await searchGames(q);
-    return c.json(results);
-  });
+  search: searchGames,
 
-  app.get("/api/games", async (c) => {
-    const idsParam = c.req.query("ids");
-    const ids = idsParam ? parseIds(idsParam) : [];
-    if (ids.length === 0) return c.json<GameMetadata[]>([]);
+  cardId: (card) => card.igdbId,
 
+  async fetchCachedCards(database, ids) {
     const cached = await database
       .selectFrom("game_metadata")
       .selectAll()
       .where("igdb_id", "in", ids)
       .execute();
-    // Rows cached before migration 002 have a NULL slug; treat them as
-    // misses so every response consistently carries a slug.
-    const cachedById = new Map(
-      cached
-        .filter(
-          (row): row is GameMetadataTable & { slug: string } =>
-            row.slug !== null,
-        )
-        .map((row) => [row.igdb_id, row]),
-    );
 
-    const missingIds = ids.filter((id) => {
-      const row = cachedById.get(id);
-      return !row || row.fetched_at < Date.now() - METADATA_TTL_MS;
-    });
-    if (missingIds.length > 0) {
-      const [fetched, ttbs] = await Promise.all([
-        fetchGamesByIds(missingIds),
-        fetchTimeToBeatsByIds(missingIds),
-      ]);
-
-      for (const metadata of fetched) {
-        metadata.timeToBeat = ttbs.get(metadata.igdbId) ?? null;
-        const row = await upsertMetadata(database, metadata);
-        cachedById.set(
-          metadata.igdbId,
-          row as GameMetadataTable & { slug: string },
-        );
-      }
+    const result = new Map<number, CachedCard<GameMetadata>>();
+    for (const row of cached) {
+      if (row.slug === null) continue;
+      result.set(row.igdb_id, {
+        card: metadataRowToDto(row as GameMetadataTable & { slug: string }),
+        fetchedAt: row.fetched_at,
+      });
     }
+    return result;
+  },
 
-    const results: GameMetadata[] = [];
-    for (const id of ids) {
-      const row = cachedById.get(id);
-      if (row) results.push(metadataRowToDto(row));
+  async fetchMissingCards(database, missingIds) {
+    const [fetched, ttbs] = await Promise.all([
+      fetchGamesByIds(missingIds),
+      fetchTimeToBeatsByIds(missingIds),
+    ]);
+
+    const cards: GameMetadata[] = [];
+    for (const metadata of fetched) {
+      metadata.timeToBeat = ttbs.get(metadata.igdbId) ?? null;
+      const row = await upsertMetadata(database, metadata);
+      cards.push(metadataRowToDto(row as GameMetadataTable & { slug: string }));
     }
-    return c.json(results);
-  });
+    return cards;
+  },
 
-  app.get("/api/games/by-slug/:slug", async (c) => {
-    const slug = c.req.param("slug");
+  detail: {
+    path: "by-slug/:slug",
+    param: "slug",
 
-    const cached = await database
-      .selectFrom("game_metadata")
-      .selectAll()
-      .where("slug", "=", slug)
-      .executeTakeFirst();
-    if (
-      cached &&
-      cached.slug !== null &&
-      cached.detail_fetched_at !== null &&
-      cached.detail_fetched_at >= Date.now() - METADATA_TTL_MS
-    ) {
-      return c.json(
-        metadataRowToDetail(cached as GameMetadataTable & { slug: string }),
-      );
-    }
+    parseKey: (raw) => raw,
 
-    const detail = await fetchGameDetailBySlug(slug);
-    if (!detail) {
-      return c.json({ error: "not found" }, 404);
-    }
-    await upsertDetail(database, detail);
-    return c.json(detail);
-  });
+    async fetchCached(database, slug) {
+      const cached = await database
+        .selectFrom("game_metadata")
+        .selectAll()
+        .where("slug", "=", slug)
+        .executeTakeFirst();
+      if (!cached || cached.slug === null) return null;
+      return {
+        detail: metadataRowToDetail(
+          cached as GameMetadataTable & { slug: string },
+        ),
+        detailFetchedAt: cached.detail_fetched_at,
+      };
+    },
+
+    fetchFromSource: (slug) => fetchGameDetailBySlug(slug),
+
+    upsert: (database, detail) => upsertDetail(database, detail),
+  },
+};
+
+export function registerGamesRoutes(
+  app: Hono,
+  database: Kysely<Database> = defaultDb,
+): void {
+  registerMetadataRoutes(app, database, gamesMetadataCollection);
 }

@@ -13,8 +13,8 @@ import {
   fetchMovieDetail,
   searchMovies,
 } from "../tmdb/client.js";
-
-const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
+import { registerMetadataRoutes } from "../metadata/routes.js";
 
 function metadataRowToDto(row: MovieMetadataTable): MovieMetadata {
   return {
@@ -140,85 +140,76 @@ async function upsertDetail(
   return row;
 }
 
-function parseIds(raw: string): number[] {
-  return raw
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-    .map((part) => Number(part))
-    .filter((id) => Number.isInteger(id));
-}
+const moviesMetadataCollection: MetadataCollection<MovieMetadata, MovieDetail> =
+  {
+    basePath: "/api/movies",
 
-export function registerMoviesRoutes(
-  app: Hono,
-  database: Kysely<Database> = defaultDb,
-): void {
-  app.get("/api/movies/search", async (c) => {
-    const q = c.req.query("q");
-    if (!q || q.trim().length === 0) {
-      return c.json({ error: "q is required" }, 400);
-    }
-    const results = await searchMovies(q);
-    return c.json(results);
-  });
+    search: searchMovies,
 
-  app.get("/api/movies", async (c) => {
-    const idsParam = c.req.query("ids");
-    const ids = idsParam ? parseIds(idsParam) : [];
-    if (ids.length === 0) return c.json<MovieMetadata[]>([]);
+    cardId: (card) => card.tmdbId,
 
-    const cached = await database
-      .selectFrom("movie_metadata")
-      .selectAll()
-      .where("tmdb_id", "in", ids)
-      .execute();
-    const cachedById = new Map(cached.map((row) => [row.tmdb_id, row]));
+    async fetchCachedCards(database, ids) {
+      const cached = await database
+        .selectFrom("movie_metadata")
+        .selectAll()
+        .where("tmdb_id", "in", ids)
+        .execute();
 
-    const missingIds = ids.filter((id) => {
-      const row = cachedById.get(id);
-      return !row || row.fetched_at < Date.now() - METADATA_TTL_MS;
-    });
-    if (missingIds.length > 0) {
+      const result = new Map<number, CachedCard<MovieMetadata>>();
+      for (const row of cached) {
+        result.set(row.tmdb_id, {
+          card: metadataRowToDto(row),
+          fetchedAt: row.fetched_at,
+        });
+      }
+      return result;
+    },
+
+    async fetchMissingCards(database, missingIds) {
       // TMDB has no batch-by-id endpoint; fan the missing ids out through
       // the client's throttle queue.
       const fetched = await Promise.all(
         missingIds.map((id) => fetchMovieCard(id)),
       );
+      const cards: MovieMetadata[] = [];
       for (const metadata of fetched) {
         const row = await upsertMetadata(database, metadata);
-        cachedById.set(metadata.tmdbId, row);
+        cards.push(metadataRowToDto(row));
       }
-    }
+      return cards;
+    },
 
-    const results: MovieMetadata[] = [];
-    for (const id of ids) {
-      const row = cachedById.get(id);
-      if (row) results.push(metadataRowToDto(row));
-    }
-    return c.json(results);
-  });
+    detail: {
+      path: "by-id/:id",
+      param: "id",
 
-  app.get("/api/movies/by-id/:id", async (c) => {
-    const id = Number(c.req.param("id"));
-    if (!Number.isInteger(id)) {
-      return c.json({ error: "invalid id" }, 400);
-    }
+      parseKey(raw) {
+        const id = Number(raw);
+        return Number.isInteger(id) ? id : undefined;
+      },
 
-    const cached = await database
-      .selectFrom("movie_metadata")
-      .selectAll()
-      .where("tmdb_id", "=", id)
-      .executeTakeFirst();
-    if (
-      cached &&
-      cached.detail_fetched_at !== null &&
-      cached.detail_fetched_at >= Date.now() - METADATA_TTL_MS
-    ) {
-      return c.json(metadataRowToDetail(cached));
-    }
+      async fetchCached(database, id) {
+        const cached = await database
+          .selectFrom("movie_metadata")
+          .selectAll()
+          .where("tmdb_id", "=", id)
+          .executeTakeFirst();
+        if (!cached) return null;
+        return {
+          detail: metadataRowToDetail(cached),
+          detailFetchedAt: cached.detail_fetched_at,
+        };
+      },
 
-    const detail = await fetchMovieDetail(id);
-    await upsertDetail(database, detail);
-    return c.json(detail);
-  });
+      fetchFromSource: (id) => fetchMovieDetail(id),
+
+      upsert: (database, detail) => upsertDetail(database, detail),
+    },
+  };
+
+export function registerMoviesRoutes(
+  app: Hono,
+  database: Kysely<Database> = defaultDb,
+): void {
+  registerMetadataRoutes(app, database, moviesMetadataCollection);
 }

@@ -4,8 +4,8 @@ import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import type { BookMetadataTable, Database } from "../db/types.js";
 import { fetchBookByLegacyId, searchBooks } from "../goodreads/client.js";
-
-const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
+import { registerMetadataRoutes } from "../metadata/routes.js";
 
 function metadataRowToDto(row: BookMetadataTable): BookMetadata {
   return {
@@ -110,85 +110,77 @@ async function upsertDetail(
   return row;
 }
 
-function parseIds(raw: string): number[] {
-  return raw
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-    .map((part) => Number(part))
-    .filter((id) => Number.isInteger(id));
-}
+const booksMetadataCollection: MetadataCollection<BookMetadata, BookDetail> = {
+  basePath: "/api/books",
 
-export function registerBooksRoutes(
-  app: Hono,
-  database: Kysely<Database> = defaultDb,
-): void {
-  app.get("/api/books/search", async (c) => {
-    const q = c.req.query("q");
-    if (!q || q.trim().length === 0) {
-      return c.json({ error: "q is required" }, 400);
-    }
-    const results = await searchBooks(q);
-    return c.json(results);
-  });
+  search: searchBooks,
 
-  app.get("/api/books", async (c) => {
-    const idsParam = c.req.query("ids");
-    const ids = idsParam ? parseIds(idsParam) : [];
-    if (ids.length === 0) return c.json<BookMetadata[]>([]);
+  cardId: (card) => card.goodreadsId,
 
+  async fetchCachedCards(database, ids) {
     const cached = await database
       .selectFrom("book_metadata")
       .selectAll()
       .where("goodreads_id", "in", ids)
       .execute();
-    const cachedById = new Map(cached.map((row) => [row.goodreads_id, row]));
 
-    const missingIds = ids.filter((id) => {
-      const row = cachedById.get(id);
-      return !row || row.fetched_at < Date.now() - METADATA_TTL_MS;
-    });
-    // Goodreads has no batch-by-id endpoint; fan each miss through the
-    // shared throttle sequentially via the detail (card-superset) query.
-    for (const id of missingIds) {
-      const detail = await fetchBookByLegacyId(id);
+    const result = new Map<number, CachedCard<BookMetadata>>();
+    for (const row of cached) {
+      result.set(row.goodreads_id, {
+        card: metadataRowToDto(row),
+        fetchedAt: row.fetched_at,
+      });
+    }
+    return result;
+  },
+
+  async fetchMissingCards(database, missingIds) {
+    // Goodreads has no batch-by-id endpoint; the client's shared throttle
+    // already serializes outbound calls, so fan every miss out concurrently
+    // and let the throttle queue them.
+    const fetched = await Promise.all(
+      missingIds.map((id) => fetchBookByLegacyId(id)),
+    );
+    const cards: BookMetadata[] = [];
+    for (const detail of fetched) {
       if (!detail) continue;
       const row = await upsertDetail(database, detail);
-      cachedById.set(id, row);
+      cards.push(metadataRowToDto(row));
     }
+    return cards;
+  },
 
-    const results: BookMetadata[] = [];
-    for (const id of ids) {
-      const row = cachedById.get(id);
-      if (row) results.push(metadataRowToDto(row));
-    }
-    return c.json(results);
-  });
+  detail: {
+    path: "by-id/:id",
+    param: "id",
 
-  app.get("/api/books/by-id/:id", async (c) => {
-    const id = Number(c.req.param("id"));
-    if (!Number.isInteger(id)) {
-      return c.json({ error: "invalid id" }, 400);
-    }
+    parseKey(raw) {
+      const id = Number(raw);
+      return Number.isInteger(id) ? id : undefined;
+    },
 
-    const cached = await database
-      .selectFrom("book_metadata")
-      .selectAll()
-      .where("goodreads_id", "=", id)
-      .executeTakeFirst();
-    if (
-      cached &&
-      cached.detail_fetched_at !== null &&
-      cached.detail_fetched_at >= Date.now() - METADATA_TTL_MS
-    ) {
-      return c.json(metadataRowToDetail(cached));
-    }
+    async fetchCached(database, id) {
+      const cached = await database
+        .selectFrom("book_metadata")
+        .selectAll()
+        .where("goodreads_id", "=", id)
+        .executeTakeFirst();
+      if (!cached) return null;
+      return {
+        detail: metadataRowToDetail(cached),
+        detailFetchedAt: cached.detail_fetched_at,
+      };
+    },
 
-    const detail = await fetchBookByLegacyId(id);
-    if (!detail) {
-      return c.json({ error: "not found" }, 404);
-    }
-    await upsertDetail(database, detail);
-    return c.json(detail);
-  });
+    fetchFromSource: (id) => fetchBookByLegacyId(id),
+
+    upsert: (database, detail) => upsertDetail(database, detail),
+  },
+};
+
+export function registerBooksRoutes(
+  app: Hono,
+  database: Kysely<Database> = defaultDb,
+): void {
+  registerMetadataRoutes(app, database, booksMetadataCollection);
 }
