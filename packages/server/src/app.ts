@@ -16,6 +16,8 @@ import { onChange } from "./sync/stream.js";
 
 // Relative to cwd; the Docker runtime sets WORKDIR /app and STATIC_DIR=./public.
 const STATIC_DIR = process.env.STATIC_DIR;
+const BACKGROUND_SVG_CACHE_CONTROL =
+  "public, max-age=31536000, immutable";
 
 /**
  * Builds the Hono app with every route mounted, but starts no background work
@@ -44,6 +46,12 @@ export function createApp(): Hono {
   // an SPA fallback to index.html for any non-API, non-file route. Must be
   // registered last or it would shadow the API routes above.
   if (STATIC_DIR) {
+    app.use("/assets/backgrounds/*", async (c, next) => {
+      await next();
+      if (c.res.headers.get("Content-Type")?.startsWith("image/svg+xml")) {
+        c.header("Cache-Control", BACKGROUND_SVG_CACHE_CONTROL);
+      }
+    });
     app.use("/*", serveStatic({ root: STATIC_DIR }));
     app.get("/*", serveStatic({ path: "index.html", root: STATIC_DIR }));
   }

@@ -62,17 +62,48 @@
    * edges. Applied to the main content column.
    */
   .room-light {
+    --room-light-top: radial-gradient(
+      120% 70% at 50% -10%,
+      oklch(0.3 0.02 65 / 0.75) 0%,
+      transparent 60%
+    );
+    --room-light-bottom: radial-gradient(
+      140% 100% at 50% 115%,
+      oklch(0.14 0.01 50 / 0.8) 0%,
+      transparent 55%
+    );
+    background-image: var(--room-light-top), var(--room-light-bottom);
+  }
+
+  .library-wall {
+    --library-grain: none;
+    --library-grain-shade: rgb(13 10 8 / 0);
+    background-color: var(--color-bg);
     background-image:
-      radial-gradient(
-        120% 70% at 50% -10%,
-        oklch(0.3 0.02 65 / 0.75) 0%,
-        transparent 60%
+      var(--room-light-top),
+      var(--room-light-bottom),
+      linear-gradient(
+        var(--library-grain-shade),
+        var(--library-grain-shade)
       ),
-      radial-gradient(
-        140% 100% at 50% 115%,
-        oklch(0.14 0.01 50 / 0.8) 0%,
-        transparent 55%
-      );
+      var(--library-grain);
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+    background-size: auto, auto, auto, 600px 600px;
+  }
+
+  .library-wall[data-library-theme="black"] {
+    --library-grain: url("/assets/backgrounds/grain_black.svg?v=1");
+    --library-grain-shade: rgb(13 10 8 / 0.12);
+  }
+
+  .library-wall[data-library-theme="oak"] {
+    --library-grain: url("/assets/backgrounds/grain_oak.svg?v=1");
+    --library-grain-shade: rgb(13 10 8 / 0.52);
+  }
+
+  .library-wall[data-library-theme="walnut"] {
+    --library-grain: url("/assets/backgrounds/grain_walnut.svg?v=1");
+    --library-grain-shade: rgb(13 10 8 / 0.3);
   }
 
   /*

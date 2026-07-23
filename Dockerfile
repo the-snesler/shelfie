@@ -48,7 +48,7 @@ WORKDIR /app
 COPY --from=deploy /app/deploy/dist ./dist
 COPY --from=deploy /app/deploy/node_modules ./node_modules
 COPY --from=deploy /app/deploy/package.json ./package.json
-COPY --from=build /app/packages/client/dist ./public
+COPY --from=build /app/packages/client/dist/client ./public
 EXPOSE 3001
 VOLUME /data
 CMD ["node", "dist/index.js"]
