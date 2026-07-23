@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 5,
+  version: 6,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -41,9 +41,8 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     },
     notes: { type: "string", maxLength: 10000 },
     watchedEpisodes: {
-      type: "array",
-      items: { type: "string", maxLength: 12 },
-      maxItems: 10000,
+      type: "object",
+      additionalProperties: { type: "string", maxLength: 10 },
     },
     addedAt: {
       type: "number",
@@ -93,7 +92,9 @@ const LEGACY_STATUS_MAP: Record<string, string> = {
  * Version 4 renames game-centric statuses to media-neutral terms and adds
  * `watchedEpisodes`. Version 5 adds an index on `status` (Library grid
  * excludes finished items via an index-backed query) — no document shape
- * change, so the migration is the identity function.
+ * change, so the migration is the identity function. Version 6 converts
+ * `watchedEpisodes` from a key array to a key→date map (existing keys get
+ * empty-string dates).
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
@@ -112,4 +113,13 @@ export const libraryItemMigrationStrategies: MigrationStrategies = {
     watchedEpisodes: [],
   }),
   5: (oldDoc) => oldDoc,
+  6: (oldDoc) => ({
+    ...oldDoc,
+    watchedEpisodes: Object.fromEntries(
+      ((oldDoc.watchedEpisodes as string[] | undefined) ?? []).map((k) => [
+        k,
+        "",
+      ]),
+    ),
+  }),
 };

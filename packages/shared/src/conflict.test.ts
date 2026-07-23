@@ -15,7 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   completedDates: [],
   notes: "",
-  watchedEpisodes: [],
+  watchedEpisodes: {},
   _deleted: false,
 };
 
@@ -61,5 +61,23 @@ describe("libraryItemConflictHandler", () => {
         "test",
       ),
     ).resolves.toEqual(deleted);
+  });
+  it("treats docs differing only in watchedEpisodes as unequal", () => {
+    const withEpisode = { ...base, watchedEpisodes: { s1e1: "2024-01-01" } };
+    expect(
+      libraryItemConflictHandler.isEqual(withEpisode, base, "test"),
+    ).toBe(false);
+  });
+
+  it("treats watchedEpisodes maps as equal regardless of key insertion order", () => {
+    const a = {
+      ...base,
+      watchedEpisodes: { s1e1: "2024-01-01", s1e2: "2024-01-02" },
+    };
+    const b = {
+      ...base,
+      watchedEpisodes: { s1e2: "2024-01-02", s1e1: "2024-01-01" },
+    };
+    expect(libraryItemConflictHandler.isEqual(a, b, "test")).toBe(true);
   });
 });

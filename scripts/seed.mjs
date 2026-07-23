@@ -30,7 +30,7 @@ const SERVER_URL =
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
 // mediaType+query: what to search for. status/progressFormat/progressValue:
-// seeded library item state. watchedEpisodes: TV-only episode keys.
+// seeded library item state. watchedEpisodes: TV-only episode key -> YYYY-MM-DD watch date.
 const SEEDS = [
   {
     mediaType: "game",
@@ -115,7 +115,12 @@ const SEEDS = [
     status: "active",
     progressFormat: "percent",
     progressValue: null,
-    watchedEpisodes: ["s1e1", "s1e2", "s1e3", "s1e4"],
+    watchedEpisodes: {
+      s1e1: "2024-06-01",
+      s1e2: "2024-06-02",
+      s1e3: "2024-06-03",
+      s1e4: "2024-06-04",
+    },
   },
   {
     mediaType: "tv",
@@ -178,7 +183,7 @@ async function main() {
       rating: null,
       completedDates: [],
       notes: "",
-      watchedEpisodes: seed.watchedEpisodes ?? [],
+      watchedEpisodes: seed.watchedEpisodes ?? {},
       addedAt: ts,
       updatedAt: ts,
       _deleted: false,

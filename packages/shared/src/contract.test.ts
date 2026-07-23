@@ -21,7 +21,7 @@ const sample: ReplicatedLibraryItem = {
   rating: 4.5,
   completedDates: ["2024-01-02"],
   notes: "great",
-  watchedEpisodes: [],
+  watchedEpisodes: {},
 };
 
 const wishlistedSample: ReplicatedLibraryItem = {
@@ -46,7 +46,7 @@ const tvSample: ReplicatedLibraryItem = {
   progressFormat: "percent",
   progressValue: null,
   platforms: [],
-  watchedEpisodes: ["s1e1", "s1e2", "s0e1"],
+  watchedEpisodes: { s1e1: "2024-01-01", s1e2: "2024-01-02", s0e1: "2024-01-03" },
 };
 
 describe("library item contract", () => {
@@ -75,13 +75,14 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 5 with platforms/rating/completions/notes/progress-format/multi-media/status-index migrations", () => {
-    expect(libraryItemSchema.version).toBe(5);
+  it("is at schema version 6 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates migrations", () => {
+    expect(libraryItemSchema.version).toBe(6);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("4");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("5");
+    expect(Object.keys(libraryItemMigrationStrategies)).toContain("6");
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
@@ -133,6 +134,12 @@ describe("library item contract", () => {
       id: "game:1",
       status: "active",
     });
+    const migrate6 = libraryItemMigrationStrategies[6] as (
+      oldDoc: unknown,
+    ) => unknown;
+    expect(
+      migrate6({ id: "tv:1", watchedEpisodes: ["s1e1", "s1e2"] }),
+    ).toMatchObject({ watchedEpisodes: { s1e1: "", s1e2: "" } });
   });
 
   it("indexes status for the Library grid's finished-exclusion query", () => {

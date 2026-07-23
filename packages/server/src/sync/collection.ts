@@ -1,3 +1,5 @@
+import { canonicalDocKey } from "@shelfie/shared";
+
 /**
  * The generic sync contract. `pull`/`push` orchestrate replication against any
  * collection through this interface; the table-specific SQL lives in each
@@ -41,12 +43,5 @@ export function equalDocs(
 ): boolean {
   if (a === null && b === null) return true;
   if (a === null || b === null) return false;
-  return contractKey(a) === contractKey(b);
-}
-
-function contractKey(doc: object): string {
-  const keys = Object.keys(doc)
-    .filter((key) => key === "_deleted" || !key.startsWith("_"))
-    .sort();
-  return JSON.stringify(doc, keys);
+  return canonicalDocKey(a) === canonicalDocKey(b);
 }

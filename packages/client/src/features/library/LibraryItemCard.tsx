@@ -25,8 +25,10 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import {
+  deriveEpisodeWatch,
   releaseDateFromEpoch,
   releaseDateFromYear,
+  todayLocalIsoDate,
 } from "../media/libraryActions";
 import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
@@ -179,11 +181,14 @@ export function LibraryItemCard({
   async function markNextWatched() {
     if (!airedNext) return;
     const key = episodeKey(airedNext.season, airedNext.episode);
+    const total = tvMeta?.numberOfEpisodes ?? 0;
     await item.incrementalModify((docData) => ({
       ...docData,
-      watchedEpisodes: docData.watchedEpisodes.includes(key)
-        ? docData.watchedEpisodes
-        : [...docData.watchedEpisodes, key],
+      ...deriveEpisodeWatch(docData, total, (current) =>
+        key in current
+          ? current
+          : { ...current, [key]: todayLocalIsoDate() },
+      ),
       updatedAt: Date.now(),
     }));
   }

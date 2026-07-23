@@ -15,7 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   completedDates: [],
   notes: "",
-  watchedEpisodes: [],
+  watchedEpisodes: {},
   _deleted: false,
 };
 
@@ -29,7 +29,7 @@ describe("equalDocs", () => {
   it("ignores key insertion order", () => {
     const reordered: ReplicatedLibraryItem = {
       _deleted: false,
-      watchedEpisodes: [],
+      watchedEpisodes: {},
       notes: "",
       completedDates: [],
       rating: null,

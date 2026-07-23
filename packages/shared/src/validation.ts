@@ -27,8 +27,20 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
     .array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/))
     .max(100),
   notes: z.string().max(10000),
-  // TV episode keys ("s<season>e<episode>", see episodeKey()); [] for
-  // every other media type.
-  watchedEpisodes: z.array(z.string().regex(/^s\d{1,3}e\d{1,4}$/)).max(10000),
+  // TV episode keys ("s<season>e<episode>", see episodeKey()) → local
+  // YYYY-MM-DD watch date ("" = unknown); {} for every other media type.
+  watchedEpisodes: z
+    .record(z.string(), z.string())
+    .refine(
+      (r) =>
+        Object.keys(r).length <= 10000 &&
+        Object.entries(r).every(
+          ([k, v]) =>
+            /^s\d{1,3}e\d{1,4}$/.test(k) &&
+            (v === "" ||
+              /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v)),
+        ),
+      { message: "invalid watchedEpisodes" },
+    ),
   _deleted: z.boolean(),
 });

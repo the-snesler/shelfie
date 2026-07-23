@@ -9,7 +9,7 @@ import type { RxDocument } from "rxdb";
 import { useState } from "react";
 import type { ShelfieDatabase } from "../../db/database";
 import type { LogTarget } from "./libraryActions";
-import { newLibraryItem } from "./libraryActions";
+import { newLibraryItem, todayLocalIsoDate } from "./libraryActions";
 import {
   COMPLETION_STATUSES,
   STATUS_LABELS,
@@ -29,12 +29,6 @@ const FORMAT_LABELS: Record<LogFormat, string> = {
   percent: "Percent",
   pages: "Pages",
 };
-
-/** Local-time YYYY-MM-DD (avoids the UTC off-by-one of toISOString). */
-function toLocalIsoDate(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 /** Shared detailed-editing popup: status, platform (games only), progress,
  *  rating, completion dates and notes for one library item. Reached from
@@ -64,7 +58,7 @@ export function LogModal({
     if (COMPLETION_STATUSES[status]) {
       setDatePrompt({
         status,
-        date: toLocalIsoDate(new Date()),
+        date: todayLocalIsoDate(),
         picking: false,
       });
       return;
@@ -185,12 +179,12 @@ export function LogModal({
       <LogCompletionPrompt
         prompt={datePrompt}
         releaseDate={releaseDate ?? null}
-        onSelectToday={() => void commitCompletion(toLocalIsoDate(new Date()))}
+        onSelectToday={() => void commitCompletion(todayLocalIsoDate())}
         onSelectReleaseDate={() => void commitCompletion(releaseDate ?? null)}
         onChooseOtherDate={(status) =>
           setDatePrompt({
             status: status as ItemStatus,
-            date: toLocalIsoDate(new Date()),
+            date: todayLocalIsoDate(),
             picking: true,
           })
         }

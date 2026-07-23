@@ -19,7 +19,10 @@ export function libraryItemRowToDoc(
     rating: row.rating,
     completedDates: JSON.parse(row.completed_dates) as string[],
     notes: row.notes,
-    watchedEpisodes: JSON.parse(row.watched_episodes) as string[],
+    watchedEpisodes: JSON.parse(row.watched_episodes) as Record<
+      string,
+      string
+    >,
     _deleted: row.deleted === 1,
   };
 }

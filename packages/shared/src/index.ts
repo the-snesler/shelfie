@@ -17,10 +17,12 @@ export {
   LOG_FORMATS_BY_MEDIA,
   defaultLogFormat,
   episodeKey,
+  parseEpisodeKey,
 } from "./types.js";
 export {
   createLwwConflictHandler,
   libraryItemConflictHandler,
+  canonicalDocKey,
 } from "./conflict.js";
 export { libraryItemMigrationStrategies, libraryItemSchema } from "./schema.js";
 export { libraryItemDocSchema } from "./validation.js";

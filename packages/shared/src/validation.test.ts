@@ -15,7 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   completedDates: [],
   notes: "",
-  watchedEpisodes: [],
+  watchedEpisodes: {},
   _deleted: false,
 };
 
@@ -126,21 +126,26 @@ describe("libraryItemDocSchema mediaType", () => {
 });
 
 describe("libraryItemDocSchema watchedEpisodes", () => {
-  it("accepts episode keys including specials", () => {
+  it("accepts episode key -> date entries including specials and unknown dates", () => {
     const doc = {
       ...base,
       id: "tv:1396",
       mediaType: "tv",
-      watchedEpisodes: ["s1e1", "s0e12", "s10e999"],
+      watchedEpisodes: { s1e1: "2024-01-02", s0e12: "", s10e999: "2020-12-31" },
     };
     expect(libraryItemDocSchema.safeParse(doc).success).toBe(true);
   });
 
   it("rejects malformed episode keys", () => {
     for (const key of ["1x3", "s1", "e3", "S1E3", "s1e"]) {
-      const doc = { ...base, watchedEpisodes: [key] };
+      const doc = { ...base, watchedEpisodes: { [key]: "2024-01-02" } };
       expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
     }
+  });
+
+  it("rejects malformed watch dates", () => {
+    const doc = { ...base, watchedEpisodes: { s1e1: "2024-13-40" } };
+    expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
   });
 });
 

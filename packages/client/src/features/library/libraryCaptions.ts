@@ -70,7 +70,7 @@ function tvCaption(
   item: LibraryItem,
   meta: TvCardDoc | undefined,
 ): string | null {
-  const watched = item.watchedEpisodes.filter(
+  const watched = Object.keys(item.watchedEpisodes).filter(
     (k) => !k.startsWith("s0e"),
   ).length;
   if (meta?.numberOfEpisodes == null)
@@ -96,7 +96,7 @@ export function hasAired(ep: NextEpisode): boolean {
  *  `watched`. null when every non-special episode is watched. */
 export function nextUnwatched(
   seasons: TvSeason[],
-  watched: string[],
+  watched: Record<string, string>,
   skipKey?: string,
 ): NextEpisode | null {
   const ordered = [...seasons]
@@ -115,7 +115,7 @@ export function nextUnwatched(
     );
   for (const ep of ordered) {
     const key = episodeKey(ep.season, ep.episode);
-    if (key !== skipKey && !watched.includes(key)) return ep;
+    if (key !== skipKey && !(key in watched)) return ep;
   }
   return null;
 }

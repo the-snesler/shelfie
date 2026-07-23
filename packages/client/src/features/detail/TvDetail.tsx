@@ -5,7 +5,12 @@ import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/TvDetail";
 import { upsertTvCards } from "../../db/tvCards";
 import { tmdbImageUrl } from "../../images";
-import { newLibraryItem, releaseDateFromYear } from "../media/libraryActions";
+import {
+  deriveEpisodeWatch,
+  newLibraryItem,
+  releaseDateFromYear,
+  todayLocalIsoDate,
+} from "../media/libraryActions";
 import {
   MediaCover,
   MEDIA_DETAIL_COVER_WIDTH,
@@ -49,21 +54,31 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   });
   const handleBack = useBackNavigation();
 
-  /** Persists a `watchedEpisodes` update by deriving the next array from
-   *  the document's current data at write time via `incrementalModify`
-   *  (RxDB serializes these per document, so rapid toggles compose
-   *  instead of racing) — or the insert path for a show not yet in the
-   *  library, same lazy-add behavior as StatusControl's default click. */
-  async function applyWatched(updater: (current: string[]) => string[]) {
+  /** Persists a `watchedEpisodes` update by deriving the next map from the
+   *  document's current data at write time via `incrementalModify` (RxDB
+   *  serializes these per document, so rapid toggles compose instead of
+   *  racing) — or the insert path for a show not yet in the library, same
+   *  lazy-add behavior as StatusControl's default click. Status/completion
+   *  derivation (see `deriveEpisodeWatch`) is shared with the library
+   *  grid's "next episode" quick-check so the two toggle paths never drift. */
+  async function applyWatched(
+    updater: (current: Record<string, string>) => Record<string, string>,
+  ) {
     if (metaState.status !== "loaded") return;
-    const meta = metaState.meta;
+    const total = metaState.meta.numberOfEpisodes;
     if (item) {
       await item.incrementalModify((docData) => ({
         ...docData,
-        watchedEpisodes: updater(docData.watchedEpisodes),
+        ...deriveEpisodeWatch(docData, total, updater),
         updatedAt: Date.now(),
       }));
     } else {
+      const meta = metaState.meta;
+      const derived = deriveEpisodeWatch(
+        { watchedEpisodes: {}, status: "active", completedDates: [] },
+        total,
+        updater,
+      );
       const base = newLibraryItem(
         {
           mediaType: "tv",
@@ -71,22 +86,25 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           name: meta.name,
           platforms: [],
         },
-        "active",
+        derived.status,
       );
       await db.library_items.insert({
         ...base,
-        watchedEpisodes: updater([]),
+        watchedEpisodes: derived.watchedEpisodes,
+        completedDates: derived.completedDates,
       });
     }
   }
 
   function toggleEpisode(season: number, episode: number) {
     const key = episodeKey(season, episode);
-    void applyWatched((current) =>
-      current.includes(key)
-        ? current.filter((k) => k !== key)
-        : [...current, key],
-    );
+    void applyWatched((current) => {
+      if (key in current) {
+        const { [key]: _omit, ...rest } = current;
+        return rest;
+      }
+      return { ...current, [key]: todayLocalIsoDate() };
+    });
   }
 
   function toggleSeason(season: TvSeason) {
@@ -94,11 +112,16 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       episodeKey(season.seasonNumber, ep.episodeNumber),
     );
     void applyWatched((current) => {
-      const allWatched =
-        keys.length > 0 && keys.every((k) => current.includes(k));
-      return allWatched
-        ? current.filter((k) => !keys.includes(k))
-        : [...current, ...keys.filter((k) => !current.includes(k))];
+      const allWatched = keys.length > 0 && keys.every((k) => k in current);
+      if (allWatched) {
+        const next = { ...current };
+        for (const k of keys) delete next[k];
+        return next;
+      }
+      const today = todayLocalIsoDate();
+      const next = { ...current };
+      for (const k of keys) if (!(k in next)) next[k] = today;
+      return next;
     });
   }
 
@@ -137,8 +160,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
     ? tmdbImageUrl(meta.backdropPath, "w1280")
     : null;
 
-  const watchedEpisodes = item?.watchedEpisodes ?? [];
-  const watchedCount = watchedEpisodes.filter(
+  const watchedEpisodes = item?.watchedEpisodes ?? {};
+  const watchedCount = Object.keys(watchedEpisodes).filter(
     (k) => !k.startsWith("s0e"),
   ).length;
   const percent =
@@ -229,8 +252,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
             const keys = season.episodes.map((ep) =>
               episodeKey(season.seasonNumber, ep.episodeNumber),
             );
-            const seasonWatched = keys.filter((k) =>
-              watchedEpisodes.includes(k),
+            const seasonWatched = keys.filter(
+              (k) => k in watchedEpisodes,
             ).length;
             const allWatched = keys.length > 0 && seasonWatched === keys.length;
             return (
@@ -264,7 +287,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
                       season.seasonNumber,
                       ep.episodeNumber,
                     );
-                    const watched = watchedEpisodes.includes(key);
+                    const watched = key in watchedEpisodes;
                     return (
                       <li key={key}>
                         <label className="-mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 text-sm hover:bg-well/60">

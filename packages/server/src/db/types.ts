@@ -24,8 +24,8 @@ export interface LibraryItemsTable {
   completed_dates: string;
   /** Free-text notes; empty string when none. */
   notes: string;
-  /** JSON-encoded string[] of watched TV episode keys ("s1e3"); "[]" for
-   *  non-TV items. */
+  /** JSON-encoded Record<episodeKey, YYYY-MM-DD watch date> (e.g.
+   *  {"s1e3":"2024-06-01"}); "{}" for non-TV items. */
   watched_episodes: string;
   /** server-owned replication cursor */
   seq: number;

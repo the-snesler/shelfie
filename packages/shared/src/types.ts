@@ -79,6 +79,18 @@ export function episodeKey(season: number, episode: number): string {
   return `s${season}e${episode}`;
 }
 
+/** Inverse of {@link episodeKey}: "s1e3" → { season: 1, episode: 3 }.
+ *  Returns { season: 0, episode: 0 } for a malformed key. */
+export function parseEpisodeKey(key: string): {
+  season: number;
+  episode: number;
+} {
+  const m = /^s(\d+)e(\d+)$/.exec(key);
+  return m
+    ? { season: Number(m[1]), episode: Number(m[2]) }
+    : { season: 0, episode: 0 };
+}
+
 export interface LibraryItem {
   /** `${mediaType}:${sourceId}`, e.g. "game:1942" */
   id: string;
@@ -101,10 +113,10 @@ export interface LibraryItem {
   completedDates: string[];
   /** Free-text notes; empty string when none. */
   notes: string;
-  /** TV only: episode keys (see {@link episodeKey}) the user has watched.
-   *  Always [] for other media types. TV progress/derived state comes from
-   *  this set plus the show's episode count from metadata. */
-  watchedEpisodes: string[];
+  /** TV only: episode key (see {@link episodeKey}) → local `YYYY-MM-DD`
+   *  watch date (`""` = date unknown, from pre-v6 migration). `{}` for other
+   *  media types. */
+  watchedEpisodes: Record<string, string>;
   /** ms epoch */
   addedAt: number;
   /** ms epoch — last-write-time; used by conflict resolution and UI sorting */

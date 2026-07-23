@@ -18,7 +18,7 @@ export function createLwwConflictHandler<
 >(): RxConflictHandler<TDoc> {
   return {
     isEqual(a, b) {
-      return stableKey(a) === stableKey(b);
+      return canonicalDocKey(a) === canonicalDocKey(b);
     },
 
     async resolve({ realMasterState, newDocumentState }) {
@@ -32,7 +32,8 @@ export function createLwwConflictHandler<
         return newDocumentState._deleted ? newDocumentState : realMasterState;
       }
 
-      return stableKey(newDocumentState) >= stableKey(realMasterState)
+      return canonicalDocKey(newDocumentState) >=
+        canonicalDocKey(realMasterState)
         ? newDocumentState
         : realMasterState;
     },
@@ -40,15 +41,27 @@ export function createLwwConflictHandler<
 }
 
 /**
- * Order-independent serialization of a document's contract fields: keys are
- * sorted (so insertion order is irrelevant) and RxDB internals (`_rev`,
- * `_meta`, …) are dropped, while `_deleted` is kept.
+ * Order-independent serialization of a document's contract fields: object
+ * keys are sorted recursively (so key insertion order and nested map order
+ * are irrelevant), arrays keep their order, and RxDB internals (`_rev`,
+ * `_meta`, `_attachments`) are dropped while `_deleted` is kept.
  */
-function stableKey(doc: object): string {
-  const keys = Object.keys(doc)
-    .filter((key) => key === "_deleted" || !key.startsWith("_"))
-    .sort();
-  return JSON.stringify(doc, keys);
+export function canonicalDocKey(doc: object): string {
+  return JSON.stringify(canonicalize(doc));
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(obj).sort()) {
+      if (key.startsWith("_") && key !== "_deleted") continue;
+      out[key] = canonicalize(obj[key]);
+    }
+    return out;
+  }
+  return value;
 }
 
 export const libraryItemConflictHandler =

@@ -1,4 +1,5 @@
 import type { LibraryItem, MediaType } from "@shelfie/shared";
+import { parseEpisodeKey } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router";
@@ -22,11 +23,21 @@ const MEDIA_LABEL: Record<MediaType, string> = {
   book: "Book",
 };
 
-interface LogEntry {
-  date: string;
-  item: RxDocument<LibraryItem>;
-  card: CardMeta | undefined;
-}
+type LogEntry =
+  | {
+      kind: "completion";
+      date: string;
+      item: RxDocument<LibraryItem>;
+      card: CardMeta | undefined;
+    }
+  | {
+      kind: "episode";
+      date: string;
+      item: RxDocument<LibraryItem>;
+      card: CardMeta | undefined;
+      season: number;
+      episode: number;
+    };
 
 /** Read-only half-step star display for a logbook row's rating — unlike
  *  `StarRating` (detail/StarRating.tsx), which is an interactive control
@@ -76,28 +87,37 @@ function LogbookRow({ entry }: { entry: LogEntry }) {
   const { item, card, date } = entry;
   const name = cardName(item, card);
   const href = detailHref(item, card);
-  const row = (
-    <>
-      <MediaCover
-        coverUrl={cardCover(item.mediaType, card)}
-        name={name}
-        width={44}
-        mediaType={item.mediaType}
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-faint">{entryDateLabel(date)}</p>
-        <p className="truncate text-sm font-medium text-ink">{name}</p>
-        <p className="text-xs text-muted">{MEDIA_LABEL[item.mediaType]}</p>
-      </div>
-      {item.rating != null && (
-        <div className="shrink-0">
-          <StaticStars value={item.rating} />
-        </div>
-      )}
-    </>
-  );
   const rowClass =
     "flex items-center gap-3 rounded px-2 py-1.5 hover:bg-well/60";
+  const row =
+    entry.kind === "completion" ? (
+      <>
+        <MediaCover
+          coverUrl={cardCover(item.mediaType, card)}
+          name={name}
+          width={44}
+          mediaType={item.mediaType}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-faint">{entryDateLabel(date)}</p>
+          <p className="truncate text-sm font-medium text-ink">{name}</p>
+          <p className="text-xs text-muted">{MEDIA_LABEL[item.mediaType]}</p>
+        </div>
+        {item.rating != null && (
+          <div className="shrink-0">
+            <StaticStars value={item.rating} />
+          </div>
+        )}
+      </>
+    ) : (
+      <p className="min-w-0 flex flex-1 gap-3 items-baseline">
+        <span className="text-xs text-faint">{entryDateLabel(date)}</span>
+        <span className="truncate text-sm text-ink">{name}</span>
+        <span className="shrink-0 text-xs text-faint tabular-nums">
+          S{entry.season}E{entry.episode}
+        </span>
+      </p>
+    );
   return href ? (
     <Link to={href} className={rowClass}>
       {row}
@@ -140,7 +160,11 @@ function LogbookList({ entries }: { entries: LogEntry[] }) {
           <div className="flex flex-col">
             {monthEntries.map((entry, i) => (
               <LogbookRow
-                key={`${entry.item.id}:${entry.date}:${i}`}
+                key={
+                  entry.kind === "episode"
+                    ? `${entry.item.id}:s${entry.season}e${entry.episode}:${entry.date}`
+                    : `${entry.item.id}:${entry.date}:${i}`
+                }
                 entry={entry}
               />
             ))}
@@ -270,15 +294,39 @@ export default function Logbook() {
   const { items, cards } = useLibraryData(db);
   const [tab, setTab] = useState<"logbook" | "stats">("logbook");
 
-  const entries = useMemo(() => {
-    const result: LogEntry[] = [];
+  const { completionEntries, feedEntries } = useMemo(() => {
+    const completion: Extract<LogEntry, { kind: "completion" }>[] = [];
     for (const item of items) {
       for (const date of item.completedDates) {
-        result.push({ date, item, card: cards.get(item.id) });
+        completion.push({
+          kind: "completion",
+          date,
+          item,
+          card: cards.get(item.id),
+        });
       }
     }
-    result.sort((a, b) => b.date.localeCompare(a.date));
-    return result;
+    completion.sort((a, b) => b.date.localeCompare(a.date));
+
+    const feed: LogEntry[] = [...completion];
+    for (const item of items) {
+      if (item.mediaType !== "tv") continue;
+      for (const [key, date] of Object.entries(item.watchedEpisodes)) {
+        if (date === "") continue;
+        const { season, episode } = parseEpisodeKey(key);
+        feed.push({
+          kind: "episode",
+          date,
+          item,
+          card: cards.get(item.id),
+          season,
+          episode,
+        });
+      }
+    }
+    feed.sort((a, b) => b.date.localeCompare(a.date));
+
+    return { completionEntries: completion, feedEntries: feed };
   }, [items, cards]);
 
   return (
@@ -313,9 +361,9 @@ export default function Logbook() {
         </div>
       </header>
       {tab === "logbook" ? (
-        <LogbookList entries={entries} />
+        <LogbookList entries={feedEntries} />
       ) : (
-        <StatsPanel entries={entries} items={items} />
+        <StatsPanel entries={completionEntries} items={items} />
       )}
     </div>
   );
