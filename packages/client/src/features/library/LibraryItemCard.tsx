@@ -81,6 +81,11 @@ export function LibraryItemCard({
   const posterMeta = movieMeta ?? tvMeta;
   const progress = showProgressBar ? libraryProgressPercent(item, meta) : null;
 
+  const PROGRESS_RADIUS = 12;
+  const progress_dasharray = 2 * Math.PI * PROGRESS_RADIUS;
+  const progress_dashoffset =
+    progress != null ? progress_dasharray * (1 - progress / 100) : 0;
+
   const nextUp =
     item.mediaType === "tv" && catalog
       ? nextUnwatched(catalog, item.watchedEpisodes)
@@ -274,19 +279,50 @@ export function LibraryItemCard({
           </Link>
         )}
         {progress != null && (
-          <div
+          // <div
+          //   role="progressbar"
+          //   aria-label={`${name} progress`}
+          //   aria-valuemin={0}
+          //   aria-valuemax={100}
+          //   aria-valuenow={Math.round(progress)}
+          //   className="absolute inset-x-2 bottom-2 z-20 h-1 overflow-hidden rounded-full bg-black/55"
+          // >
+          //   <div
+          //     className="h-full rounded-full bg-accent"
+          //     style={{ width: `${progress}%` }}
+          //   />
+          // </div>
+          <svg
             role="progressbar"
             aria-label={`${name} progress`}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(progress)}
-            className="absolute inset-x-0 bottom-0 z-20 h-1 overflow-hidden rounded-full bg-black/55"
+            className="absolute left-1 bottom-1 w-8 h-8 z-20 overflow-hidden drop-shadow-lg"
+            width="32"
+            height="32"
           >
-            <div
-              className="h-full rounded-full bg-accent"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+            <circle
+              r={PROGRESS_RADIUS}
+              cx="16"
+              cy="16"
+              fill="transparent"
+              stroke-width="6px"
+              className="stroke-panel/50"
+            ></circle>
+            <circle
+              r={PROGRESS_RADIUS}
+              cx="16"
+              cy="16"
+              fill="transparent"
+              stroke-width="6px"
+              stroke-dasharray={progress_dasharray}
+              stroke-dashoffset={progress_dashoffset}
+              stroke-linecap="round"
+              className="stroke-green-400 transition-[stroke-dashoffset] duration-300 ease-out"
+              transform="rotate(-90 16 16)"
+            ></circle>
+          </svg>
         )}
       </div>
       <div style={{ height: "var(--shelf-ledge-h)" }} aria-hidden />
