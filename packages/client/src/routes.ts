@@ -14,6 +14,7 @@ export default [
     route("tv/:id", "features/detail/TvDetail.tsx"),
     route("books/:id", "features/detail/BookDetail.tsx"),
     route("logbook", "features/logbook/Logbook.tsx"),
+    route("settings", "features/settings/Settings.tsx"),
     route("*", "catch-all.tsx"),
   ]),
 ] satisfies RouteConfig;

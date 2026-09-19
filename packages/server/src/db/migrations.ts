@@ -335,6 +335,28 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 10,
+    name: "owner-settings",
+    async up(db) {
+      await db.schema
+        .alterTable("auth_owner")
+        .addColumn("username", "text", (c) => c.notNull().defaultTo("owner"))
+        .execute();
+      await db.schema
+        .alterTable("auth_owner")
+        .addColumn("library_theme", "text", (c) =>
+          c.notNull().defaultTo("classic"),
+        )
+        .execute();
+      await db.schema
+        .alterTable("auth_owner")
+        .addColumn("show_progress_bars", "integer", (c) =>
+          c.notNull().defaultTo(0),
+        )
+        .execute();
+    },
+  },
 ];
 
 /**

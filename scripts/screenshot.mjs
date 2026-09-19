@@ -12,6 +12,7 @@
  *          CLIENT_PORT         default 5173 (matches packages/client's own default;
  *                              set alongside SERVER_PORT to run several dev
  *                              stacks — e.g. one per agent — in parallel)
+ *          SHELFIE_USERNAME    default "owner" (matches the migration default)
  *          SHELFIE_PASSWORD    default "admin" (matches the dev convention)
  */
 
@@ -20,6 +21,7 @@ import { chromium } from "playwright";
 const CLIENT_URL =
   process.env.SHELFIE_CLIENT_URL ??
   `http://localhost:${process.env.CLIENT_PORT ?? 5173}`;
+const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 const OUTPUT_PATH = process.argv[2] ?? "scripts/screenshot.png";
 const EMPTY_STATE_TEXT = /your library is empty/i;
@@ -51,7 +53,7 @@ async function main() {
   }
 }
 
-/** Fills + submits the password screen if one is showing; no-op otherwise. */
+/** Fills + submits the account screen if one is showing; no-op otherwise. */
 async function login(page) {
   // `isVisible()` checks the DOM once and does not actually wait despite
   // accepting a `timeout` option, so use `waitFor` (a real actionability
@@ -63,19 +65,20 @@ async function login(page) {
     .catch(() => false);
   if (!sawPasswordInput) return;
 
+  await page.locator('input[autocomplete="username"]').fill(USERNAME);
   await passwordInput.fill(PASSWORD);
   await page.locator('button[type="submit"]').click();
 
   // Login error means setup is done and the password is something else.
   const loginFailed = await page
-    .getByText(/incorrect password|could not create password/i)
+    .getByText(/incorrect password|could not create account/i)
     .waitFor({ state: "visible", timeout: 3000 })
     .then(() => true)
     .catch(() => false);
   if (loginFailed) {
     throw new Error(
-      `Login failed with password "${PASSWORD}". Set SHELFIE_PASSWORD to match ` +
-        "the owner password, or run scripts/seed.mjs first to claim it.",
+      `Login failed as "${USERNAME}". Set SHELFIE_USERNAME and SHELFIE_PASSWORD ` +
+        "to match the owner credentials, or run scripts/seed.mjs first to claim them.",
     );
   }
 }
@@ -98,7 +101,12 @@ async function waitForLibraryToSettle(page) {
     .or(page.getByText(EMPTY_STATE_TEXT))
     .first()
     .waitFor({ timeout: 15_000 });
-  if (await libraryItem(page).isVisible().catch(() => false)) return;
+  if (
+    await libraryItem(page)
+      .isVisible()
+      .catch(() => false)
+  )
+    return;
   // Empty state is up; give the app's self-heal a beat to swap in synced items.
   await libraryItem(page)
     .waitFor({ timeout: SELF_HEAL_GRACE_MS })

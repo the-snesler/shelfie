@@ -184,7 +184,11 @@ export interface BookMetadataTable {
 /** Single-user password record. Exactly one row is expected, keyed by "owner". */
 export interface AuthOwnerTable {
   id: string;
+  username: string;
   password_hash: string;
+  library_theme: string;
+  /** 0 | 1 — SQLite has no native boolean */
+  show_progress_bars: number;
   created_at: number;
   updated_at: number;
 }

@@ -29,6 +29,16 @@ interface ChangePasswordBody {
   newPassword?: unknown;
 }
 
+interface CredentialsBody {
+  username?: unknown;
+  password?: unknown;
+}
+
+interface ChangeUsernameBody {
+  currentPassword?: unknown;
+  newUsername?: unknown;
+}
+
 interface SessionMeta {
   userAgent: string | null;
 }
@@ -47,14 +57,21 @@ export function registerAuthRoutes(
   });
 
   app.post("/api/auth/setup", async (c) => {
-    const password = await readPassword(c);
-    if (!password) return c.json({ error: "password is required" }, 400);
+    const credentials = await readCredentials(c);
+    if (!credentials) {
+      return c.json({ error: "username and password are required" }, 400);
+    }
     if (await hasOwner(database)) {
       return c.json({ error: "setup is already complete" }, 409);
     }
 
     try {
-      const token = await createOwner(database, password, metaFromContext(c));
+      const token = await createOwner(
+        database,
+        credentials.username,
+        credentials.password,
+        metaFromContext(c),
+      );
       return c.json<AuthTokenResponse>({ token }, 201);
     } catch (err) {
       if (isUniqueConstraintError(err)) {
@@ -65,10 +82,17 @@ export function registerAuthRoutes(
   });
 
   app.post("/api/auth/login", async (c) => {
-    const password = await readPassword(c);
-    if (!password) return c.json({ error: "password is required" }, 400);
-    const token = await login(database, password, metaFromContext(c));
-    if (!token) return c.json({ error: "invalid password" }, 401);
+    const credentials = await readCredentials(c);
+    if (!credentials) {
+      return c.json({ error: "username and password are required" }, 400);
+    }
+    const token = await login(
+      database,
+      credentials.username,
+      credentials.password,
+      metaFromContext(c),
+    );
+    if (!token) return c.json({ error: "invalid credentials" }, 401);
     return c.json<AuthTokenResponse>({ token });
   });
 
@@ -103,9 +127,41 @@ export function registerAuthRoutes(
       newPassword,
       metaFromContext(c),
     );
-    if (!nextToken) return c.json({ error: "invalid password" }, 401);
+    if (!nextToken) return c.json({ error: "invalid password" }, 403);
 
-    await revokeSession(database, token);
+    return c.json<AuthTokenResponse>({ token: nextToken });
+  });
+
+  app.post("/api/auth/username", async (c) => {
+    const token = readToken(c);
+    if (!token || !(await validateSession(database, token))) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+
+    const body = await c.req.json<ChangeUsernameBody>().catch(() => null);
+    const currentPassword =
+      typeof body?.currentPassword === "string" ? body.currentPassword : "";
+    const newUsername =
+      typeof body?.newUsername === "string"
+        ? normalizeUsername(body.newUsername)
+        : null;
+    if (!currentPassword || !newUsername) {
+      return c.json(
+        {
+          error:
+            "currentPassword and a 1-64 character newUsername are required",
+        },
+        400,
+      );
+    }
+
+    const nextToken = await changeUsername(
+      database,
+      currentPassword,
+      newUsername,
+      metaFromContext(c),
+    );
+    if (!nextToken) return c.json({ error: "invalid password" }, 403);
     return c.json<AuthTokenResponse>({ token: nextToken });
   });
 }
@@ -130,6 +186,7 @@ export function createAuthMiddleware(
 
 async function createOwner(
   database: Kysely<Database>,
+  username: string,
   password: string,
   meta: SessionMeta,
 ): Promise<string> {
@@ -138,7 +195,10 @@ async function createOwner(
     .insertInto("auth_owner")
     .values({
       id: OWNER_ID,
+      username,
       password_hash: await hashPassword(password),
+      library_theme: "classic",
+      show_progress_bars: 0,
       created_at: now,
       updated_at: now,
     })
@@ -149,15 +209,17 @@ async function createOwner(
 
 async function login(
   database: Kysely<Database>,
+  username: string,
   password: string,
   meta: SessionMeta,
 ): Promise<string | null> {
   const owner = await database
     .selectFrom("auth_owner")
-    .select("password_hash")
+    .select(["username", "password_hash"])
     .where("id", "=", OWNER_ID)
     .executeTakeFirst();
   if (!owner) return null;
+  if (usernameKey(owner.username) !== usernameKey(username)) return null;
   if (!(await verifyPassword(password, owner.password_hash))) return null;
   return createSession(database, meta);
 }
@@ -181,6 +243,36 @@ async function changePassword(
   await database
     .updateTable("auth_owner")
     .set({ password_hash: await hashPassword(newPassword), updated_at: now })
+    .where("id", "=", OWNER_ID)
+    .execute();
+  await database
+    .updateTable("auth_sessions")
+    .set({ revoked_at: now })
+    .where("revoked_at", "is", null)
+    .execute();
+
+  return createSession(database, meta);
+}
+
+async function changeUsername(
+  database: Kysely<Database>,
+  currentPassword: string,
+  newUsername: string,
+  meta: SessionMeta,
+): Promise<string | null> {
+  const owner = await database
+    .selectFrom("auth_owner")
+    .select("password_hash")
+    .where("id", "=", OWNER_ID)
+    .executeTakeFirst();
+  if (!owner) return null;
+  if (!(await verifyPassword(currentPassword, owner.password_hash)))
+    return null;
+
+  const now = Date.now();
+  await database
+    .updateTable("auth_owner")
+    .set({ username: newUsername, updated_at: now })
     .where("id", "=", OWNER_ID)
     .execute();
   await database
@@ -305,11 +397,26 @@ function readToken(c: Context): string | null {
   return c.req.query("token") ?? null;
 }
 
-async function readPassword(c: Context): Promise<string | null> {
-  const body = await c.req.json<{ password?: unknown }>().catch(() => null);
-  return typeof body?.password === "string" && body.password.length > 0
-    ? body.password
-    : null;
+async function readCredentials(c: Context): Promise<{
+  username: string;
+  password: string;
+} | null> {
+  const body = await c.req.json<CredentialsBody>().catch(() => null);
+  const username =
+    typeof body?.username === "string"
+      ? normalizeUsername(body.username)
+      : null;
+  const password = typeof body?.password === "string" ? body.password : "";
+  return username && password ? { username, password } : null;
+}
+
+function normalizeUsername(username: string): string | null {
+  const trimmed = username.trim();
+  return trimmed.length > 0 && trimmed.length <= 64 ? trimmed : null;
+}
+
+function usernameKey(username: string): string {
+  return username.toLowerCase();
 }
 
 function metaFromContext(c: Context): SessionMeta {

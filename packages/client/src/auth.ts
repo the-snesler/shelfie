@@ -1,4 +1,5 @@
 const TOKEN_KEY = "shelfie.authToken";
+const USERNAME_KEY = "shelfie.username";
 const AUTH_LOST_EVENT = "shelfie-auth-lost";
 
 export interface AuthStatus {
@@ -22,6 +23,14 @@ export function clearAuthToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+export function getRememberedUsername(): string {
+  return localStorage.getItem(USERNAME_KEY) ?? "owner";
+}
+
+export function rememberUsername(username: string): void {
+  localStorage.setItem(USERNAME_KEY, username);
+}
+
 export function onAuthLost(handler: () => void): () => void {
   window.addEventListener(AUTH_LOST_EVENT, handler);
   return () => window.removeEventListener(AUTH_LOST_EVENT, handler);
@@ -36,15 +45,23 @@ export async function getAuthStatus(): Promise<AuthStatus> {
   return res.json() as Promise<AuthStatus>;
 }
 
-export async function setupPassword(password: string): Promise<string> {
-  const body = await requestToken("/api/auth/setup", password);
+export async function setupAccount(
+  username: string,
+  password: string,
+): Promise<string> {
+  const body = await requestToken("/api/auth/setup", username, password);
   setAuthToken(body.token);
+  rememberUsername(username.trim());
   return body.token;
 }
 
-export async function loginPassword(password: string): Promise<string> {
-  const body = await requestToken("/api/auth/login", password);
+export async function loginAccount(
+  username: string,
+  password: string,
+): Promise<string> {
+  const body = await requestToken("/api/auth/login", username, password);
   setAuthToken(body.token);
+  rememberUsername(username.trim());
   return body.token;
 }
 
@@ -71,6 +88,23 @@ export async function changePassword(
 
   const body = (await res.json()) as TokenResponse;
   setAuthToken(body.token);
+  return body.token;
+}
+
+export async function changeUsername(
+  currentPassword: string,
+  newUsername: string,
+): Promise<string> {
+  const res = await authFetch("/api/auth/username", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ currentPassword, newUsername }),
+  });
+  if (!res.ok) throw new Error(await responseError(res));
+
+  const body = (await res.json()) as TokenResponse;
+  setAuthToken(body.token);
+  rememberUsername(newUsername.trim());
   return body.token;
 }
 
@@ -109,12 +143,13 @@ export function authUrl(path: string): string {
 
 async function requestToken(
   url: string,
+  username: string,
   password: string,
 ): Promise<TokenResponse> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ username, password }),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -123,4 +158,9 @@ async function requestToken(
     );
   }
   return res.json() as Promise<TokenResponse>;
+}
+
+async function responseError(res: Response): Promise<string> {
+  const detail = await res.text().catch(() => "");
+  return `${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`;
 }

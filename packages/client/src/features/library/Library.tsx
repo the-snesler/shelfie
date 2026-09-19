@@ -1,18 +1,12 @@
 import type { LibraryItem, MediaType, MetaStatus } from "@shelfie/shared";
 import { MEDIA_TYPES, META_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useOutletContext, useSearchParams } from "react-router";
 import type { AppOutletContext } from "../../App";
-import {
-  getLibraryTheme,
-  setLibraryTheme,
-  type LibraryTheme,
-} from "../../libraryTheme";
 import { META_STATUS_LABELS } from "../media/status";
 import { cardCaption } from "./libraryCaptions";
 import { LibraryItemCard } from "./LibraryItemCard";
-import { LibraryThemePicker } from "./LibraryThemePicker";
 import { useLibraryData } from "./useLibraryData";
 
 const MEDIA_LABELS: Record<MediaType, string> = {
@@ -23,9 +17,8 @@ const MEDIA_LABELS: Record<MediaType, string> = {
 };
 
 export default function Library() {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, settings } = useOutletContext<AppOutletContext>();
   const { items, cards, tvCatalogs } = useLibraryData(db);
-  const [theme, setTheme] = useState<LibraryTheme>(getLibraryTheme);
 
   const [searchParams] = useSearchParams();
   const typeParam = searchParams.get("type");
@@ -56,15 +49,10 @@ export default function Library() {
 
   const heading = activeType ? MEDIA_LABELS[activeType] : "Library";
 
-  function handleThemeChange(nextTheme: LibraryTheme) {
-    setTheme(nextTheme);
-    setLibraryTheme(nextTheme);
-  }
-
   return (
     <div
       className="library-wall min-h-full"
-      data-library-theme={theme}
+      data-library-theme={settings.libraryTheme}
     >
       <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-10 px-5 py-8 md:px-8">
         <header className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -76,10 +64,6 @@ export default function Library() {
               {filtered.length} on the shelf
             </span>
           </div>
-          <LibraryThemePicker
-            value={theme}
-            onChange={handleThemeChange}
-          />
         </header>
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-16 text-center text-muted">
@@ -119,6 +103,7 @@ export default function Library() {
                         ? tvCatalogs.get(item.id)
                         : undefined
                     }
+                    showProgressBar={settings.showProgressBars}
                   />
                 ))}
               </div>

@@ -34,6 +34,7 @@ import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
 import { hasAired, nextUnwatched } from "./libraryCaptions";
 import type { CardMeta } from "./useLibraryData";
+import { libraryProgressPercent } from "./libraryProgress";
 
 /** Route path segment (without the leading slash) each non-game media type
  *  lives under, e.g. tv -> "tv", movie -> "movies". */
@@ -58,12 +59,14 @@ export function LibraryItemCard({
   meta,
   caption,
   catalog,
+  showProgressBar,
 }: {
   db: ShelfieDatabase;
   item: RxDocument<LibraryItem>;
   meta: CardMeta | undefined;
   caption: string | null;
   catalog?: TvSeason[];
+  showProgressBar: boolean;
 }) {
   const popover = useLogPopover();
 
@@ -76,6 +79,7 @@ export function LibraryItemCard({
   const bookMeta =
     item.mediaType === "book" ? (meta as BookCardDoc | undefined) : undefined;
   const posterMeta = movieMeta ?? tvMeta;
+  const progress = showProgressBar ? libraryProgressPercent(item, meta) : null;
 
   const nextUp =
     item.mediaType === "tv" && catalog
@@ -185,9 +189,7 @@ export function LibraryItemCard({
     await item.incrementalModify((docData) => ({
       ...docData,
       ...deriveEpisodeWatch(docData, total, (current) =>
-        key in current
-          ? current
-          : { ...current, [key]: todayLocalIsoDate() },
+        key in current ? current : { ...current, [key]: todayLocalIsoDate() },
       ),
       updatedAt: Date.now(),
     }));
@@ -221,7 +223,7 @@ export function LibraryItemCard({
   return (
     <div className="flex flex-col" style={{ width: `${cardWidth}px` }}>
       <div
-        className="flex items-end"
+        className="relative flex items-end"
         style={{ height: "var(--shelf-cover-h)" }}
       >
         {href ? (
@@ -270,6 +272,21 @@ export function LibraryItemCard({
               </motion.div>
             </AnimatePresence>
           </Link>
+        )}
+        {progress != null && (
+          <div
+            role="progressbar"
+            aria-label={`${name} progress`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+            className="absolute inset-x-0 bottom-0 z-20 h-1 overflow-hidden rounded-full bg-black/55"
+          >
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         )}
       </div>
       <div style={{ height: "var(--shelf-ledge-h)" }} aria-hidden />

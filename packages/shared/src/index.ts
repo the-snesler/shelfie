@@ -56,3 +56,9 @@ export type {
   BookDetail,
   BookSeries,
 } from "./books.js";
+export { DEFAULT_LIBRARY_THEME, LIBRARY_THEMES } from "./settings.js";
+export type {
+  LibraryTheme,
+  OwnerPreferences,
+  OwnerSettings,
+} from "./settings.js";

@@ -13,11 +13,11 @@ import { libraryItemsSync } from "./sync/library-items.js";
 import { pull } from "./sync/pull.js";
 import { push, type PushRow } from "./sync/push.js";
 import { onChange } from "./sync/stream.js";
+import { registerSettingsRoutes } from "./settings/routes.js";
 
 // Relative to cwd; the Docker runtime sets WORKDIR /app and STATIC_DIR=./public.
 const STATIC_DIR = process.env.STATIC_DIR;
-const BACKGROUND_SVG_CACHE_CONTROL =
-  "public, max-age=31536000, immutable";
+const BACKGROUND_SVG_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 /**
  * Builds the Hono app with every route mounted, but starts no background work
@@ -35,6 +35,7 @@ export function createApp(): Hono {
   registerImageRoutes(app);
   app.use("/api/*", createAuthMiddleware());
 
+  registerSettingsRoutes(app);
   registerSyncRoutes(app, libraryItemsSync);
 
   registerGamesRoutes(app);

@@ -21,12 +21,14 @@
  *          SERVER_PORT         default 3001 (matches packages/server's own default;
  *                              set alongside CLIENT_PORT to run several dev
  *                              stacks — e.g. one per agent — in parallel)
+ *          SHELFIE_USERNAME    default "owner" (matches the migration default)
  *          SHELFIE_PASSWORD    default "admin" (matches the dev convention)
  */
 
 const SERVER_URL =
   process.env.SHELFIE_SERVER_URL ??
   `http://localhost:${process.env.SERVER_PORT ?? process.env.PORT ?? 3001}`;
+const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
 // mediaType+query: what to search for. status/progressFormat/progressValue:
@@ -200,7 +202,7 @@ async function main() {
   console.log(
     `Library items: ${result.written} written, ${result.skipped} already present.`,
   );
-  console.log(`Log in with password: ${PASSWORD}`);
+  console.log(`Log in as ${USERNAME} with password: ${PASSWORD}`);
 }
 
 /** Claims the owner password on first run, or logs in on subsequent runs. */
@@ -210,14 +212,14 @@ async function claimToken() {
   const res = await fetch(`${SERVER_URL}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ password: PASSWORD }),
+    body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     const hint = status.setupRequired
       ? `Setup failed (${res.status}): ${detail}`
-      : `Login failed (${res.status}) — the owner password isn't "${PASSWORD}". ` +
-        `Set SHELFIE_PASSWORD to match it, or wipe packages/server/data to start over. ${detail}`;
+      : `Login failed (${res.status}) — the owner credentials don't match ${USERNAME}/${PASSWORD}. ` +
+        `Set SHELFIE_USERNAME and SHELFIE_PASSWORD to match them, or wipe packages/server/data to start over. ${detail}`;
     throw new Error(hint);
   }
   return (await res.json()).token;
@@ -226,9 +228,12 @@ async function claimToken() {
 /** Looks up the top search hit's source id via the server's own search routes. */
 async function searchSourceId(mediaType, query, token) {
   const { path, idField } = SEARCH_BY_MEDIA[mediaType];
-  const res = await fetch(`${SERVER_URL}${path}?q=${encodeURIComponent(query)}`, {
-    headers: { authorization: `Bearer ${token}` },
-  });
+  const res = await fetch(
+    `${SERVER_URL}${path}?q=${encodeURIComponent(query)}`,
+    {
+      headers: { authorization: `Bearer ${token}` },
+    },
+  );
   if (!res.ok) return null;
   const results = await res.json();
   return results[0]?.[idField] ?? null;

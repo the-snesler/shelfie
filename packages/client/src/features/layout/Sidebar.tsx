@@ -9,6 +9,7 @@ import IconCalendar from "~icons/tabler/calendar";
 import IconNotebook from "~icons/tabler/notebook";
 import IconLogout from "~icons/tabler/logout";
 import IconSearch from "~icons/tabler/search";
+import IconSettings from "~icons/tabler/settings";
 
 import IconHome from "~icons/tabler/home";
 
@@ -26,10 +27,12 @@ const UPCOMING_NAV = [
 
 export function Sidebar({
   onLogout,
+  username,
   open = false,
   onClose,
 }: {
   onLogout: () => void;
+  username: string;
   open?: boolean;
   onClose?: () => void;
 }) {
@@ -103,11 +106,26 @@ export function Sidebar({
         <div className="border-t border-divider p-3">
           <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-well font-display text-sm font-semibold text-accent ring-1 ring-divider">
-              O
+              {username.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-ink">Owner</div>
+              <div className="truncate text-sm font-medium text-ink">
+                {username}
+              </div>
             </div>
+            <Link
+              to="/settings"
+              onClick={onClose}
+              aria-label="Settings"
+              aria-current={
+                location.pathname === "/settings" ? "page" : undefined
+              }
+              className={`rounded-md p-1.5 hover:bg-well hover:text-ink ${
+                location.pathname === "/settings" ? "text-accent" : "text-muted"
+              }`}
+            >
+              <IconSettings className="size-4" />
+            </Link>
             <button
               type="button"
               onClick={onLogout}
