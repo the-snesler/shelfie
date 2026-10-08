@@ -31,6 +31,24 @@ export interface TvMetadata {
   networks: string[];
   createdBy: string[];
   summary: string | null;
+  /** TMDB's `next_episode_to_air`; null when nothing is scheduled (or the
+   *  show has ended). Card-tier so the library can say "airs Fri" offline. */
+  nextEpisodeToAir: TvAiring | null;
+}
+
+/** One dated, upcoming-or-recent episode airing. */
+export interface TvAiring {
+  seasonNumber: number;
+  episodeNumber: number;
+  name: string;
+  /** ISO "YYYY-MM-DD". */
+  airDate: string;
+  stillPath: string | null;
+}
+
+/** A single row from `GET /api/tv/schedule?ids=&from=&to=`. */
+export interface TvScheduledEpisode extends TvAiring {
+  tmdbId: number;
 }
 
 export interface TvEpisode {

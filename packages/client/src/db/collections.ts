@@ -7,7 +7,7 @@ import {
 import { bookCardSchema } from "./bookCards";
 import { gameCardSchema, type GameCardDoc } from "./gameCards";
 import { movieCardSchema } from "./movieCards";
-import { tvCardSchema } from "./tvCards";
+import { tvCardSchema, type TvCardDoc } from "./tvCards";
 
 /**
  * Collection definitions built from the shared schema. Keeping this separate
@@ -33,6 +33,12 @@ export const collections = {
   },
   tv_metadata: {
     schema: tvCardSchema,
+    migrationStrategies: {
+      1: (doc: RxDocumentData<TvCardDoc>) => ({
+        ...doc,
+        nextEpisodeToAir: null,
+      }),
+    },
   },
   book_metadata: {
     schema: bookCardSchema,

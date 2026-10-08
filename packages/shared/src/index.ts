@@ -51,6 +51,8 @@ export type {
   TvDetail,
   TvSeason,
   TvEpisode,
+  TvAiring,
+  TvScheduledEpisode,
 } from "./tv.js";
 export type {
   BookSearchResult,

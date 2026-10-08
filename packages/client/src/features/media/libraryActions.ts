@@ -50,11 +50,15 @@ export function releaseDateFromYear(year: number | null): string | null {
   return year == null ? null : `${String(year).padStart(4, "0")}-01-01`;
 }
 
-/** Local-time YYYY-MM-DD for today (avoids toISOString's UTC off-by-one). */
-export function todayLocalIsoDate(): string {
-  const d = new Date();
+/** Local-time YYYY-MM-DD for `d` (avoids toISOString's UTC off-by-one). */
+export function localIsoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Local-time YYYY-MM-DD for today. */
+export function todayLocalIsoDate(): string {
+  return localIsoDate(new Date());
 }
 
 /** Derives the next `watchedEpisodes`/`status`/`completedDates` for a TV

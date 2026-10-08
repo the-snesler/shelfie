@@ -41,7 +41,7 @@ packages/
 │       │   ├── detail/Detail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens + status/progress editor; each warms its card cache on load. TvDetail owns the episode watched-checklist.
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
 │       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
-│       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, catch-all
+│       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /logbook, /calendar, /settings, catch-all
 │       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
 │       ├── App.tsx, main.tsx, AuthScreen.tsx, index.css (Tailwind v4 theme tokens)
@@ -124,7 +124,14 @@ independently (`fetched_at` vs. `detail_fetched_at`), so a card-only row
 backfills its detail columns in place on first detail view. TV detail is the
 expensive one: show + aggregate_credits/videos appends + `content_ratings` +
 one `/tv/{id}/season/{n}` call per season (specials = season 0), all cached
-into `tv_metadata.seasons` as the episode catalog.
+into `tv_metadata.seasons` as the episode catalog. The TV card also carries
+TMDB's `nextEpisodeToAir` (free with the base `/tv/{id}` call), and a
+collection's optional `isExpired` hook lets a row expire before the TTL —
+TV uses it to refetch once that next episode has aired. `GET
+/api/tv/schedule?ids=&from=&to=` is a cache-only (never calls TMDB) read of
+dated episodes across those cached catalogs + card next-episodes; it feeds
+the Calendar screen (`features/calendar/`), which merges it with game
+`firstReleaseDate`s and `completedDates` from the local caches.
 
 Client-side, only the **card** projection is persisted, into local-only
 (never-replicated) RxDB collections (`client/src/db/*Cards.ts`):
@@ -207,7 +214,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - **Async.** `async`/`await` throughout; no raw `.then()` chains except isolated cases (`Promise.withResolvers()` for the IGDB throttle queue and scrypt promisification).
 - **Migrations are append-only.** `db/migrations.ts` is a numbered `Migration[]` array bookkept in a `migrations` table — add a new numbered entry, never edit a shipped one (contrast with RxDB's `migrationStrategies`, which is a separate, currently-empty seam in `shared/src/schema.ts`).
 - **State management (client).** No global store, no React Query. RxDB is the reactive data layer (`collection.find().$` subscriptions via `useEffect`); everything else is local `useState`/`useEffect` per feature screen, with a `let active = true` unmount guard pattern on async effects.
-- **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, catch-all → `/`.
+- **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/settings`, catch-all → `/`.
 - **Adding a media type.** Widen `MEDIA_TYPES` + zod, add per-media label/subset entries in `features/media/status.ts` and `LOG_FORMATS_BY_MEDIA`, add shared card/detail DTOs, a server client + `<medium>/routes.ts` + metadata table migration, a client `*Cards.ts` cache + collection, a detail screen + route, a Search tab, and Library href/caption/refresh branches. Statuses themselves need no schema bump.
 - **Auth (client).** Never call bare `fetch` for `/api/*` — use `authFetch()` (`auth.ts`), which attaches the bearer token and treats a 401 (not 403) as session loss, dispatching a `shelfie-auth-lost` window event.
 - **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `Detail.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.

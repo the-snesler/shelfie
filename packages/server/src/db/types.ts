@@ -133,6 +133,8 @@ export interface TvMetadataTable {
   /** JSON-encoded string[] */
   created_by: string;
   summary: string | null;
+  /** JSON-encoded TvAiring | null (TMDB next_episode_to_air); card tier */
+  next_episode: string | null;
   backdrop_path: string | null;
   tagline: string | null;
   /** US content rating, e.g. "TV-MA" */

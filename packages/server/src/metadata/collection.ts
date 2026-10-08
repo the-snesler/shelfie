@@ -23,7 +23,11 @@ export interface CachedDetail<TDetail> {
   detailFetchedAt: number | null;
 }
 
-export interface MetadataCollection<TCard, TDetail, TDetailKey = number> {
+export interface MetadataCollection<
+  TCard,
+  TDetail extends TCard,
+  TDetailKey = number,
+> {
   /** Route segment mounted under /api, e.g. "/api/games". */
   readonly basePath: string;
 
@@ -32,6 +36,14 @@ export interface MetadataCollection<TCard, TDetail, TDetailKey = number> {
 
   /** Extracts the numeric id from a card DTO, for keying batch results. */
   cardId(card: TCard): number;
+
+  /**
+   * Optional content-based expiry on top of the flat TTL: true when a row
+   * fetched at `fetchedAt` is known-outdated by `now` (e.g. a TV card whose
+   * "next episode" has since aired). Applied to both the card and detail
+   * tiers, each with its own fetch time.
+   */
+  isExpired?(card: TCard, fetchedAt: number, now: number): boolean;
 
   /**
    * Rows already in the cache for the requested ids, regardless of

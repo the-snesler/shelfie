@@ -120,6 +120,65 @@ export function nextUnwatched(
   return null;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "Airs today" / "Airs tomorrow" / "Airs Fri" (within a week) /
+ *  "Airs Oct 20" / "Airs Oct 20, 2027", relative to `today` (local ISO day). */
+export function airingLabel(airDate: string, today: string): string {
+  const air = new Date(`${airDate}T00:00:00`);
+  const days = Math.round(
+    (air.getTime() - new Date(`${today}T00:00:00`).getTime()) / DAY_MS,
+  );
+  if (days <= 0) return "Airs today";
+  if (days === 1) return "Airs tomorrow";
+  if (days < 7)
+    return `Airs ${air.toLocaleDateString(undefined, { weekday: "short" })}`;
+  return `Airs ${air.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: airDate.slice(0, 4) === today.slice(0, 4) ? undefined : "numeric",
+  })}`;
+}
+
+export type UpcomingEpisode = {
+  season: number;
+  episode: number;
+  airDate: string;
+};
+
+/** The dated, not-yet-aired episode a caught-up viewer is waiting on: the
+ *  catalog's next unwatched episode when it has a date, else TMDB's
+ *  `nextEpisodeToAir` from the card — which covers shows with no catalog
+ *  loaded (not in progress) and catalogs cached before a new season was
+ *  announced. Callers handle an already-aired `nextUp` themselves. */
+export function upcomingEpisode(
+  nextUp: NextEpisode | null,
+  card: TvCardDoc | undefined,
+  watched: Record<string, string>,
+  today: string,
+): UpcomingEpisode | null {
+  if (nextUp?.airDate) {
+    return {
+      season: nextUp.season,
+      episode: nextUp.episode,
+      airDate: nextUp.airDate,
+    };
+  }
+  const next = card?.nextEpisodeToAir;
+  if (
+    !next ||
+    next.airDate < today ||
+    episodeKey(next.seasonNumber, next.episodeNumber) in watched
+  ) {
+    return null;
+  }
+  return {
+    season: next.seasonNumber,
+    episode: next.episodeNumber,
+    airDate: next.airDate,
+  };
+}
+
 function bookCaption(
   item: LibraryItem,
   meta: BookCardDoc | undefined,

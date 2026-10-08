@@ -1,26 +1,18 @@
 import type {
-  BookMetadata,
-  GameMetadata,
   LibraryItem,
-  MediaType,
-  MovieMetadata,
   TvDetail as TvDetailDto,
-  TvMetadata,
   TvSeason,
 } from "@shelfie/shared";
-import {
-  MEDIA_TYPES,
-  NON_FINISHED_STATUSES,
-  STATUS_META_GROUP,
-} from "@shelfie/shared";
+import { NON_FINISHED_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
-import { type BookCardDoc, upsertBookCards } from "../../db/bookCards";
+import type { BookCardDoc } from "../../db/bookCards";
 import type { ShelfieDatabase } from "../../db/database";
-import { type GameCardDoc, upsertCards } from "../../db/gameCards";
-import { type MovieCardDoc, upsertMovieCards } from "../../db/movieCards";
-import { type TvCardDoc, upsertTvCards } from "../../db/tvCards";
+import type { GameCardDoc } from "../../db/gameCards";
+import type { MovieCardDoc } from "../../db/movieCards";
+import { refreshCardCaches } from "../../db/refreshCards";
+import type { TvCardDoc } from "../../db/tvCards";
 
 /** Any card-cache doc a library item might have metadata for. All four
  *  share the `${mediaType}:${sourceId}` id convention, so they can live in
@@ -113,20 +105,10 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
     return () => sub.unsubscribe();
   }, [db]);
 
-  const idsByType = useMemo(() => {
-    const byType = new Map<MediaType, string[]>();
-    for (const item of items) {
-      const arr = byType.get(item.mediaType);
-      if (arr) arr.push(item.sourceId);
-      else byType.set(item.mediaType, [item.sourceId]);
-    }
-    const result: Partial<Record<MediaType, string>> = {};
-    for (const [type, ids] of byType) {
-      result[type] = [...new Set(ids)].sort().join(",");
-    }
-    return result;
-  }, [items]);
-  const idsKey = MEDIA_TYPES.map((t) => idsByType[t] ?? "").join("|");
+  const idsKey = useMemo(
+    () => [...new Set(items.map((item) => item.id))].sort().join(","),
+    [items],
+  );
 
   const inProgressTvIds = useMemo(
     () =>
@@ -146,31 +128,8 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
   const tvCatalogKey = inProgressTvIds.join(",");
 
   useEffect(() => {
-    if (idsByType.game) {
-      void authFetch(`/api/games?ids=${idsByType.game}`)
-        .then((res) => (res.ok ? (res.json() as Promise<GameMetadata[]>) : []))
-        .then((rows) => upsertCards(db, rows))
-        .catch(() => {});
-    }
-    if (idsByType.movie) {
-      void authFetch(`/api/movies?ids=${idsByType.movie}`)
-        .then((res) => (res.ok ? (res.json() as Promise<MovieMetadata[]>) : []))
-        .then((rows) => upsertMovieCards(db, rows))
-        .catch(() => {});
-    }
-    if (idsByType.tv) {
-      void authFetch(`/api/tv?ids=${idsByType.tv}`)
-        .then((res) => (res.ok ? (res.json() as Promise<TvMetadata[]>) : []))
-        .then((rows) => upsertTvCards(db, rows))
-        .catch(() => {});
-    }
-    if (idsByType.book) {
-      void authFetch(`/api/books?ids=${idsByType.book}`)
-        .then((res) => (res.ok ? (res.json() as Promise<BookMetadata[]>) : []))
-        .then((rows) => upsertBookCards(db, rows))
-        .catch(() => {});
-    }
-    // idsKey is the stable dependency; idsByType is derived from it each render.
+    void refreshCardCaches(db, items);
+    // idsKey is the stable dependency; items only matter via their ids.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, idsKey]);
 

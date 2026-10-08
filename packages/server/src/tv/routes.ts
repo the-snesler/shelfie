@@ -1,8 +1,10 @@
 import type {
   CastMember,
   MediaVideo,
+  TvAiring,
   TvDetail,
   TvMetadata,
+  TvScheduledEpisode,
   TvSeason,
 } from "@shelfie/shared";
 import type { Hono } from "hono";
@@ -11,7 +13,8 @@ import { db as defaultDb } from "../db/index.js";
 import type { Database, TvMetadataTable } from "../db/types.js";
 import { fetchTvCard, fetchTvDetail, searchTv } from "../tmdb/client.js";
 import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
-import { registerMetadataRoutes } from "../metadata/routes.js";
+import { parseIds, registerMetadataRoutes } from "../metadata/routes.js";
+import { isIsoDay, nextEpisodeExpired, scheduleForShow } from "./schedule.js";
 
 function metadataRowToDto(row: TvMetadataTable): TvMetadata {
   return {
@@ -26,6 +29,9 @@ function metadataRowToDto(row: TvMetadataTable): TvMetadata {
     networks: JSON.parse(row.networks) as string[],
     createdBy: JSON.parse(row.created_by) as string[],
     summary: row.summary,
+    nextEpisodeToAir: row.next_episode
+      ? (JSON.parse(row.next_episode) as TvAiring)
+      : null,
   };
 }
 
@@ -42,6 +48,9 @@ function metadataToRow(metadata: TvMetadata): TvMetadataTable {
     networks: JSON.stringify(metadata.networks),
     created_by: JSON.stringify(metadata.createdBy),
     summary: metadata.summary,
+    next_episode: metadata.nextEpisodeToAir
+      ? JSON.stringify(metadata.nextEpisodeToAir)
+      : null,
     backdrop_path: null,
     tagline: null,
     certification: null,
@@ -114,6 +123,7 @@ async function upsertMetadata(
         networks: row.networks,
         created_by: row.created_by,
         summary: row.summary,
+        next_episode: row.next_episode,
         fetched_at: row.fetched_at,
       }),
     )
@@ -142,6 +152,7 @@ async function upsertDetail(
         networks: row.networks,
         created_by: row.created_by,
         summary: row.summary,
+        next_episode: row.next_episode,
         fetched_at: row.fetched_at,
         backdrop_path: row.backdrop_path,
         tagline: row.tagline,
@@ -167,6 +178,9 @@ const tvMetadataCollection: MetadataCollection<TvMetadata, TvDetail> = {
   search: searchTv,
 
   cardId: (card) => card.tmdbId,
+
+  isExpired: (card, fetchedAt, now) =>
+    nextEpisodeExpired(card.nextEpisodeToAir, fetchedAt, now),
 
   async fetchCachedCards(database, ids) {
     const cached = await database
@@ -230,4 +244,45 @@ export function registerTvRoutes(
   database: Kysely<Database> = defaultDb,
 ): void {
   registerMetadataRoutes(app, database, tvMetadataCollection);
+
+  // Cache-only: reads whatever card/detail rows exist and never calls TMDB,
+  // so it stays cheap for a whole library. The client warms cards first via
+  // GET /api/tv?ids=, and detail screens/the library keep catalogs warm.
+  app.get("/api/tv/schedule", async (c) => {
+    const from = c.req.query("from");
+    const to = c.req.query("to");
+    if (!isIsoDay(from) || !isIsoDay(to) || from > to) {
+      return c.json(
+        { error: "from and to must be YYYY-MM-DD, from <= to" },
+        400,
+      );
+    }
+    const idsParam = c.req.query("ids");
+    const ids = idsParam ? parseIds(idsParam) : [];
+    if (ids.length === 0) return c.json<TvScheduledEpisode[]>([]);
+
+    const rows = await database
+      .selectFrom("tv_metadata")
+      .select(["tmdb_id", "seasons", "next_episode"])
+      .where("tmdb_id", "in", ids)
+      .execute();
+
+    const episodes = rows.flatMap((row) =>
+      scheduleForShow(
+        row.tmdb_id,
+        JSON.parse(row.seasons ?? "[]") as TvSeason[],
+        row.next_episode ? (JSON.parse(row.next_episode) as TvAiring) : null,
+        from,
+        to,
+      ),
+    );
+    episodes.sort(
+      (a, b) =>
+        a.airDate.localeCompare(b.airDate) ||
+        a.tmdbId - b.tmdbId ||
+        a.seasonNumber - b.seasonNumber ||
+        a.episodeNumber - b.episodeNumber,
+    );
+    return c.json(episodes);
+  });
 }

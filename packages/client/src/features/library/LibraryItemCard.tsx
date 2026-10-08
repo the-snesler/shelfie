@@ -32,7 +32,12 @@ import {
 } from "../media/libraryActions";
 import type { LogTarget } from "../media/libraryActions";
 import { useLogPopover } from "../media/useLogPopover";
-import { hasAired, nextUnwatched } from "./libraryCaptions";
+import {
+  airingLabel,
+  hasAired,
+  nextUnwatched,
+  upcomingEpisode,
+} from "./libraryCaptions";
 import type { CardMeta } from "./useLibraryData";
 import { libraryProgressPercent } from "./libraryProgress";
 
@@ -92,6 +97,12 @@ export function LibraryItemCard({
       : null;
 
   const airedNext = nextUp && hasAired(nextUp) ? nextUp : null;
+
+  const today = todayLocalIsoDate();
+  const upcoming =
+    item.mediaType === "tv" && !airedNext
+      ? upcomingEpisode(nextUp, tvMeta, item.watchedEpisodes, today)
+      : null;
 
   const name =
     gameMeta?.name ??
@@ -347,6 +358,15 @@ export function LibraryItemCard({
                 </motion.p>
               </AnimatePresence>
             </div>
+          ) : upcoming ? (
+            // Cards are too narrow for "S5E1 · Airs Oct 15"; the episode
+            // lives in the tooltip (and on the calendar).
+            <p
+              className="truncate text-xs text-accent"
+              title={`S${upcoming.season}E${upcoming.episode} · ${airingLabel(upcoming.airDate, today)}`}
+            >
+              {airingLabel(upcoming.airDate, today)}
+            </p>
           ) : (
             <p className="truncate text-xs text-muted">{displayCaption}</p>
           )}

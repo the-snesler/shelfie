@@ -20,10 +20,7 @@ const MEDIA_NAV = [
   { type: "game", label: "Games", icon: IconDeviceGamepad2 },
 ] as const;
 
-const UPCOMING_NAV = [
-  { label: "Lists", icon: IconListDetails },
-  { label: "Calendar", icon: IconCalendar },
-] as const;
+const UPCOMING_NAV = [{ label: "Lists", icon: IconListDetails }] as const;
 
 export function Sidebar({
   onLogout,
@@ -93,6 +90,13 @@ export function Sidebar({
             icon={IconNotebook}
             label="Logbook"
             active={location.pathname === "/logbook"}
+            onClose={onClose}
+          />
+          <SidebarLink
+            to="/calendar"
+            icon={IconCalendar}
+            label="Calendar"
+            active={location.pathname === "/calendar"}
             onClose={onClose}
           />
           {UPCOMING_NAV.map(({ label, icon }) => (

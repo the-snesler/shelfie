@@ -367,6 +367,20 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 12,
+    name: "tv-next-episode",
+    async up(db) {
+      await db.schema
+        .alterTable("tv_metadata")
+        .addColumn("next_episode", "text")
+        .execute();
+      // Existing cards predate the column, so NULL there means "unknown",
+      // not "nothing scheduled" — expire them so the next batch lookup
+      // refetches. Detail columns stay put (detail_fetched_at untouched).
+      await db.updateTable("tv_metadata").set({ fetched_at: 0 }).execute();
+    },
+  },
 ];
 
 /**

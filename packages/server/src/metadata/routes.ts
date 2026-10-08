@@ -5,7 +5,7 @@ import type { MetadataCollection } from "./collection.js";
 
 const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function parseIds(raw: string): number[] {
+export function parseIds(raw: string): number[] {
   return raw
     .split(",")
     .map((part) => part.trim())
@@ -21,12 +21,21 @@ function parseIds(raw: string): number[] {
  * live here so every medium (games, movies, tv, books) gets identical HTTP
  * behaviour from a table-specific descriptor.
  */
-export function registerMetadataRoutes<TCard, TDetail, TDetailKey = number>(
+export function registerMetadataRoutes<
+  TCard,
+  TDetail extends TCard,
+  TDetailKey = number,
+>(
   app: Hono,
   database: Kysely<Database>,
   collection: MetadataCollection<TCard, TDetail, TDetailKey>,
 ): void {
   const { basePath, detail } = collection;
+
+  function isFresh(card: TCard, fetchedAt: number, now: number): boolean {
+    if (fetchedAt < now - METADATA_TTL_MS) return false;
+    return !collection.isExpired?.(card, fetchedAt, now);
+  }
 
   app.get(`${basePath}/search`, async (c) => {
     const q = c.req.query("q");
@@ -42,11 +51,11 @@ export function registerMetadataRoutes<TCard, TDetail, TDetailKey = number>(
     const ids = idsParam ? parseIds(idsParam) : [];
     if (ids.length === 0) return c.json<TCard[]>([]);
 
-    const cutoff = Date.now() - METADATA_TTL_MS;
+    const now = Date.now();
     const cachedRows = await collection.fetchCachedCards(database, ids);
     const cachedById = new Map<number, TCard>();
     for (const [id, row] of cachedRows) {
-      if (row.fetchedAt >= cutoff) cachedById.set(id, row.card);
+      if (isFresh(row.card, row.fetchedAt, now)) cachedById.set(id, row.card);
     }
 
     const missingIds = ids.filter((id) => !cachedById.has(id));
@@ -72,12 +81,11 @@ export function registerMetadataRoutes<TCard, TDetail, TDetailKey = number>(
       return c.json({ error: "invalid id" }, 400);
     }
 
-    const cutoff = Date.now() - METADATA_TTL_MS;
     const cached = await detail.fetchCached(database, key);
     if (
       cached &&
       cached.detailFetchedAt !== null &&
-      cached.detailFetchedAt >= cutoff
+      isFresh(cached.detail, cached.detailFetchedAt, Date.now())
     ) {
       return c.json(cached.detail);
     }

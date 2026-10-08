@@ -5,6 +5,7 @@ import type {
   MovieMetadata,
   MovieSearchResult,
   TvDetail,
+  TvAiring,
   TvMetadata,
   TvSearchResult,
   TvSeason,
@@ -193,6 +194,7 @@ interface TmdbTv {
   vote_average: number | null;
   vote_count: number | null;
   in_production: boolean;
+  next_episode_to_air?: TmdbEpisode | null;
   seasons: TmdbSeasonSummary[];
   aggregate_credits?: TmdbAggregateCredits;
   videos?: TmdbVideos;
@@ -305,6 +307,22 @@ function tvToMetadata(tv: TmdbTv): TvMetadata {
     networks: (tv.networks ?? []).map((network) => network.name),
     createdBy: (tv.created_by ?? []).map((creator) => creator.name),
     summary: tv.overview || null,
+    nextEpisodeToAir: tvNextAiring(tv.next_episode_to_air),
+  };
+}
+
+/** TMDB's next scheduled episode, or null when there is none or it has no
+ *  date yet (TMDB emits "" for unknown dates). */
+function tvNextAiring(
+  episode: TmdbEpisode | null | undefined,
+): TvAiring | null {
+  if (!episode?.air_date) return null;
+  return {
+    seasonNumber: episode.season_number,
+    episodeNumber: episode.episode_number,
+    name: episode.name,
+    airDate: episode.air_date,
+    stillPath: episode.still_path,
   };
 }
 
