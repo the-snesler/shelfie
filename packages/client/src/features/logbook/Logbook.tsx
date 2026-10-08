@@ -7,6 +7,7 @@ import IconStar from "~icons/tabler/star";
 import IconStarFilled from "~icons/tabler/star-filled";
 import IconStarHalfFilled from "~icons/tabler/star-half-filled";
 import type { AppOutletContext } from "../../App";
+import { TruncatedText } from "../../components/Tooltip";
 import { MediaCover } from "../media/MediaCover";
 import type { CardMeta } from "../media/useLibraryData";
 import {
@@ -100,7 +101,9 @@ function LogbookRow({ entry }: { entry: LogEntry }) {
         />
         <div className="min-w-0 flex-1">
           <p className="text-xs text-faint">{entryDateLabel(date)}</p>
-          <p className="truncate text-sm font-medium text-ink">{name}</p>
+          <TruncatedText as="p" className="text-sm font-medium text-ink">
+            {name}
+          </TruncatedText>
           <p className="text-xs text-muted">{MEDIA_LABEL[item.mediaType]}</p>
         </div>
         {item.rating != null && (
@@ -112,7 +115,7 @@ function LogbookRow({ entry }: { entry: LogEntry }) {
     ) : (
       <p className="min-w-0 flex flex-1 gap-3 items-baseline">
         <span className="text-xs text-faint">{entryDateLabel(date)}</span>
-        <span className="truncate text-sm text-ink">{name}</span>
+        <TruncatedText className="text-sm text-ink">{name}</TruncatedText>
         <span className="shrink-0 text-xs text-faint tabular-nums">
           S{entry.season}E{entry.episode}
         </span>

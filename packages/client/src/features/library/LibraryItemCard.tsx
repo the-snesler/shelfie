@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { Link, useViewTransitionState } from "react-router";
 import IconPlus from "~icons/tabler/plus";
 import { AnimatePresence, motion } from "motion/react";
+import { Tooltip, TruncatedText } from "../../components/Tooltip";
 import { gameImageUrl, tmdbImageUrl } from "../../images";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { ShelfieDatabase } from "../../db/database";
@@ -343,7 +344,9 @@ export function LibraryItemCard({
         style={{ height: "var(--shelf-label-h)" }}
       >
         <div className="min-w-0 flex-1 text-left">
-          <p className="truncate text-[13px] font-medium text-ink">{name}</p>
+          <TruncatedText as="p" className="text-[13px] font-medium text-ink">
+            {name}
+          </TruncatedText>
           {airedNext ? (
             <div className="relative h-4 overflow-hidden">
               <AnimatePresence initial={false}>
@@ -353,23 +356,28 @@ export function LibraryItemCard({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                  className="absolute inset-x-0 top-0 truncate text-xs text-muted"
+                  className="absolute inset-x-0 top-0 text-xs text-muted"
                 >
-                  {displayCaption}
+                  <TruncatedText className="block">
+                    {displayCaption}
+                  </TruncatedText>
                 </motion.p>
               </AnimatePresence>
             </div>
           ) : upcoming ? (
             // Cards are too narrow for "S5E1 · Airs Oct 15"; the episode
             // lives in the tooltip (and on the calendar).
-            <p
-              className="truncate text-xs text-accent"
-              title={`S${upcoming.season}E${upcoming.episode} · ${airingLabel(upcoming.airDate, today)}`}
+            <Tooltip
+              content={`S${upcoming.season}E${upcoming.episode} · ${airingLabel(upcoming.airDate, today)}`}
             >
-              {airingLabel(upcoming.airDate, today)}
-            </p>
+              <p className="truncate text-xs text-accent">
+                {airingLabel(upcoming.airDate, today)}
+              </p>
+            </Tooltip>
           ) : (
-            <p className="truncate text-xs text-muted">{displayCaption}</p>
+            <TruncatedText as="p" className="text-xs text-muted">
+              {displayCaption}
+            </TruncatedText>
           )}
         </div>
         {airedNext ? (

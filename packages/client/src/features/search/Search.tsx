@@ -16,6 +16,7 @@ import IconPlus from "~icons/tabler/plus";
 import IconSearch from "~icons/tabler/search";
 import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
+import { TruncatedText } from "../../components/Tooltip";
 import { tmdbImageUrl } from "../../images";
 import type { ShelfieDatabase } from "../../db/database";
 import { GameCover } from "../games/GameCover";
@@ -129,12 +130,14 @@ function SearchResultRow({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">{result.name}</p>
-          <p className="truncate text-xs text-muted">
+          <TruncatedText as="p" className="text-sm font-medium text-ink">
+            {result.name}
+          </TruncatedText>
+          <TruncatedText as="p" className="text-xs text-muted">
             {[typeLabel, result.year, ...result.platforms]
               .filter(Boolean)
               .join(" · ")}
-          </p>
+          </TruncatedText>
         </div>
       </Link>
       {inLibrary ? (
@@ -205,9 +208,13 @@ function MediaSearchResultRow({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">{name}</p>
+          <TruncatedText as="p" className="text-sm font-medium text-ink">
+            {name}
+          </TruncatedText>
           {subtitle && (
-            <p className="truncate text-xs text-muted">{subtitle}</p>
+            <TruncatedText as="p" className="text-xs text-muted">
+              {subtitle}
+            </TruncatedText>
           )}
         </div>
       </Link>

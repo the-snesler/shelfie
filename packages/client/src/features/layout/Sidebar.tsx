@@ -12,6 +12,7 @@ import IconSearch from "~icons/tabler/search";
 import IconSettings from "~icons/tabler/settings";
 
 import IconHome from "~icons/tabler/home";
+import { TruncatedText } from "../../components/Tooltip";
 
 const MEDIA_NAV = [
   { type: "movie", label: "Movies", icon: IconMovie },
@@ -52,10 +53,7 @@ export function Sidebar({
         }`}
       >
         <div className="flex justify-start px-5 pt-5 pb-1">
-          <Link
-            to="/"
-            onClick={onClose}
-          >
+          <Link to="/" onClick={onClose}>
             <img src="/logo.svg" alt="Shelfie" className="h-11 w-auto" />
           </Link>
         </div>
@@ -112,9 +110,9 @@ export function Sidebar({
               {username.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-ink">
+              <TruncatedText as="div" className="text-sm font-medium text-ink">
                 {username}
-              </div>
+              </TruncatedText>
             </div>
             <Link
               to="/settings"

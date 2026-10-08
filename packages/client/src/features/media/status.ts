@@ -64,9 +64,9 @@ export const META_STATUS_LABELS: Record<MetaStatus, string> = {
  *  that don't make sense for them (e.g. movies skip `paused`/`completed`). */
 export const STATUSES_BY_MEDIA: Record<MediaType, readonly ItemStatus[]> = {
   game: ITEM_STATUSES,
-  movie: ["wishlisted", "backlogged", "active", "dropped", "finished"],
-  tv: ["wishlisted", "backlogged", "active", "paused", "dropped", "finished"],
-  book: ["wishlisted", "backlogged", "active", "paused", "dropped", "finished"],
+  movie: ["backlogged", "active", "dropped", "finished"],
+  tv: ["backlogged", "active", "paused", "dropped", "finished"],
+  book: ["backlogged", "active", "paused", "dropped", "finished"],
 };
 
 export const STATUS_ICONS: Record<ItemStatus, IconComponent> = {

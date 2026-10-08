@@ -16,6 +16,7 @@ import IconMovie from "~icons/tabler/movie";
 import IconX from "~icons/tabler/x";
 import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
+import { Tooltip, TruncatedText } from "../../components/Tooltip";
 import { refreshCardCaches } from "../../db/refreshCards";
 import { todayLocalIsoDate } from "../media/libraryActions";
 import { MediaCover } from "../media/MediaCover";
@@ -358,20 +359,23 @@ function MonthGrid({
                 {dayEvents.slice(0, CELL_CHIPS).map((event) => {
                   const Icon = eventIcon(event);
                   return (
-                    <span
+                    <Tooltip
                       key={eventKey(event)}
-                      title={`${cardName(event.item, event.card)} — ${eventDetail(event)}`}
-                      className={`flex min-w-0 items-center gap-1 rounded bg-well px-1 py-0.5 text-[11px] leading-4 ${
-                        inMonth ? "text-ink" : "text-muted"
-                      }`}
+                      content={`${cardName(event.item, event.card)} — ${eventDetail(event)}`}
                     >
-                      <Icon
-                        className={`size-3 shrink-0 ${KIND_TONE[event.kind]}`}
-                      />
-                      <span className="truncate">
-                        {cardName(event.item, event.card)}
+                      <span
+                        className={`flex min-w-0 items-center gap-1 rounded bg-well px-1 py-0.5 text-[11px] leading-4 ${
+                          inMonth ? "text-ink" : "text-muted"
+                        }`}
+                      >
+                        <Icon
+                          className={`size-3 shrink-0 ${KIND_TONE[event.kind]}`}
+                        />
+                        <span className="truncate">
+                          {cardName(event.item, event.card)}
+                        </span>
                       </span>
-                    </span>
+                    </Tooltip>
                   );
                 })}
                 {dayEvents.length > CELL_CHIPS ? (
@@ -441,10 +445,12 @@ function EventRow({ event }: { event: Event }) {
         mediaType={item.mediaType}
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">{name}</p>
+        <TruncatedText as="p" className="text-sm font-medium text-ink">
+          {name}
+        </TruncatedText>
         <p className="flex min-w-0 items-center gap-1 text-xs text-muted">
           <Icon className={`size-3.5 shrink-0 ${KIND_TONE[event.kind]}`} />
-          <span className="truncate">{eventDetail(event)}</span>
+          <TruncatedText>{eventDetail(event)}</TruncatedText>
         </p>
       </div>
     </>
