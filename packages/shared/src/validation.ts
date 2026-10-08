@@ -8,7 +8,7 @@ import type { ReplicatedLibraryItem } from "./types.js";
  * against this before writing to SQLite — the runtime guard against
  * client/server drift.
  */
-export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
+const itemFields = z.object({
   // Mediatype-prefixed id, e.g. "game:1942" — kept in lockstep with
   // `${mediaType}:${sourceId}` construction on write.
   id: z.string().regex(/^[a-z]+:\d+$/),
@@ -42,5 +42,45 @@ export const libraryItemDocSchema: z.ZodType<ReplicatedLibraryItem> = z.object({
         ),
       { message: "invalid watchedEpisodes" },
     ),
+});
+
+export const libraryItemDocSchema: z.ZodType<
+  ReplicatedLibraryItem,
+  z.ZodTypeDef,
+  unknown
+> = itemFields.extend({
+  activity: z
+    .array(
+      z
+        .object({
+          id: z.string().min(1).max(64),
+          at: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+          changes: itemFields
+            .pick({
+              status: true,
+              progressFormat: true,
+              progressValue: true,
+              platforms: true,
+              rating: true,
+              completedDates: true,
+              notes: true,
+            })
+            .partial()
+            .extend({
+              watchedEpisodes: z
+                .record(
+                  z.string().regex(/^s\d{1,3}e\d{1,4}$/),
+                  z
+                    .string()
+                    .regex(/^(|\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))$/)
+                    .nullable(),
+                )
+                .optional(),
+            })
+            .strict(),
+        })
+        .strict(),
+    )
+    .default([]),
   _deleted: z.boolean(),
 });

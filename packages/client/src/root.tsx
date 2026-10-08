@@ -24,6 +24,7 @@ export function Layout({ children }: { children: ReactNode }) {
           content="width=device-width, initial-scale=1.0, viewport-fit=cover"
         />
         <Meta />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <Links />
       </head>
       <body className="h-full">

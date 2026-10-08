@@ -1,10 +1,12 @@
 import type { LibraryItem } from "@shelfie/shared";
+import { recordItemActivity } from "@shelfie/shared";
 import type { BookCardDoc } from "./bookCards";
 import type { GameCardDoc } from "./gameCards";
 import type { MovieCardDoc } from "./movieCards";
 import type { TvCardDoc } from "./tvCards";
 import {
   addRxPlugin,
+  randomToken,
   createRxDatabase,
   type RxCollection,
   type RxDatabase,
@@ -58,5 +60,12 @@ async function createDatabase(): Promise<ShelfieDatabase> {
     eventReduce: true,
   });
   await db.addCollections(collections);
+  db.library_items.preInsert((data) => {
+    if (data.activity.length === 0)
+      recordItemActivity(data, undefined, Date.now(), randomToken(24));
+  }, false);
+  db.library_items.preSave((data, previous) => {
+    recordItemActivity(data, previous, Date.now(), randomToken(24));
+  }, false);
   return db;
 }

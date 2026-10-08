@@ -5,7 +5,7 @@ import type {
   LogFormat,
   MetaStatus,
 } from "@shelfie/shared";
-import type { RxDocument } from "rxdb";
+import { randomToken, type RxDocument } from "rxdb";
 import { useState } from "react";
 import type { ShelfieDatabase } from "../../db/database";
 import type { LogTarget } from "./libraryActions";
@@ -107,15 +107,24 @@ export function LogModal({
         .findOne(`${target.mediaType}:${target.sourceId}`)
         .exec();
       if (!doc) return;
-      const completedDates =
-        date && !doc.completedDates.includes(date)
-          ? [...doc.completedDates, date]
-          : doc.completedDates;
-      await doc.incrementalPatch({
+      // A repeat completion on the same day is still a distinct activity.
+      await doc.incrementalModify((current) => ({
+        ...current,
         status,
-        completedDates,
+        completedDates:
+          date && !current.completedDates.includes(date)
+            ? [...current.completedDates, date]
+            : current.completedDates,
+        activity: [
+          ...current.activity,
+          {
+            id: randomToken(24),
+            at: Date.now(),
+            changes: { status, ...(date ? { completedDates: [date] } : {}) },
+          },
+        ],
         updatedAt: Date.now(),
-      });
+      }));
     } else {
       const base = newLibraryItem(target, status);
       await db.library_items.insert({

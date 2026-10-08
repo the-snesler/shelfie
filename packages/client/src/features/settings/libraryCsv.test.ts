@@ -18,6 +18,13 @@ const item: LibraryItem = {
   completedDates: ["2026-01-02"],
   notes: 'A note, with "quotes"\nand a newline.',
   watchedEpisodes: {},
+  activity: [
+    {
+      id: "event",
+      at: 120,
+      changes: { progressValue: 12, progressFormat: "pages" },
+    },
+  ],
   addedAt: 100,
   updatedAt: 200,
 };
@@ -28,6 +35,18 @@ describe("library CSV", () => {
     const [parsed] = importLibraryCsv(exportLibraryCsv([withoutNumbers]));
 
     expect(parsed).toEqual({ ...withoutNumbers, updatedAt: 1 });
+  });
+
+  it("accepts old exports without the activity column", () => {
+    const { activity: _, ...legacy } = item;
+    const csv = exportLibraryCsv([{ ...legacy, activity: [] }])
+      .replace(",activity", "")
+      .replace(/,\[\]$/, "");
+    expect(importLibraryCsv(csv)[0]).toEqual({
+      ...legacy,
+      activity: [],
+      updatedAt: 1,
+    });
   });
 
   it("rejects duplicate and inconsistent ids before import", () => {

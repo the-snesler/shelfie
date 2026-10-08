@@ -186,6 +186,7 @@ async function main() {
       completedDates: [],
       notes: "",
       watchedEpisodes: seed.watchedEpisodes ?? {},
+      activity: [],
       addedAt: ts,
       updatedAt: ts,
       _deleted: false,

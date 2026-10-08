@@ -210,6 +210,9 @@ describe("owner settings migration", () => {
     await sql`CREATE TABLE auth_owner (id TEXT PRIMARY KEY, password_hash TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`.execute(
       database,
     );
+    await sql`CREATE TABLE library_items (id TEXT PRIMARY KEY)`.execute(
+      database,
+    );
     for (let id = 1; id <= 9; id += 1) {
       await database
         .insertInto("migrations")

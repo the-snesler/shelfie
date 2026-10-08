@@ -27,6 +27,8 @@ export interface LibraryItemsTable {
   /** JSON-encoded Record<episodeKey, YYYY-MM-DD watch date> (e.g.
    *  {"s1e3":"2024-06-01"}); "{}" for non-TV items. */
   watched_episodes: string;
+  /** JSON-encoded ItemActivity[]. */
+  activity: string;
   /** server-owned replication cursor */
   seq: number;
   /** 0 | 1 — SQLite has no native boolean */

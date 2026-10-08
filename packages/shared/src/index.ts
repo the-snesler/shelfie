@@ -1,5 +1,7 @@
 export type {
   LibraryItem,
+  ItemActivity,
+  ActivityChanges,
   ReplicatedLibraryItem,
   Checkpoint,
   ItemStatus,
@@ -62,3 +64,5 @@ export type {
   OwnerPreferences,
   OwnerSettings,
 } from "./settings.js";
+
+export { recordItemActivity, mergeActivity } from "./activity.js";

@@ -16,6 +16,7 @@ const base: ReplicatedLibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   _deleted: false,
 };
 
@@ -30,6 +31,7 @@ describe("equalDocs", () => {
     const reordered: ReplicatedLibraryItem = {
       _deleted: false,
       watchedEpisodes: {},
+      activity: [],
       notes: "",
       completedDates: [],
       rating: null,

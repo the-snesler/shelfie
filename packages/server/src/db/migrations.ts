@@ -357,6 +357,16 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 11,
+    name: "item-activity",
+    async up(db) {
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("activity", "text", (c) => c.notNull().defaultTo("[]"))
+        .execute();
+    },
+  },
 ];
 
 /**

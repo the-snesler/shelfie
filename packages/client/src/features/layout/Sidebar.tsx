@@ -58,9 +58,8 @@ export function Sidebar({
           <Link
             to="/"
             onClick={onClose}
-            className="font-display text-[1.6rem] font-semibold tracking-tight text-ink"
           >
-            Shelfie
+            <img src="/logo.svg" alt="Shelfie" className="h-11 w-auto" />
           </Link>
         </div>
 

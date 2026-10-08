@@ -1,3 +1,4 @@
+import { MyActivity } from "./MyActivity";
 import type { TvDetail as TvDetailDto, TvSeason } from "@shelfie/shared";
 import { episodeKey } from "@shelfie/shared";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
@@ -215,6 +216,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
+      <MyActivity item={item} />
       {meta.summary && <Description>{meta.summary}</Description>}
       <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (

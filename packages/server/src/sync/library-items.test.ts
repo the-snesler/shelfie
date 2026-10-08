@@ -32,6 +32,7 @@ const base: ReplicatedLibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   _deleted: false,
 };
 
@@ -55,7 +56,10 @@ describe("libraryItemsSync", () => {
 
     const found = await sync.libraryItemsSync.fetchById("tv:1396");
 
-    expect(found?.watchedEpisodes).toEqual({ s1e1: "2024-01-01", s1e2: "2024-01-02" });
+    expect(found?.watchedEpisodes).toEqual({
+      s1e1: "2024-01-01",
+      s1e2: "2024-01-02",
+    });
   });
 
   it("persists every mutable field on update, including a soft delete", async () => {
@@ -64,6 +68,7 @@ describe("libraryItemsSync", () => {
       status: "completed",
       rating: 4.5,
       notes: "rewatched season 1",
+      activity: [{ id: "event", at: 12, changes: { status: "completed" } }],
       progressValue: 50,
       completedDates: ["2024-01-02"],
       platforms: ["Netflix"],

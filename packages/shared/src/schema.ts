@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 6,
+  version: 7,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -44,6 +44,57 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       type: "object",
       additionalProperties: { type: "string", maxLength: 10 },
     },
+    activity: {
+      type: "array",
+      default: [],
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", maxLength: 64 },
+          at: {
+            type: "number",
+            minimum: 1,
+            maximum: 9007199254740991,
+            multipleOf: 1,
+          },
+          changes: {
+            type: "object",
+            properties: {
+              status: { type: "string", maxLength: 16 },
+              progressFormat: { type: "string", maxLength: 16 },
+              progressValue: { type: ["number", "null"], minimum: 0 },
+              platforms: {
+                type: "array",
+                items: { type: "string", maxLength: 64 },
+                maxItems: 32,
+              },
+              rating: {
+                type: ["number", "null"],
+                minimum: 0.5,
+                maximum: 5,
+                multipleOf: 0.5,
+              },
+              completedDates: {
+                type: "array",
+                items: { type: "string", maxLength: 10 },
+                maxItems: 100,
+              },
+              notes: { type: "string", maxLength: 10000 },
+              watchedEpisodes: {
+                type: "object",
+                additionalProperties: {
+                  type: ["string", "null"],
+                  maxLength: 10,
+                },
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        required: ["id", "at", "changes"],
+        additionalProperties: false,
+      },
+    },
     addedAt: {
       type: "number",
       minimum: 0,
@@ -71,6 +122,7 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "addedAt",
     "updatedAt",
     "watchedEpisodes",
+    "activity",
   ],
   indexes: ["updatedAt", "status"],
 } as const;
@@ -94,7 +146,7 @@ const LEGACY_STATUS_MAP: Record<string, string> = {
  * excludes finished items via an index-backed query) — no document shape
  * change, so the migration is the identity function. Version 6 converts
  * `watchedEpisodes` from a key array to a key→date map (existing keys get
- * empty-string dates).
+ * empty-string dates). Version 7 adds timestamped activity history.
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
@@ -122,4 +174,5 @@ export const libraryItemMigrationStrategies: MigrationStrategies = {
       ]),
     ),
   }),
+  7: (oldDoc) => ({ ...oldDoc, activity: [] }),
 };

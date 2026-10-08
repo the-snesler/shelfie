@@ -19,10 +19,8 @@ export function libraryItemRowToDoc(
     rating: row.rating,
     completedDates: JSON.parse(row.completed_dates) as string[],
     notes: row.notes,
-    watchedEpisodes: JSON.parse(row.watched_episodes) as Record<
-      string,
-      string
-    >,
+    activity: JSON.parse(row.activity),
+    watchedEpisodes: JSON.parse(row.watched_episodes) as Record<string, string>,
     _deleted: row.deleted === 1,
   };
 }
@@ -45,6 +43,7 @@ export function libraryItemDocToRow(
     rating: doc.rating,
     completed_dates: JSON.stringify(doc.completedDates),
     notes: doc.notes,
+    activity: JSON.stringify(doc.activity),
     watched_episodes: JSON.stringify(doc.watchedEpisodes),
     seq,
     deleted: doc._deleted ? 1 : 0,

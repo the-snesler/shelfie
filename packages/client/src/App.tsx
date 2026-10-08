@@ -152,9 +152,7 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
         >
           <IconMenu2 className="size-5" />
         </button>
-        <span className="font-display text-lg font-semibold tracking-tight text-ink">
-          Shelfie
-        </span>
+        <img src="/logo.svg" alt="Shelfie" className="h-8 w-auto" />
       </div>
       <Sidebar
         onLogout={onLogout}

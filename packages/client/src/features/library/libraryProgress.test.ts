@@ -14,6 +14,7 @@ const item: LibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   addedAt: 1,
   updatedAt: 1,
 };

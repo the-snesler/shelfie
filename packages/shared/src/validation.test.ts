@@ -16,6 +16,7 @@ const base: ReplicatedLibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   _deleted: false,
 };
 
@@ -217,5 +218,37 @@ describe("libraryItemDocSchema notes", () => {
     expect(
       libraryItemDocSchema.safeParse({ ...base, notes: "great game" }).success,
     ).toBe(true);
+  });
+});
+
+describe("libraryItemDocSchema activity", () => {
+  it("defaults old clients to an empty history", () => {
+    const { activity: _, ...legacy } = base;
+    expect(libraryItemDocSchema.parse(legacy).activity).toEqual([]);
+  });
+  it("validates timestamps, fields, and episode changes", () => {
+    const event = {
+      id: "event",
+      at: 123,
+      changes: {
+        status: "finished",
+        progressFormat: "percent",
+        progressValue: 50,
+        watchedEpisodes: { s1e1: null },
+      },
+    };
+    expect(
+      libraryItemDocSchema.safeParse({ ...base, activity: [event] }).success,
+    ).toBe(true);
+    for (const bad of [
+      { ...event, at: -1 },
+      { ...event, changes: { status: "nope" } },
+      { ...event, changes: { progressValue: -1 } },
+      { ...event, changes: { watchedEpisodes: { bad: "2026-01-01" } } },
+    ]) {
+      expect(
+        libraryItemDocSchema.safeParse({ ...base, activity: [bad] }).success,
+      ).toBe(false);
+    }
   });
 });

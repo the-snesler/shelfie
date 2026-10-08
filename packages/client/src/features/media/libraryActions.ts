@@ -32,6 +32,7 @@ export function newLibraryItem(
     completedDates: [],
     notes: "",
     watchedEpisodes: {},
+    activity: [],
     addedAt: now,
     updatedAt: now,
   };

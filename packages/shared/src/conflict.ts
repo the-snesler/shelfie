@@ -1,5 +1,6 @@
 import type { RxConflictHandler } from "rxdb";
 import type { LibraryItem } from "./types.js";
+import { mergeActivity } from "./activity.js";
 
 /**
  * Builds a deterministic last-write-wins conflict handler for any collection
@@ -64,5 +65,17 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-export const libraryItemConflictHandler =
-  createLwwConflictHandler<LibraryItem>();
+const itemLww = createLwwConflictHandler<LibraryItem>();
+export const libraryItemConflictHandler: RxConflictHandler<LibraryItem> = {
+  ...itemLww,
+  async resolve(input, context) {
+    const winner = await itemLww.resolve(input, context);
+    return {
+      ...winner,
+      activity: mergeActivity(
+        input.realMasterState.activity,
+        input.newDocumentState.activity,
+      ),
+    };
+  },
+};

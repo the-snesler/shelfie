@@ -75,7 +75,9 @@ export function AuthScreen({
         onSubmit={(e) => void submit(e)}
         className="w-full max-w-sm rounded-xl border border-divider bg-panel p-8 shadow"
       >
-        <h1 className="text-center text-2xl font-semibold text-ink">Shelfie</h1>
+        <h1>
+          <img src="/logo.svg" alt="Shelfie" className="mx-auto h-14 w-auto" />
+        </h1>
         <p className="mt-1 text-center text-sm text-muted">
           {isSetup
             ? "Create your owner account to get started."

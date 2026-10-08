@@ -1,4 +1,8 @@
-import { libraryItemDocSchema, type LibraryItem } from "@shelfie/shared";
+import {
+  mergeActivity,
+  libraryItemDocSchema,
+  type LibraryItem,
+} from "@shelfie/shared";
 
 const HEADERS = [
   "id",
@@ -13,6 +17,7 @@ const HEADERS = [
   "notes",
   "watchedEpisodes",
   "addedAt",
+  "activity",
 ] as const;
 
 export interface PreparedImport {
@@ -37,6 +42,7 @@ export function exportLibraryCsv(items: readonly LibraryItem[]): string {
       item.notes,
       JSON.stringify(item.watchedEpisodes),
       String(item.addedAt),
+      JSON.stringify(item.activity),
     ]);
   return [HEADERS, ...rows]
     .map((row) => row.map(escapeCell).join(","))
@@ -46,9 +52,12 @@ export function exportLibraryCsv(items: readonly LibraryItem[]): string {
 export function importLibraryCsv(csv: string): LibraryItem[] {
   const rows = parseCsv(csv.replace(/^\uFEFF/, ""));
   if (rows.length === 0) throw new Error("The CSV file is empty.");
+  const headers = rows[0];
+  const legacy = headers?.length === HEADERS.length - 1;
   if (
-    rows[0]?.length !== HEADERS.length ||
-    rows[0].some((cell, index) => cell !== HEADERS[index])
+    !headers ||
+    (!legacy && headers.length !== HEADERS.length) ||
+    headers.some((cell, index) => cell !== HEADERS[index])
   ) {
     throw new Error(`Expected header: ${HEADERS.join(",")}`);
   }
@@ -57,8 +66,8 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
   const seen = new Set<string>();
   return rows.slice(1).map((row, index) => {
     const rowNumber = index + 2;
-    if (row.length !== HEADERS.length) {
-      throw new Error(`Row ${rowNumber}: expected ${HEADERS.length} columns.`);
+    if (row.length !== headers.length) {
+      throw new Error(`Row ${rowNumber}: expected ${headers.length} columns.`);
     }
     const [
       id,
@@ -73,6 +82,7 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
       notes,
       watchedEpisodes,
       addedAt,
+      activity,
     ] = row as [string, ...string[]];
     if (seen.has(id)) throw new Error(`Row ${rowNumber}: duplicate id ${id}.`);
     seen.add(id);
@@ -96,6 +106,7 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
         notes,
         watchedEpisodes: JSON.parse(watchedEpisodes),
         addedAt: requiredNumber(addedAt),
+        activity: activity ? JSON.parse(activity) : [],
         updatedAt: 1,
         _deleted: false,
       });
@@ -121,6 +132,7 @@ export function prepareLibraryImport(
     else added += 1;
     return {
       ...item,
+      activity: mergeActivity(current?.activity ?? [], item.activity),
       addedAt: current ? Math.min(current.addedAt, item.addedAt) : item.addedAt,
       updatedAt: now,
     };

@@ -1,3 +1,4 @@
+import { MyActivity } from "./MyActivity";
 import type { MovieDetail as MovieDetailDto } from "@shelfie/shared";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
@@ -119,6 +120,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
+      <MyActivity item={item} />
       {meta.summary && <Description>{meta.summary}</Description>}
       <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (

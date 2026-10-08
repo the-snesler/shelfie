@@ -117,10 +117,35 @@ export interface LibraryItem {
    *  watch date (`""` = date unknown, from pre-v6 migration). `{}` for other
    *  media types. */
   watchedEpisodes: Record<string, string>;
+  /** Timestamped user edits, synced with the item. */
+  activity: ItemActivity[];
   /** ms epoch */
   addedAt: number;
   /** ms epoch — last-write-time; used by conflict resolution and UI sorting */
   updatedAt: number;
+}
+
+export type ActivityChanges = Partial<
+  Pick<
+    LibraryItem,
+    | "status"
+    | "progressFormat"
+    | "progressValue"
+    | "platforms"
+    | "rating"
+    | "completedDates"
+    | "notes"
+  >
+> & {
+  /** Only changed episode keys; null means marked unwatched. */
+  watchedEpisodes?: Record<string, string | null>;
+};
+
+export interface ItemActivity {
+  id: string;
+  /** ms epoch when the edit was recorded, independent of a chosen watch/completion day. */
+  at: number;
+  changes: ActivityChanges;
 }
 
 /** A library item as it travels over the sync protocol, carrying RxDB's soft-delete flag. */

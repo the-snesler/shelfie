@@ -1,3 +1,4 @@
+import { MyActivity } from "./MyActivity";
 import type { GameDetail, StoreName } from "@shelfie/shared";
 import { useState } from "react";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
@@ -179,6 +180,7 @@ export default function Detail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
+      <MyActivity item={item} />
       {(meta.summary || meta.storyline) && (
         <div className="flex flex-col gap-2">
           {meta.summary && <Description>{meta.summary}</Description>}

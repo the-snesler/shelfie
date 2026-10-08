@@ -16,6 +16,7 @@ const base: ReplicatedLibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   _deleted: false,
 };
 
@@ -27,7 +28,22 @@ describe("libraryItemDocToRow / libraryItemRowToDoc", () => {
       rating: 4.5,
       completedDates: ["2024-01-01", "2025-06-30"],
       notes: "great",
-      watchedEpisodes: { s1e1: "2024-01-01", s1e2: "2024-01-02", s0e1: "2024-01-03" },
+      activity: [
+        {
+          id: "event",
+          at: 12,
+          changes: {
+            status: "finished",
+            progressValue: 50,
+            progressFormat: "percent",
+          },
+        },
+      ],
+      watchedEpisodes: {
+        s1e1: "2024-01-01",
+        s1e2: "2024-01-02",
+        s0e1: "2024-01-03",
+      },
     };
     expect(libraryItemRowToDoc(libraryItemDocToRow(doc, 7))).toEqual(doc);
   });
@@ -53,7 +69,11 @@ describe("libraryItemDocToRow / libraryItemRowToDoc", () => {
       ...base,
       platforms: ["PC", "Switch"],
       completedDates: ["2024-01-01"],
-      watchedEpisodes: { s1e1: "2024-01-01", s1e2: "2024-01-02", s0e1: "2024-01-03" },
+      watchedEpisodes: {
+        s1e1: "2024-01-01",
+        s1e2: "2024-01-02",
+        s0e1: "2024-01-03",
+      },
     };
     const row = libraryItemDocToRow(doc, 42);
     expect(row.seq).toBe(42);

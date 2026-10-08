@@ -21,6 +21,7 @@ const base: ReplicatedLibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   _deleted: false,
 };
 

@@ -22,6 +22,7 @@ const sample: ReplicatedLibraryItem = {
   completedDates: ["2024-01-02"],
   notes: "great",
   watchedEpisodes: {},
+  activity: [],
 };
 
 const wishlistedSample: ReplicatedLibraryItem = {
@@ -46,7 +47,11 @@ const tvSample: ReplicatedLibraryItem = {
   progressFormat: "percent",
   progressValue: null,
   platforms: [],
-  watchedEpisodes: { s1e1: "2024-01-01", s1e2: "2024-01-02", s0e1: "2024-01-03" },
+  watchedEpisodes: {
+    s1e1: "2024-01-01",
+    s1e2: "2024-01-02",
+    s0e1: "2024-01-03",
+  },
 };
 
 describe("library item contract", () => {
@@ -75,14 +80,17 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 6 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates migrations", () => {
-    expect(libraryItemSchema.version).toBe(6);
+  it("is at schema version 7 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity migrations", () => {
+    expect(libraryItemSchema.version).toBe(7);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("4");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("5");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("6");
+    expect(
+      libraryItemMigrationStrategies[7]({ id: "game:1" }, null as never),
+    ).toEqual({ id: "game:1", activity: [] });
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;

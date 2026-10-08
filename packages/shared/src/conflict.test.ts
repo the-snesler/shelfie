@@ -16,6 +16,7 @@ const base: ReplicatedLibraryItem = {
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
+  activity: [],
   _deleted: false,
 };
 
@@ -62,11 +63,52 @@ describe("libraryItemConflictHandler", () => {
       ),
     ).resolves.toEqual(deleted);
   });
+  it("preserves and deduplicates both devices' history while current values use LWW", async () => {
+    const shared = {
+      id: "shared",
+      at: 1,
+      changes: { status: "active" as const },
+    };
+    const local = {
+      ...base,
+      updatedAt: 20,
+      activity: [
+        shared,
+        { id: "local", at: 3, changes: { progressValue: 50 } },
+      ],
+    };
+    const remote = {
+      ...base,
+      updatedAt: 30,
+      activity: [shared, { id: "remote", at: 2, changes: { rating: 4 } }],
+    };
+    const input = { realMasterState: remote, newDocumentState: local };
+    const merged = await libraryItemConflictHandler.resolve(input, "test");
+    expect(merged.progressValue).toBe(remote.progressValue);
+    expect(merged.activity.map((event) => event.id)).toEqual([
+      "shared",
+      "remote",
+      "local",
+    ]);
+    expect(
+      await libraryItemConflictHandler.resolve(
+        { realMasterState: local, newDocumentState: remote },
+        "test",
+      ),
+    ).toEqual(merged);
+    expect(
+      await libraryItemConflictHandler.resolve(
+        { realMasterState: merged, newDocumentState: local },
+        "test",
+      ),
+    ).toEqual(merged);
+  });
+
   it("treats docs differing only in watchedEpisodes as unequal", () => {
     const withEpisode = { ...base, watchedEpisodes: { s1e1: "2024-01-01" } };
-    expect(
-      libraryItemConflictHandler.isEqual(withEpisode, base, "test"),
-    ).toBe(false);
+    expect(libraryItemConflictHandler.isEqual(withEpisode, base, "test")).toBe(
+      false,
+    );
   });
 
   it("treats watchedEpisodes maps as equal regardless of key insertion order", () => {

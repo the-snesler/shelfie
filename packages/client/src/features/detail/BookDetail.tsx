@@ -1,3 +1,4 @@
+import { MyActivity } from "./MyActivity";
 import type { BookDetail as BookDetailDto } from "@shelfie/shared";
 import { useLocation, useNavigate, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
@@ -119,6 +120,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
+      <MyActivity item={item} />
       {meta.description && <Description>{meta.description}</Description>}
       {detailRows.length > 0 && (
         <DetailSection title="Details">
