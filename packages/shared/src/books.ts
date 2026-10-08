@@ -23,7 +23,8 @@ export interface BookMetadata {
   name: string;
   coverUrl: string | null;
   authors: string[];
-  year: number | null;
+  /** ISO "YYYY-MM-DD"; null when unknown. */
+  publicationDate: string | null;
   /** Needed client-side to derive % from a "pages" progress log. */
   pageCount: number | null;
 }
@@ -38,8 +39,6 @@ export interface BookSeries {
 export interface BookDetail extends BookMetadata {
   description: string | null;
   publisher: string | null;
-  /** ISO "YYYY-MM-DD"; null when unknown. */
-  publicationDate: string | null;
   isbn13: string | null;
   series: BookSeries | null;
   genres: string[];

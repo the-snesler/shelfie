@@ -225,9 +225,10 @@ export function LibraryItemCard({
           sourceId: item.sourceId,
           name,
           platforms: [],
-          releaseDate: releaseDateFromYear(
-            movieMeta?.year ?? tvMeta?.firstAirYear ?? bookMeta?.year ?? null,
-          ),
+          releaseDate:
+            movieMeta?.releaseDate ??
+            bookMeta?.publicationDate ??
+            releaseDateFromYear(tvMeta?.firstAirYear ?? null),
         };
 
   const displayCaption = airedNext

@@ -13,14 +13,15 @@ export interface MovieCardDoc {
   name: string;
   posterPath: string | null;
   genres: string[];
-  year: number | null;
+  /** ISO YYYY-MM-DD */
+  releaseDate: string | null;
   director: string | null;
   runtime: number | null;
 }
 
 export const movieCardSchema: RxJsonSchema<MovieCardDoc> = {
   title: "movie card cache schema",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -34,12 +35,7 @@ export const movieCardSchema: RxJsonSchema<MovieCardDoc> = {
     name: { type: "string", maxLength: 256 },
     posterPath: { type: ["string", "null"], maxLength: 256 },
     genres: { type: "array", items: { type: "string", maxLength: 64 } },
-    year: {
-      type: ["number", "null"],
-      minimum: 0,
-      maximum: 9999,
-      multipleOf: 1,
-    },
+    releaseDate: { type: ["string", "null"], maxLength: 10 },
     director: { type: ["string", "null"], maxLength: 256 },
     runtime: {
       type: ["number", "null"],
@@ -59,7 +55,7 @@ export function cardToDoc(card: MovieMetadata): MovieCardDoc {
     name: card.name,
     posterPath: card.posterPath,
     genres: card.genres,
-    year: card.year,
+    releaseDate: card.releaseDate,
     director: card.director,
     runtime: card.runtime,
   };

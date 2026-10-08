@@ -9,6 +9,7 @@ import {
   MEDIA_DETAIL_COVER_WIDTH,
   mediaCoverTransitionName,
 } from "../media/MediaCover";
+import { yearOf } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
 import { useBackNavigation } from "./useBackNavigation";
 import { useDetailFetch } from "./useDetailFetch";
@@ -83,7 +84,10 @@ export default function BookDetail({ params }: Route.ComponentProps) {
             `${meta.series.name}${
               meta.series.position ? ` #${meta.series.position}` : ""
             }`,
-          [meta.year, meta.pageCount != null && `${meta.pageCount} pages`]
+          [
+            yearOf(meta.publicationDate),
+            meta.pageCount != null && `${meta.pageCount} pages`,
+          ]
             .filter(Boolean)
             .join(" · "),
           meta.genres.length > 0 && meta.genres.join(", "),

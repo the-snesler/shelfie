@@ -45,9 +45,14 @@ export function releaseDateFromEpoch(seconds: number | null): string | null {
     : new Date(seconds * 1000).toISOString().slice(0, 10);
 }
 
-/** year -> YYYY-01-01 (movie/tv/book card caches only carry a year). */
+/** year -> YYYY-01-01 (the TV card cache only carries a first-air year). */
 export function releaseDateFromYear(year: number | null): string | null {
   return year == null ? null : `${String(year).padStart(4, "0")}-01-01`;
+}
+
+/** YYYY-MM-DD -> its year, for UI that shows only the year. */
+export function yearOf(isoDate: string | null | undefined): number | null {
+  return isoDate ? Number(isoDate.slice(0, 4)) : null;
 }
 
 /** Local-time YYYY-MM-DD for `d` (avoids toISOString's UTC off-by-one). */

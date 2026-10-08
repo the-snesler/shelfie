@@ -5,6 +5,7 @@ import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { formatRuntime } from "../media/duration";
+import { yearOf } from "../media/libraryActions";
 import type { CardMeta } from "./useLibraryData";
 
 /** Whole hours from IGDB seconds, e.g. 79200 -> 22. */
@@ -60,8 +61,8 @@ function gameCaption(
 function movieCaption(meta: MovieCardDoc | undefined): string | null {
   const runtime = formatRuntime(meta?.runtime ?? null);
   if (runtime) return runtime;
-  if (meta?.year != null) return String(meta.year);
-  return null;
+  const year = yearOf(meta?.releaseDate);
+  return year != null ? String(year) : null;
 }
 
 /** Excludes season-0 (Specials) keys from the numerator, matching the

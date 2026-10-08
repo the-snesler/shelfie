@@ -93,7 +93,8 @@ export interface MovieMetadataTable {
   poster_path: string | null;
   /** JSON-encoded string[] */
   genres: string;
-  year: number | null;
+  /** ISO YYYY-MM-DD */
+  release_date: string | null;
   director: string | null;
   /** minutes */
   runtime: number | null;
@@ -165,12 +166,11 @@ export interface BookMetadataTable {
   cover_url: string | null;
   /** JSON-encoded string[] */
   authors: string;
-  year: number | null;
+  /** ISO YYYY-MM-DD */
+  publication_date: string | null;
   page_count: number | null;
   description: string | null;
   publisher: string | null;
-  /** ISO YYYY-MM-DD */
-  publication_date: string | null;
   isbn13: string | null;
   series_name: string | null;
   /** Goodreads series position; may be fractional like "1.5" */

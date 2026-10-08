@@ -10,7 +10,7 @@ import {
   MEDIA_DETAIL_COVER_WIDTH,
   mediaCoverTransitionName,
 } from "../media/MediaCover";
-import { releaseDateFromYear } from "../media/libraryActions";
+import { yearOf } from "../media/libraryActions";
 import { formatRuntime } from "../media/duration";
 import { StatusControl } from "../media/StatusControl";
 import { useBackNavigation } from "./useBackNavigation";
@@ -83,7 +83,11 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
         name={meta.name}
         tagline={meta.tagline}
         lines={[
-          [meta.year, formatRuntime(meta.runtime), meta.certification]
+          [
+            yearOf(meta.releaseDate),
+            formatRuntime(meta.runtime),
+            meta.certification,
+          ]
             .filter(Boolean)
             .join(" · "),
           meta.genres.length > 0 && meta.genres.join(", "),
@@ -114,7 +118,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
               sourceId: String(meta.tmdbId),
               name: meta.name,
               platforms: [],
-              releaseDate: releaseDateFromYear(meta.year),
+              releaseDate: meta.releaseDate,
             }}
             item={item}
           />

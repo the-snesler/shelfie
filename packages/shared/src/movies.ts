@@ -33,7 +33,8 @@ export interface MovieMetadata {
   name: string;
   posterPath: string | null;
   genres: string[];
-  year: number | null;
+  /** ISO "YYYY-MM-DD" (TMDB's primary release date); null when unknown. */
+  releaseDate: string | null;
   director: string | null;
   /** minutes; null/0 when TMDB has none */
   runtime: number | null;

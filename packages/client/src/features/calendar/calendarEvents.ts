@@ -1,5 +1,7 @@
 import type { LibraryItem, TvScheduledEpisode } from "@shelfie/shared";
+import type { BookCardDoc } from "../../db/bookCards";
 import type { GameCardDoc } from "../../db/gameCards";
+import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { releaseDateFromEpoch } from "../media/libraryActions";
 import type { CardMeta } from "../media/useLibraryData";
@@ -42,11 +44,28 @@ export function episodeLabel(season: number, episodes: number[]): string {
   return `S${season} · ${episodes.length} episodes`;
 }
 
+function releaseDateOf(
+  mediaType: "game" | "movie" | "book",
+  card: CardMeta | undefined,
+): string | null {
+  switch (mediaType) {
+    case "game":
+      return releaseDateFromEpoch(
+        (card as GameCardDoc | undefined)?.firstReleaseDate ?? null,
+      );
+    case "movie":
+      return (card as MovieCardDoc | undefined)?.releaseDate ?? null;
+    case "book":
+      return (card as BookCardDoc | undefined)?.publicationDate ?? null;
+  }
+}
+
 /**
  * Flattens the library into dated calendar events, sorted by day:
  *
  * - **completions** — every `completedDates` entry, any status;
- * - **game releases** — the card's IGDB `firstReleaseDate`;
+ * - **releases** — the card's game `firstReleaseDate`, movie `releaseDate`,
+ *   or book `publicationDate`;
  * - **TV episodes** — the server's cached schedule (`/api/tv/schedule`),
  *   topped up with each local card's `nextEpisodeToAir` so the next airing
  *   still shows offline or before the schedule request lands.
@@ -67,14 +86,12 @@ export function buildCalendarEvents<TItem extends LibraryItem>(
       events.push({ kind: "completion", date, item, card });
     }
     if (item.status === "dropped") continue;
-    if (item.mediaType === "game") {
-      const date = releaseDateFromEpoch(
-        (card as GameCardDoc | undefined)?.firstReleaseDate ?? null,
-      );
-      if (date) events.push({ kind: "release", date, item, card });
-    } else if (item.mediaType === "tv") {
+    if (item.mediaType === "tv") {
       showsById.set(item.sourceId, item);
+      continue;
     }
+    const date = releaseDateOf(item.mediaType, card);
+    if (date) events.push({ kind: "release", date, item, card });
   }
 
   // (show, day, season) -> episode number -> title

@@ -253,11 +253,10 @@ export async function fetchBookByLegacyId(
     name: book.title ?? "",
     coverUrl: book.imageUrl ?? null,
     authors: extractAuthors(book),
-    year: publicationDate ? Number(publicationDate.slice(0, 4)) : null,
+    publicationDate,
     pageCount: book.details?.numPages ?? null,
     description: stripHtml(book.description),
     publisher: book.details?.publisher ?? null,
-    publicationDate,
     isbn13: book.details?.isbn13 ?? null,
     series: extractSeries(book),
     genres: (book.bookGenres ?? [])

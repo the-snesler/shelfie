@@ -234,6 +234,11 @@ function yearFromDate(date: string | null | undefined): number | null {
   return Number.isFinite(year) && year > 0 ? year : null;
 }
 
+/** TMDB release/air dates as ISO days; "" and malformed values become null. */
+function isoDateOrNull(date: string | null | undefined): string | null {
+  return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+}
+
 function extractDirector(crew: TmdbCrewMember[] | undefined): string | null {
   return crew?.find((member) => member.job === "Director")?.name ?? null;
 }
@@ -287,7 +292,7 @@ function movieToMetadata(movie: TmdbMovie): MovieMetadata {
     name: movie.title,
     posterPath: movie.poster_path,
     genres: (movie.genres ?? []).map((genre) => genre.name),
-    year: yearFromDate(movie.release_date),
+    releaseDate: isoDateOrNull(movie.release_date),
     director: extractDirector(movie.credits?.crew),
     runtime: movie.runtime && movie.runtime > 0 ? movie.runtime : null,
     summary: movie.overview || null,

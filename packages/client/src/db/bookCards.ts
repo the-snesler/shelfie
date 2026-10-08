@@ -13,13 +13,14 @@ export interface BookCardDoc {
   name: string;
   coverUrl: string | null;
   authors: string[];
-  year: number | null;
+  /** ISO YYYY-MM-DD */
+  publicationDate: string | null;
   pageCount: number | null;
 }
 
 export const bookCardSchema: RxJsonSchema<BookCardDoc> = {
   title: "book card cache schema",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -33,12 +34,7 @@ export const bookCardSchema: RxJsonSchema<BookCardDoc> = {
     name: { type: "string", maxLength: 256 },
     coverUrl: { type: ["string", "null"], maxLength: 512 },
     authors: { type: "array", items: { type: "string", maxLength: 256 } },
-    year: {
-      type: ["number", "null"],
-      minimum: 0,
-      maximum: 9999,
-      multipleOf: 1,
-    },
+    publicationDate: { type: ["string", "null"], maxLength: 10 },
     pageCount: {
       type: ["number", "null"],
       minimum: 0,
@@ -57,7 +53,7 @@ export function cardToDoc(card: BookMetadata): BookCardDoc {
     name: card.name,
     coverUrl: card.coverUrl,
     authors: card.authors,
-    year: card.year,
+    publicationDate: card.publicationDate,
     pageCount: card.pageCount,
   };
 }

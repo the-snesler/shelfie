@@ -1,4 +1,8 @@
-import type { LibraryItem, TvScheduledEpisode } from "@shelfie/shared";
+import type {
+  LibraryItem,
+  MediaType,
+  TvScheduledEpisode,
+} from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";
@@ -6,7 +10,9 @@ import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 import IconCircleCheck from "~icons/tabler/circle-check";
 import IconDeviceGamepad2 from "~icons/tabler/device-gamepad-2";
+import IconBook2 from "~icons/tabler/book-2";
 import IconDeviceTv from "~icons/tabler/device-tv";
+import IconMovie from "~icons/tabler/movie";
 import IconX from "~icons/tabler/x";
 import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
@@ -41,14 +47,20 @@ const UPCOMING_LIMIT = 40;
 /** Event chips shown per day cell before collapsing into "+N more". */
 const CELL_CHIPS = 3;
 
-const KIND_ICON: Record<
-  Event["kind"],
-  ComponentType<{ className?: string }>
-> = {
-  release: IconDeviceGamepad2,
-  episodes: IconDeviceTv,
-  completion: IconCircleCheck,
+type IconComponent = ComponentType<{ className?: string }>;
+
+const MEDIA_ICON: Record<MediaType, IconComponent> = {
+  game: IconDeviceGamepad2,
+  movie: IconMovie,
+  tv: IconDeviceTv,
+  book: IconBook2,
 };
+
+function eventIcon(event: Event): IconComponent {
+  return event.kind === "completion"
+    ? IconCircleCheck
+    : MEDIA_ICON[event.item.mediaType];
+}
 
 const KIND_TONE: Record<Event["kind"], string> = {
   release: "text-accent",
@@ -59,7 +71,7 @@ const KIND_TONE: Record<Event["kind"], string> = {
 function eventDetail(event: Event): string {
   switch (event.kind) {
     case "release":
-      return "Release";
+      return event.item.mediaType === "book" ? "Published" : "Release";
     case "episodes": {
       const label = episodeLabel(event.season, event.episodes);
       return event.name ? `${label} · ${event.name}` : label;
@@ -344,7 +356,7 @@ function MonthGrid({
               </span>
               <span className="hidden min-w-0 flex-col gap-0.5 md:flex">
                 {dayEvents.slice(0, CELL_CHIPS).map((event) => {
-                  const Icon = KIND_ICON[event.kind];
+                  const Icon = eventIcon(event);
                   return (
                     <span
                       key={eventKey(event)}
@@ -417,7 +429,7 @@ function EventRow({ event }: { event: Event }) {
   const { item, card } = event;
   const name = cardName(item, card);
   const href = detailHref(item, card);
-  const Icon = KIND_ICON[event.kind];
+  const Icon = eventIcon(event);
   const rowClass =
     "flex items-center gap-3 rounded px-2 py-1.5 hover:bg-well/60";
   const row = (

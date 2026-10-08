@@ -130,8 +130,10 @@ collection's optional `isExpired` hook lets a row expire before the TTL —
 TV uses it to refetch once that next episode has aired. `GET
 /api/tv/schedule?ids=&from=&to=` is a cache-only (never calls TMDB) read of
 dated episodes across those cached catalogs + card next-episodes; it feeds
-the Calendar screen (`features/calendar/`), which merges it with game
-`firstReleaseDate`s and `completedDates` from the local caches.
+the Calendar screen (`features/calendar/`), which merges it with release
+dates from the local caches (game `firstReleaseDate`, movie `releaseDate`,
+book `publicationDate` — cards store full ISO days, the UI derives years)
+and `completedDates`.
 
 Client-side, only the **card** projection is persisted, into local-only
 (never-replicated) RxDB collections (`client/src/db/*Cards.ts`):

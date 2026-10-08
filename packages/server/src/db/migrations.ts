@@ -381,14 +381,37 @@ const migrations: Migration[] = [
       await db.updateTable("tv_metadata").set({ fetched_at: 0 }).execute();
     },
   },
+  {
+    id: 13,
+    name: "movie-book-release-dates",
+    async up(db) {
+      // Movie cards trade a bare year for TMDB's full release date. The
+      // year can't be widened in place, so expire every movie card to
+      // refetch it (TMDB is cheap; detail columns stay put).
+      await db.schema
+        .alterTable("movie_metadata")
+        .addColumn("release_date", "text")
+        .execute();
+      await db.schema.alterTable("movie_metadata").dropColumn("year").execute();
+      await db.updateTable("movie_metadata").set({ fetched_at: 0 }).execute();
+      // Book cards are always fetched through the full detail query, so
+      // publication_date is already populated and `year` was derived from
+      // it — promoting the date to the card tier needs no refetch.
+      await db.schema.alterTable("book_metadata").dropColumn("year").execute();
+    },
+  },
 ];
 
 /**
  * Ensures the `migrations` bookkeeping table exists, then applies every
  * migration whose id has not yet been recorded, in ascending id order, each
- * inside its own transaction.
+ * inside its own transaction. `throughId` stops early (tests use it to build
+ * a database as an older release left it).
  */
-export async function runMigrations(db: Kysely<Database>): Promise<void> {
+export async function runMigrations(
+  db: Kysely<Database>,
+  throughId = Infinity,
+): Promise<void> {
   await db.schema
     .createTable("migrations")
     .ifNotExists()
@@ -401,7 +424,9 @@ export async function runMigrations(db: Kysely<Database>): Promise<void> {
   const appliedIds = new Set(applied.map((row) => row.id));
 
   const pending = migrations
-    .filter((migration) => !appliedIds.has(migration.id))
+    .filter(
+      (migration) => !appliedIds.has(migration.id) && migration.id <= throughId,
+    )
     .sort((a, b) => a.id - b.id);
 
   for (const migration of pending) {

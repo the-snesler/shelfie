@@ -43,7 +43,7 @@ describe("library sorting", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("compares IGDB epoch dates with year-only metadata", () => {
+  it("compares IGDB epoch dates with ISO release dates", () => {
     const game = item("game:1");
     const movie = item("movie:2");
     const cards = new Map<string, CardMeta>([
@@ -57,7 +57,11 @@ describe("library sorting", () => {
       ],
       [
         movie.id,
-        { id: movie.id, name: "Newer movie", year: 2024 } as MovieCardDoc,
+        {
+          id: movie.id,
+          name: "Newer movie",
+          releaseDate: "2020-03-01",
+        } as MovieCardDoc,
       ],
     ]);
 

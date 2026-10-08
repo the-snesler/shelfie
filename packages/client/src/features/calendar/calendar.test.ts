@@ -110,6 +110,31 @@ describe("buildCalendarEvents", () => {
     expect(drop.kind === "episodes" && drop.name).toBe(null);
   });
 
+  it("dates movie and book releases from their cards", () => {
+    const movie = libraryItem({ id: "movie:5", mediaType: "movie" });
+    const book = libraryItem({ id: "book:6", mediaType: "book" });
+    const events = buildCalendarEvents(
+      [movie, book],
+      new Map<string, CardMeta>([
+        [
+          "movie:5",
+          {
+            name: "Movie",
+            releaseDate: "2026-12-18",
+          } as unknown as CardMeta,
+        ],
+        [
+          "book:6",
+          { name: "Book", publicationDate: null } as unknown as CardMeta,
+        ],
+      ]),
+      [],
+    );
+    expect(events.map((e) => [e.kind, e.item.id, e.date])).toEqual([
+      ["release", "movie:5", "2026-12-18"],
+    ]);
+  });
+
   it("dedupes the card's next episode against the schedule", () => {
     const events = buildCalendarEvents([show], cards, [
       episode("2026-11-01", 3, 1),

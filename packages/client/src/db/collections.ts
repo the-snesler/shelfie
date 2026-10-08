@@ -4,10 +4,13 @@ import {
   libraryItemMigrationStrategies,
   libraryItemSchema,
 } from "@shelfie/shared";
-import { bookCardSchema } from "./bookCards";
+import { bookCardSchema, type BookCardDoc } from "./bookCards";
 import { gameCardSchema, type GameCardDoc } from "./gameCards";
-import { movieCardSchema } from "./movieCards";
+import { movieCardSchema, type MovieCardDoc } from "./movieCards";
 import { tvCardSchema, type TvCardDoc } from "./tvCards";
+
+/** A v0 movie/book card doc: a bare `year` instead of the ISO date. */
+type YearOnlyDoc<TDoc> = RxDocumentData<TDoc> & { year?: number | null };
 
 /**
  * Collection definitions built from the shared schema. Keeping this separate
@@ -30,6 +33,13 @@ export const collections = {
   },
   movie_metadata: {
     schema: movieCardSchema,
+    migrationStrategies: {
+      // v0 carried only a year; the date arrives with the next card refresh.
+      1: ({ year: _year, ...doc }: YearOnlyDoc<MovieCardDoc>) => ({
+        ...doc,
+        releaseDate: null,
+      }),
+    },
   },
   tv_metadata: {
     schema: tvCardSchema,
@@ -42,5 +52,11 @@ export const collections = {
   },
   book_metadata: {
     schema: bookCardSchema,
+    migrationStrategies: {
+      1: ({ year: _year, ...doc }: YearOnlyDoc<BookCardDoc>) => ({
+        ...doc,
+        publicationDate: null,
+      }),
+    },
   },
 };

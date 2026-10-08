@@ -204,24 +204,7 @@ describe("owner settings migration", () => {
     database = new Kysely<Database>({
       dialect: new SqliteDialect({ database: new BetterSqlite3(":memory:") }),
     });
-    await sql`CREATE TABLE migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at INTEGER NOT NULL)`.execute(
-      database,
-    );
-    await sql`CREATE TABLE auth_owner (id TEXT PRIMARY KEY, password_hash TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`.execute(
-      database,
-    );
-    await sql`CREATE TABLE library_items (id TEXT PRIMARY KEY)`.execute(
-      database,
-    );
-    await sql`CREATE TABLE tv_metadata (tmdb_id INTEGER PRIMARY KEY, fetched_at INTEGER NOT NULL)`.execute(
-      database,
-    );
-    for (let id = 1; id <= 9; id += 1) {
-      await database
-        .insertInto("migrations")
-        .values({ id, name: `old-${id}`, applied_at: 1 })
-        .execute();
-    }
+    await runMigrations(database, 9);
     await sql`INSERT INTO auth_owner (id, password_hash, created_at, updated_at) VALUES ('owner', 'hash', 1, 1)`.execute(
       database,
     );
