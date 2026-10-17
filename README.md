@@ -19,6 +19,19 @@ populate a demo library.
 
 See [AGENTS.md](./AGENTS.md) for an architecture tour of the codebase.
 
+Visitors can search and view catalog pages without logging in. Your library,
+calendar, recommendations, settings, and sync remain private. Login attempts
+and anonymous catalog requests are rate limited.
+
+Settings includes private iCal subscriptions, Apprise release reminders, and
+manual or scheduled imports from Trakt, BookOrbit, and Steam. See
+[integrations and deployment settings](./docs/integrations.md) for configuration,
+import behavior, and service requirements. Recommendations suggest the next
+title from your own backlog using your ratings and cached metadata.
+
+Run `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm build`, and
+`pnpm test` before submitting changes. `pnpm format` applies formatting.
+
 A Docker deployment is also available: `docker compose up --build` builds
 the single-container image from the root `Dockerfile`/`docker-compose.yml`;
 CI publishes a prebuilt image to GHCR on every push to `main`.
