@@ -7,17 +7,14 @@ import { NON_FINISHED_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
-import type { BookCardDoc } from "../../db/bookCards";
+import { subscribeCardCaches, type CardMeta } from "../../db/cardCache";
 import type { ShelfieDatabase } from "../../db/database";
-import type { GameCardDoc } from "../../db/gameCards";
-import type { MovieCardDoc } from "../../db/movieCards";
 import { refreshCardCaches } from "../../db/refreshCards";
-import type { TvCardDoc } from "../../db/tvCards";
 
 /** Any card-cache doc a library item might have metadata for. All four
  *  share the `${mediaType}:${sourceId}` id convention, so they can live in
  *  one map keyed by `LibraryItem.id`/`doc.id`. */
-export type CardMeta = GameCardDoc | MovieCardDoc | TvCardDoc | BookCardDoc;
+export type { CardMeta } from "../../db/cardCache";
 
 export interface LibraryData {
   items: RxDocument<LibraryItem>[];
@@ -73,41 +70,22 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
     return () => sub.unsubscribe();
   }, [db]);
 
-  useEffect(() => {
-    const sub = db.game_metadata.find().$.subscribe((found) => {
-      cachedCards = mergeCards(cachedCards, "game:", found);
-      setCards(cachedCards);
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
-  useEffect(() => {
-    const sub = db.movie_metadata.find().$.subscribe((found) => {
-      cachedCards = mergeCards(cachedCards, "movie:", found);
-      setCards(cachedCards);
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
-  useEffect(() => {
-    const sub = db.tv_metadata.find().$.subscribe((found) => {
-      cachedCards = mergeCards(cachedCards, "tv:", found);
-      setCards(cachedCards);
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
-  useEffect(() => {
-    const sub = db.book_metadata.find().$.subscribe((found) => {
-      cachedCards = mergeCards(cachedCards, "book:", found);
-      setCards(cachedCards);
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
   const idsKey = useMemo(
     () => [...new Set(items.map((item) => item.id))].sort().join(","),
     [items],
+  );
+
+  useEffect(
+    () =>
+      subscribeCardCaches(
+        db,
+        idsKey ? idsKey.split(",") : [],
+        (prefix, found) => {
+          cachedCards = mergeCards(cachedCards, prefix, found);
+          setCards(cachedCards);
+        },
+      ),
+    [db, idsKey],
   );
 
   const inProgressTvIds = useMemo(
@@ -135,6 +113,13 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
 
   useEffect(() => {
     let active = true;
+    // The view-transition cache should not retain catalogs for shows that
+    // left this shelf, even after many detail-page visits.
+    const referenced = new Set(inProgressTvIds.map((id) => `tv:${id}`));
+    cachedTvCatalogs = new Map(
+      [...cachedTvCatalogs].filter(([id]) => referenced.has(id)),
+    );
+    setTvCatalogs(cachedTvCatalogs);
     for (const id of inProgressTvIds) {
       if (cachedTvCatalogs.has(`tv:${id}`)) continue;
       void authFetch(`/api/tv/by-id/${encodeURIComponent(id)}`)

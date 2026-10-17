@@ -5,6 +5,7 @@ import type {
 } from "@shelfie/shared";
 import type { RxJsonSchema } from "rxdb";
 import type { ShelfieDatabase } from "./database";
+import { upsertOwnedCards } from "./cardCache";
 
 /**
  * Local-only (never replicated) projection of the card tier of game
@@ -114,6 +115,5 @@ export async function upsertCards(
   db: ShelfieDatabase,
   cards: GameMetadata[],
 ): Promise<void> {
-  if (cards.length === 0) return;
-  await db.game_metadata.bulkUpsert(cards.map(cardToDoc));
+  await upsertOwnedCards(db, cards.map(cardToDoc));
 }

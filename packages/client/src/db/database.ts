@@ -16,6 +16,7 @@ import { RxDBMigrationSchemaPlugin } from "rxdb/plugins/migration-schema";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 import { wrappedValidateAjvStorage } from "rxdb/plugins/validate-ajv";
 import { collections } from "./collections";
+import { startCardCacheLifecycle } from "./cardCache";
 
 addRxPlugin(RxDBMigrationSchemaPlugin);
 
@@ -67,5 +68,7 @@ async function createDatabase(): Promise<ShelfieDatabase> {
   db.library_items.preSave((data, previous) => {
     recordItemActivity(data, previous, Date.now(), randomToken(24));
   }, false);
+  const stopCardCacheLifecycle = startCardCacheLifecycle(db);
+  db.onClose.push(async () => stopCardCacheLifecycle());
   return db;
 }

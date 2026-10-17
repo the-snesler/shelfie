@@ -1,6 +1,7 @@
 import type { TvAiring, TvMetadata } from "@shelfie/shared";
 import type { RxJsonSchema } from "rxdb";
 import type { ShelfieDatabase } from "./database";
+import { upsertOwnedCards } from "./cardCache";
 
 /**
  * Local-only (never replicated) projection of the card tier of TV metadata.
@@ -96,6 +97,5 @@ export async function upsertTvCards(
   db: ShelfieDatabase,
   cards: TvMetadata[],
 ): Promise<void> {
-  if (cards.length === 0) return;
-  await db.tv_metadata.bulkUpsert(cards.map(cardToDoc));
+  await upsertOwnedCards(db, cards.map(cardToDoc));
 }

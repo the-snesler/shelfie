@@ -7,12 +7,12 @@ import type { ShelfieDatabase } from "../../db/database";
 import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
+import { subscribeCardCaches, type CardMeta } from "../../db/cardCache";
 
 /** Any card-cache doc a library item might have metadata for. All four
  *  share the `${mediaType}:${sourceId}` id convention, so they can live in
- *  one map keyed by `LibraryItem.id`/`doc.id` — mirrors `Library.tsx`'s
- *  own (unexported) `CardMeta` union. */
-export type CardMeta = GameCardDoc | MovieCardDoc | TvCardDoc | BookCardDoc;
+ *  one map keyed by `LibraryItem.id`/`doc.id`. */
+export type { CardMeta } from "../../db/cardCache";
 
 /** Replaces every entry under `prefix` (a media type's `"<type>:"` id
  *  namespace) with a fresh snapshot from that type's collection, leaving
@@ -51,33 +51,21 @@ export function useLibraryData(db: ShelfieDatabase): {
     return () => sub.unsubscribe();
   }, [db]);
 
-  useEffect(() => {
-    const sub = db.game_metadata.find().$.subscribe((found) => {
-      setCards((prev) => replacePrefix(prev, "game:", found));
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
-  useEffect(() => {
-    const sub = db.movie_metadata.find().$.subscribe((found) => {
-      setCards((prev) => replacePrefix(prev, "movie:", found));
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
-  useEffect(() => {
-    const sub = db.tv_metadata.find().$.subscribe((found) => {
-      setCards((prev) => replacePrefix(prev, "tv:", found));
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-
-  useEffect(() => {
-    const sub = db.book_metadata.find().$.subscribe((found) => {
-      setCards((prev) => replacePrefix(prev, "book:", found));
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
+  const idsKey = items
+    .map((item) => item.id)
+    .sort()
+    .join(",");
+  useEffect(
+    () =>
+      subscribeCardCaches(
+        db,
+        idsKey ? idsKey.split(",") : [],
+        (prefix, found) => {
+          setCards((prev) => replacePrefix(prev, prefix, found));
+        },
+      ),
+    [db, idsKey],
+  );
 
   return { items, cards };
 }

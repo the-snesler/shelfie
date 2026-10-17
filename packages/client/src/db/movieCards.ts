@@ -1,6 +1,7 @@
 import type { MovieMetadata } from "@shelfie/shared";
 import type { RxJsonSchema } from "rxdb";
 import type { ShelfieDatabase } from "./database";
+import { upsertOwnedCards } from "./cardCache";
 
 /**
  * Local-only (never replicated) projection of the card tier of movie
@@ -65,6 +66,5 @@ export async function upsertMovieCards(
   db: ShelfieDatabase,
   cards: MovieMetadata[],
 ): Promise<void> {
-  if (cards.length === 0) return;
-  await db.movie_metadata.bulkUpsert(cards.map(cardToDoc));
+  await upsertOwnedCards(db, cards.map(cardToDoc));
 }
