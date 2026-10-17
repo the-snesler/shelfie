@@ -12,6 +12,7 @@ import type { Database, ImportConnectionsTable } from "../db/types.js";
 import { nextRev } from "../db/sequence.js";
 import { libraryItemDocToRow, libraryItemRowToDoc } from "../sync/row.js";
 import { emitChange } from "../sync/stream.js";
+import { withCollectionWriteLock } from "../sync/writeQueue.js";
 import { parseCron } from "./cron.js";
 import { mergeImportedItem } from "./merge.js";
 import { fetchSource } from "./sources.js";
@@ -204,42 +205,46 @@ export class ImportService {
       };
       const written: ReplicatedLibraryItem[] = [];
       let latestSeq = 0;
-      // One transaction: malformed rows cannot leave a partially imported library.
-      await this.database.transaction().execute(async (trx) => {
-        for (const item of data.items) {
-          const id = `${item.mediaType}:${item.sourceId}`;
-          const existing = await trx
-            .selectFrom("library_items")
-            .selectAll()
-            .where("id", "=", id)
-            .executeTakeFirst();
-          const doc = mergeImportedItem(
-            item,
-            existing ? libraryItemRowToDoc(existing) : null,
-            Date.now(),
-          );
-          if (!doc) {
-            result.skipped++;
-            continue;
+      // Fetching sources stays outside the write queue. Only the library
+      // transaction and its checkpoint publication serialize with client pushes.
+      await withCollectionWriteLock("library_items", async () => {
+        // One transaction: malformed rows cannot leave a partially imported library.
+        await this.database.transaction().execute(async (trx) => {
+          for (const item of data.items) {
+            const id = `${item.mediaType}:${item.sourceId}`;
+            const existing = await trx
+              .selectFrom("library_items")
+              .selectAll()
+              .where("id", "=", id)
+              .executeTakeFirst();
+            const doc = mergeImportedItem(
+              item,
+              existing ? libraryItemRowToDoc(existing) : null,
+              Date.now(),
+            );
+            if (!doc) {
+              result.skipped++;
+              continue;
+            }
+            const seq = nextRev("library_items");
+            const record = libraryItemDocToRow(doc, seq);
+            await trx
+              .insertInto("library_items")
+              .values(record)
+              .onConflict((oc) => oc.column("id").doUpdateSet(record))
+              .execute();
+            if (existing) result.updated++;
+            else result.added++;
+            written.push(doc);
+            latestSeq = seq;
           }
-          const seq = nextRev("library_items");
-          const record = libraryItemDocToRow(doc, seq);
-          await trx
-            .insertInto("library_items")
-            .values(record)
-            .onConflict((oc) => oc.column("id").doUpdateSet(record))
-            .execute();
-          if (existing) result.updated++;
-          else result.added++;
-          written.push(doc);
-          latestSeq = seq;
-        }
-      });
-      if (written.length)
-        emitChange("library_items", {
-          documents: written,
-          checkpoint: { seq: latestSeq },
         });
+        if (written.length)
+          emitChange("library_items", {
+            documents: written,
+            checkpoint: { seq: latestSeq },
+          });
+      });
       await this.database
         .updateTable("import_connections")
         .set({

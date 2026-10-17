@@ -5,6 +5,7 @@ import {
   type SyncCollection,
 } from "./collection.js";
 import { emitChange } from "./stream.js";
+import { withCollectionWriteLock } from "./writeQueue.js";
 
 export interface PushRow<TDoc> {
   newDocumentState: TDoc;
@@ -22,30 +23,32 @@ export async function push<TDoc extends ReplicatedDoc>(
   coll: SyncCollection<TDoc>,
   rows: PushRow<TDoc>[],
 ): Promise<TDoc[]> {
-  const conflicts: TDoc[] = [];
-  const written: Array<{ doc: TDoc; seq: number }> = [];
+  return withCollectionWriteLock(coll.name, async () => {
+    const conflicts: TDoc[] = [];
+    const written: Array<{ doc: TDoc; seq: number }> = [];
 
-  for (const row of rows) {
-    const doc = coll.parse(row.newDocumentState);
-    const realMaster = await coll.fetchById(doc.id);
+    for (const row of rows) {
+      const doc = coll.parse(row.newDocumentState);
+      const realMaster = await coll.fetchById(doc.id);
 
-    if (!equalDocs(realMaster, row.assumedMasterState ?? null)) {
-      if (realMaster) conflicts.push(realMaster);
-      continue;
+      if (!equalDocs(realMaster, row.assumedMasterState ?? null)) {
+        if (realMaster) conflicts.push(realMaster);
+        continue;
+      }
+
+      const seq = nextRev(coll.name);
+      await coll.upsert(doc, seq);
+      written.push({ doc, seq });
     }
 
-    const seq = nextRev(coll.name);
-    await coll.upsert(doc, seq);
-    written.push({ doc, seq });
-  }
+    if (written.length > 0) {
+      const latestSeq = Math.max(...written.map((entry) => entry.seq));
+      emitChange(coll.name, {
+        documents: written.map((entry) => entry.doc),
+        checkpoint: { seq: latestSeq },
+      });
+    }
 
-  if (written.length > 0) {
-    const latestSeq = Math.max(...written.map((entry) => entry.seq));
-    emitChange(coll.name, {
-      documents: written.map((entry) => entry.doc),
-      checkpoint: { seq: latestSeq },
-    });
-  }
-
-  return conflicts;
+    return conflicts;
+  });
 }
