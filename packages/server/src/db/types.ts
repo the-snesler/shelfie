@@ -217,7 +217,36 @@ export interface MigrationsTable {
   applied_at: number;
 }
 
+export interface CalendarSubscriptionTable {
+  id: string;
+  token_hash: string;
+  created_at: number;
+}
+
+/** Server-only integration secrets; never part of library replication. */
+export interface NotificationSettingsTable {
+  id: string;
+  enabled: number;
+  endpoint: string;
+  destinations: string;
+  days_before: number;
+  updated_at: number;
+}
+
+export interface NotificationDeliveriesTable {
+  id: string;
+  event_key: string;
+  event_date: string;
+  title: string;
+  body: string;
+  attempts: number;
+  next_attempt_at: number;
+  sent_at: number | null;
+  last_error: string | null;
+}
+
 export interface Database {
+  import_connections: ImportConnectionsTable;
   library_items: LibraryItemsTable;
   game_metadata: GameMetadataTable;
   movie_metadata: MovieMetadataTable;
@@ -226,4 +255,22 @@ export interface Database {
   auth_owner: AuthOwnerTable;
   auth_sessions: AuthSessionsTable;
   migrations: MigrationsTable;
+  calendar_subscription: CalendarSubscriptionTable;
+  notification_settings: NotificationSettingsTable;
+  notification_deliveries: NotificationDeliveriesTable;
+}
+
+export interface ImportConnectionsTable {
+  source: string;
+  enabled: number;
+  schedule: string;
+  account: string;
+  base_url: string;
+  api_key: string;
+  access_token: string;
+  running: number;
+  last_slot: number | null;
+  last_run_at: number | null;
+  last_error: string | null;
+  last_result: string | null;
 }

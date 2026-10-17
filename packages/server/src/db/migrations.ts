@@ -400,6 +400,59 @@ const migrations: Migration[] = [
       await db.schema.alterTable("book_metadata").dropColumn("year").execute();
     },
   },
+  {
+    id: 14,
+    name: "calendar-subscription-and-notifications",
+    async up(db) {
+      await db.schema
+        .createTable("calendar_subscription")
+        .addColumn("id", "text", (c) => c.primaryKey())
+        .addColumn("token_hash", "text", (c) => c.notNull())
+        .addColumn("created_at", "integer", (c) => c.notNull())
+        .execute();
+      await db.schema
+        .createTable("notification_settings")
+        .addColumn("id", "text", (c) => c.primaryKey())
+        .addColumn("enabled", "integer", (c) => c.notNull().defaultTo(0))
+        .addColumn("endpoint", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("destinations", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("days_before", "integer", (c) => c.notNull().defaultTo(0))
+        .addColumn("updated_at", "integer", (c) => c.notNull())
+        .execute();
+      await db.schema
+        .createTable("notification_deliveries")
+        .addColumn("id", "text", (c) => c.primaryKey())
+        .addColumn("event_key", "text", (c) => c.notNull())
+        .addColumn("event_date", "text", (c) => c.notNull())
+        .addColumn("title", "text", (c) => c.notNull())
+        .addColumn("body", "text", (c) => c.notNull())
+        .addColumn("attempts", "integer", (c) => c.notNull().defaultTo(0))
+        .addColumn("next_attempt_at", "integer", (c) => c.notNull())
+        .addColumn("sent_at", "integer")
+        .addColumn("last_error", "text")
+        .execute();
+    },
+  },
+  {
+    id: 15,
+    name: "scheduled-import-connections",
+    async up(db) {
+      await db.schema.createTable("import_connections")
+        .addColumn("source", "text", c => c.primaryKey())
+        .addColumn("enabled", "integer", c => c.notNull().defaultTo(0))
+        .addColumn("schedule", "text", c => c.notNull().defaultTo(""))
+        .addColumn("account", "text", c => c.notNull().defaultTo(""))
+        .addColumn("base_url", "text", c => c.notNull().defaultTo(""))
+        .addColumn("api_key", "text", c => c.notNull().defaultTo(""))
+        .addColumn("access_token", "text", c => c.notNull().defaultTo(""))
+        .addColumn("running", "integer", c => c.notNull().defaultTo(0))
+        .addColumn("last_slot", "integer")
+        .addColumn("last_run_at", "integer")
+        .addColumn("last_error", "text")
+        .addColumn("last_result", "text")
+        .execute();
+    },
+  },
 ];
 
 /**

@@ -68,3 +68,11 @@ export type {
 } from "./settings.js";
 
 export { recordItemActivity, mergeActivity } from "./activity.js";
+
+export type {
+  CalendarSubscriptionSettings,
+  CreatedCalendarSubscription,
+  NotificationSettings,
+  NotificationSettingsUpdate,
+} from "./integrations.js";
+export * from "./imports.js";
