@@ -97,9 +97,8 @@ export function LibraryItemCard({
       ? nextUnwatched(catalog, item.watchedEpisodes)
       : null;
 
-  const airedNext = nextUp && hasAired(nextUp) ? nextUp : null;
-
   const today = todayLocalIsoDate();
+  const airedNext = nextUp && hasAired(nextUp, today) ? nextUp : null;
   const upcoming =
     item.mediaType === "tv" && !airedNext
       ? upcomingEpisode(nextUp, tvMeta, item.watchedEpisodes, today)
@@ -235,7 +234,7 @@ export function LibraryItemCard({
   const displayCaption = airedNext
     ? `S${airedNext.season}E${airedNext.episode} ${airedNext.name}${caption ? ` · ${caption}` : ""}`
     : nextUp
-      ? `S${nextUp.season}E${nextUp.episode} · ${caption}`
+      ? `S${nextUp.season}E${nextUp.episode}${caption ? ` · ${caption}` : ""}`
       : caption;
 
   return (

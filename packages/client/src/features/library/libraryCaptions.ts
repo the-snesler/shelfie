@@ -5,7 +5,7 @@ import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { formatRuntime } from "../media/duration";
-import { yearOf } from "../media/libraryActions";
+import { todayLocalIsoDate, yearOf } from "../media/libraryActions";
 import type { CardMeta } from "./useLibraryData";
 
 /** Whole hours from IGDB seconds, e.g. 79200 -> 22. */
@@ -89,8 +89,11 @@ export type NextEpisode = {
 
 /** True only when the episode has a known air date on or before today.
  *  TMDB emits "" (not null) for unknown dates, so test truthiness, not just null. */
-export function hasAired(ep: NextEpisode): boolean {
-  return !!ep.airDate && ep.airDate <= new Date().toISOString().slice(0, 10);
+export function hasAired(
+  ep: NextEpisode,
+  today = todayLocalIsoDate(),
+): boolean {
+  return !!ep.airDate && ep.airDate <= today;
 }
 
 /** First non-special episode (season >= 1) in air order not present in
@@ -158,7 +161,7 @@ export function upcomingEpisode(
   watched: Record<string, string>,
   today: string,
 ): UpcomingEpisode | null {
-  if (nextUp?.airDate) {
+  if (nextUp?.airDate && nextUp.airDate >= today) {
     return {
       season: nextUp.season,
       episode: nextUp.episode,

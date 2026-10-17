@@ -145,7 +145,7 @@ export default function Library() {
           : comparePlannedItems(a, b, plannedSort, cards),
       );
     return map;
-  }, [filtered, cards, manualOrder, plannedSort, inProgressMembership]);
+  }, [filtered, cards, manualOrder, plannedSort]);
 
   function moveManualItem(overId: string) {
     const fromId = draggedId.current;
