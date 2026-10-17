@@ -2,7 +2,7 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  '@firebase/util': false
+  "@firebase/util": false
   better-sqlite3: true
   esbuild: true
   protobufjs: false

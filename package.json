@@ -8,7 +8,8 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "seed": "node scripts/seed.mjs",
     "screenshot": "node scripts/screenshot.mjs"
   },

@@ -7,7 +7,11 @@ import { cors } from "hono/cors";
  * first entry in an appended X-Forwarded-For chain. */
 export function clientAddress(c: Context, trustProxy = false): string {
   if (trustProxy) {
-    const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
+    const forwarded = c.req
+      .header("x-forwarded-for")
+      ?.split(",")
+      .at(-1)
+      ?.trim();
     if (forwarded) return forwarded;
   }
   try {
@@ -58,9 +62,15 @@ export function createRateLimit({
       buckets.set(key, bucket);
     }
     if (bucket.used + cost > limit) {
-      c.header("Retry-After", String(Math.ceil((bucket.resetAt - time) / 1000)));
+      c.header(
+        "Retry-After",
+        String(Math.ceil((bucket.resetAt - time) / 1000)),
+      );
       c.header("Cache-Control", "no-store");
-      return c.json({ error: "Too many requests. Please try again shortly." }, 429);
+      return c.json(
+        { error: "Too many requests. Please try again shortly." },
+        429,
+      );
     }
     bucket.used += cost;
   };
@@ -76,7 +86,9 @@ export function createCorsMiddleware(origin?: string): MiddlewareHandler {
       parsed.username ||
       parsed.password
     ) {
-      throw new Error("CORS_ORIGIN must be one exact HTTP(S) origin, without a path or trailing slash");
+      throw new Error(
+        "CORS_ORIGIN must be one exact HTTP(S) origin, without a path or trailing slash",
+      );
     }
     configured = parsed.origin;
   }
@@ -94,10 +106,11 @@ export function createCorsMiddleware(origin?: string): MiddlewareHandler {
 /** Only catalog search, card batches and detail reads are public. Scheduling,
  * recommendations, settings and the entire sync protocol remain private. */
 export function isPublicCatalogRequest(method: string, path: string): boolean {
-  return method === "GET" && (
-    /^\/api\/(games|movies|tv|books)$/.test(path) ||
-    /^\/api\/(games|movies|tv|books)\/search$/.test(path) ||
-    /^\/api\/games\/by-slug\/[^/]+$/.test(path) ||
-    /^\/api\/(movies|tv|books)\/by-id\/[^/]+$/.test(path)
+  return (
+    method === "GET" &&
+    (/^\/api\/(games|movies|tv|books)$/.test(path) ||
+      /^\/api\/(games|movies|tv|books)\/search$/.test(path) ||
+      /^\/api\/games\/by-slug\/[^/]+$/.test(path) ||
+      /^\/api\/(movies|tv|books)\/by-id\/[^/]+$/.test(path))
   );
 }

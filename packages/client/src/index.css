@@ -80,15 +80,15 @@
     --library-grain-shade: rgb(13 10 8 / 0);
     background-color: var(--color-bg);
     background-image:
-      var(--room-light-top),
-      var(--room-light-bottom),
-      linear-gradient(
-        var(--library-grain-shade),
-        var(--library-grain-shade)
-      ),
+      var(--room-light-top), var(--room-light-bottom),
+      linear-gradient(var(--library-grain-shade), var(--library-grain-shade)),
       var(--library-grain);
     background-repeat: no-repeat, no-repeat, no-repeat, repeat;
-    background-size: auto, auto, auto, 600px 600px;
+    background-size:
+      auto,
+      auto,
+      auto,
+      600px 600px;
   }
 
   .library-wall[data-library-theme="black"] {
@@ -168,14 +168,14 @@
         transparent var(--shelf-period)
       ),
       /* soft shadow the shelf casts on the wall below it */
-      linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
-        oklch(0 0 0 / 0.35) calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
-        transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h) + 30px),
-        transparent var(--shelf-period)
-      );
+        linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
+          oklch(0 0 0 / 0.35) calc(var(--shelf-cover-h) + var(--shelf-ledge-h)),
+          transparent calc(var(--shelf-cover-h) + var(--shelf-ledge-h) + 30px),
+          transparent var(--shelf-period)
+        );
     background-size: 100% var(--shelf-period);
     background-repeat: repeat-y;
   }
@@ -256,11 +256,7 @@
   .video-game {
     --box-art-padding: 3px;
     --border-radius: 4px;
-    --case-transparency: color-mix(
-      in srgb,
-      var(--case-color) 80%,
-      transparent
-    );
+    --case-transparency: color-mix(in srgb, var(--case-color) 80%, transparent);
     position: relative;
     border-radius: 0 var(--border-radius) var(--border-radius) 0;
     padding-top: var(--box-art-padding);
@@ -317,7 +313,11 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 3px);
+    background: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0) 3px
+    );
   }
 
   .video-game::before {

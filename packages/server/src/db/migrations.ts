@@ -437,15 +437,16 @@ const migrations: Migration[] = [
     id: 15,
     name: "scheduled-import-connections",
     async up(db) {
-      await db.schema.createTable("import_connections")
-        .addColumn("source", "text", c => c.primaryKey())
-        .addColumn("enabled", "integer", c => c.notNull().defaultTo(0))
-        .addColumn("schedule", "text", c => c.notNull().defaultTo(""))
-        .addColumn("account", "text", c => c.notNull().defaultTo(""))
-        .addColumn("base_url", "text", c => c.notNull().defaultTo(""))
-        .addColumn("api_key", "text", c => c.notNull().defaultTo(""))
-        .addColumn("access_token", "text", c => c.notNull().defaultTo(""))
-        .addColumn("running", "integer", c => c.notNull().defaultTo(0))
+      await db.schema
+        .createTable("import_connections")
+        .addColumn("source", "text", (c) => c.primaryKey())
+        .addColumn("enabled", "integer", (c) => c.notNull().defaultTo(0))
+        .addColumn("schedule", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("account", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("base_url", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("api_key", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("access_token", "text", (c) => c.notNull().defaultTo(""))
+        .addColumn("running", "integer", (c) => c.notNull().defaultTo(0))
         .addColumn("last_slot", "integer")
         .addColumn("last_run_at", "integer")
         .addColumn("last_error", "text")

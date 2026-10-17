@@ -177,7 +177,9 @@ export function startNotificationWorker(
     }
   };
   let activePass: Promise<void> = Promise.resolve();
-  const startPass = () => { if (!running && !stopped) activePass = tick(); };
+  const startPass = () => {
+    if (!running && !stopped) activePass = tick();
+  };
   const timer = setInterval(startPass, 60_000);
   timer.unref();
   startPass();

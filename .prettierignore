@@ -3,6 +3,8 @@ node_modules/
 **/build/
 **/.react-router/
 .turbo/
+.agents/
+.codex/
 pnpm-lock.yaml
 packages/server/data/
 *.svg

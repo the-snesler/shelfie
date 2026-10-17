@@ -50,7 +50,10 @@ export function registerAuthRoutes(
   options: { trustProxy?: boolean } = {},
 ): void {
   for (const path of ["login", "setup", "password", "username"]) {
-    const checkLimit = createRateLimit({ limit: 5, trustProxy: options.trustProxy });
+    const checkLimit = createRateLimit({
+      limit: 5,
+      trustProxy: options.trustProxy,
+    });
     app.use(`/api/auth/${path}`, async (c, next) => {
       if (c.req.method !== "POST") return next();
       const limited = checkLimit(c);
@@ -191,7 +194,10 @@ export function createAuthMiddleware(
     }
 
     const token = readToken(c);
-    if (options.publicCatalog && isPublicCatalogRequest(c.req.method, c.req.path)) {
+    if (
+      options.publicCatalog &&
+      isPublicCatalogRequest(c.req.method, c.req.path)
+    ) {
       if (token) {
         if (!(await validateSession(database, token))) {
           return c.json({ error: "unauthorized" }, 401);
@@ -201,14 +207,28 @@ export function createAuthMiddleware(
 
       const query = c.req.query("q");
       if (query && query.length > 200) {
-        return c.json({ error: "Search queries must be 200 characters or fewer" }, 400);
+        return c.json(
+          { error: "Search queries must be 200 characters or fewer" },
+          400,
+        );
       }
       let cost = 1;
       if (/^\/api\/(games|movies|tv|books)$/.test(c.req.path)) {
         const raw = c.req.query("ids") ?? "";
         const ids = raw ? raw.split(",").map((id) => id.trim()) : [];
-        if (ids.length > 10 || ids.some((id) => !/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)))) {
-          return c.json({ error: "Anonymous card requests accept at most 10 positive numeric ids" }, 400);
+        if (
+          ids.length > 10 ||
+          ids.some(
+            (id) => !/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)),
+          )
+        ) {
+          return c.json(
+            {
+              error:
+                "Anonymous card requests accept at most 10 positive numeric ids",
+            },
+            400,
+          );
         }
         // A batch may trigger one upstream call per id, so it consumes that
         // many units from the same quota as searches and detail pages.
@@ -449,7 +469,10 @@ async function readCredentials(c: Context): Promise<{
     typeof body?.username === "string"
       ? normalizeUsername(body.username)
       : null;
-  const password = typeof body?.password === "string" && body.password.length <= 1024 ? body.password : "";
+  const password =
+    typeof body?.password === "string" && body.password.length <= 1024
+      ? body.password
+      : "";
   return username && password ? { username, password } : null;
 }
 
