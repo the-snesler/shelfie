@@ -250,6 +250,15 @@ function escapeApicalypseString(input: string): string {
   return input.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/** Exact Steam app mapping, sharing IGDB's authentication and throttle queue. */
+export async function findGameIdBySteamAppId(appId: number): Promise<number | null> {
+  if (!Number.isSafeInteger(appId) || appId <= 0) return null;
+  const res = await igdbFetch("https://api.igdb.com/v4/external_games", `fields game; where uid = "${appId}" & external_game_source = 1; limit 1;`);
+  if (!res.ok) throw new Error(`IGDB Steam lookup failed (${res.status})`);
+  const rows = await res.json() as { game?: number }[];
+  return rows[0]?.game ?? null;
+}
+
 export async function searchGames(q: string): Promise<SearchResult[]> {
   const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name,total_rating_count,hypes; where game_type = 0; limit 50;`;
   const res = await igdbFetch(IGDB_GAMES_URL, query);
