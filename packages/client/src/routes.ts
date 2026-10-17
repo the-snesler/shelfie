@@ -15,6 +15,7 @@ export default [
     route("books/:id", "features/detail/BookDetail.tsx"),
     route("logbook", "features/logbook/Logbook.tsx"),
     route("calendar", "features/calendar/Calendar.tsx"),
+    route("recommendations", "features/recommendations/Recommendations.tsx"),
     route("settings", "features/settings/Settings.tsx"),
     route("*", "catch-all.tsx"),
   ]),
