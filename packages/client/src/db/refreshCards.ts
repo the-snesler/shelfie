@@ -18,10 +18,27 @@ async function fetchCards<T>(path: string, ids: string[]): Promise<T[]> {
   return res.ok ? ((await res.json()) as T[]) : [];
 }
 
+/** Keep URLs and upstream fan-out bounded even after a large source import.
+ * Only one batch per medium runs at a time, and successful batches become
+ * available immediately rather than waiting for the entire collection. */
+async function refreshMedium<T>(
+  path: string,
+  ids: string[],
+  upsert: (cards: T[]) => Promise<void>,
+): Promise<void> {
+  for (let start = 0; start < ids.length; start += 100) {
+    try {
+      await upsert(await fetchCards<T>(path, ids.slice(start, start + 100)));
+    } catch {
+      // Retain this batch's cached cards, then continue refreshing the rest.
+    }
+  }
+}
+
 /** Refetches `/api/<medium>?ids=` for every media type present in `items`
- *  and upserts the results into the local card caches. Best-effort: a
- *  failed medium (offline, upstream down) is skipped and leaves its cached
- *  cards as they were. Resolves once every medium has settled. */
+ *  and upserts the results into the local card caches in batches of 100.
+ *  Failed batches (offline, upstream down) retain their cached cards while
+ *  other batches continue. Resolves once every medium has settled. */
 export async function refreshCardCaches(
   db: ShelfieDatabase,
   items: readonly Pick<LibraryItem, "mediaType" | "sourceId">[],
@@ -37,28 +54,28 @@ export async function refreshCardCaches(
   const tasks: Promise<void>[] = [];
   if (idsByType.has("game")) {
     tasks.push(
-      fetchCards<GameMetadata>("/api/games", ids("game")).then((rows) =>
+      refreshMedium<GameMetadata>("/api/games", ids("game"), (rows) =>
         upsertCards(db, rows),
       ),
     );
   }
   if (idsByType.has("movie")) {
     tasks.push(
-      fetchCards<MovieMetadata>("/api/movies", ids("movie")).then((rows) =>
+      refreshMedium<MovieMetadata>("/api/movies", ids("movie"), (rows) =>
         upsertMovieCards(db, rows),
       ),
     );
   }
   if (idsByType.has("tv")) {
     tasks.push(
-      fetchCards<TvMetadata>("/api/tv", ids("tv")).then((rows) =>
+      refreshMedium<TvMetadata>("/api/tv", ids("tv"), (rows) =>
         upsertTvCards(db, rows),
       ),
     );
   }
   if (idsByType.has("book")) {
     tasks.push(
-      fetchCards<BookMetadata>("/api/books", ids("book")).then((rows) =>
+      refreshMedium<BookMetadata>("/api/books", ids("book"), (rows) =>
         upsertBookCards(db, rows),
       ),
     );
