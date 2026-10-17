@@ -9,6 +9,7 @@ import {
 } from "node:crypto";
 import { db as defaultDb } from "../db/index.js";
 import type { Database } from "../db/types.js";
+import { createRateLimit, isPublicCatalogRequest } from "../security.js";
 
 const OWNER_ID = "owner";
 const TOKEN_BYTES = 32;
@@ -46,7 +47,17 @@ interface SessionMeta {
 export function registerAuthRoutes(
   app: Hono,
   database: Kysely<Database> = defaultDb,
+  options: { trustProxy?: boolean } = {},
 ): void {
+  for (const path of ["login", "setup", "password", "username"]) {
+    const checkLimit = createRateLimit({ limit: 5, trustProxy: options.trustProxy });
+    app.use(`/api/auth/${path}`, async (c, next) => {
+      if (c.req.method !== "POST") return next();
+      const limited = checkLimit(c);
+      if (limited) return limited;
+      return next();
+    });
+  }
   app.get("/api/auth/status", async (c) => {
     const token = readToken(c);
     const setupRequired = !(await hasOwner(database));
@@ -168,13 +179,45 @@ export function registerAuthRoutes(
 
 export function createAuthMiddleware(
   database: Kysely<Database> = defaultDb,
+  options: { publicCatalog?: boolean; trustProxy?: boolean } = {},
 ): MiddlewareHandler {
+  const checkCatalogLimit = createRateLimit({
+    limit: 10,
+    trustProxy: options.trustProxy,
+  });
   return async (c, next) => {
     if (c.req.path.startsWith("/api/auth/")) {
       return next();
     }
 
     const token = readToken(c);
+    if (options.publicCatalog && isPublicCatalogRequest(c.req.method, c.req.path)) {
+      if (token) {
+        if (!(await validateSession(database, token))) {
+          return c.json({ error: "unauthorized" }, 401);
+        }
+        return next();
+      }
+
+      const query = c.req.query("q");
+      if (query && query.length > 200) {
+        return c.json({ error: "Search queries must be 200 characters or fewer" }, 400);
+      }
+      let cost = 1;
+      if (/^\/api\/(games|movies|tv|books)$/.test(c.req.path)) {
+        const raw = c.req.query("ids") ?? "";
+        const ids = raw ? raw.split(",").map((id) => id.trim()) : [];
+        if (ids.length > 10 || ids.some((id) => !/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)))) {
+          return c.json({ error: "Anonymous card requests accept at most 10 positive numeric ids" }, 400);
+        }
+        // A batch may trigger one upstream call per id, so it consumes that
+        // many units from the same quota as searches and detail pages.
+        cost = Math.max(1, new Set(ids).size);
+      }
+      const limited = checkCatalogLimit(c, cost);
+      if (limited) return limited;
+      return next();
+    }
     if (!token) return c.json({ error: "unauthorized" }, 401);
 
     const session = await validateSession(database, token);
@@ -406,7 +449,7 @@ async function readCredentials(c: Context): Promise<{
     typeof body?.username === "string"
       ? normalizeUsername(body.username)
       : null;
-  const password = typeof body?.password === "string" ? body.password : "";
+  const password = typeof body?.password === "string" && body.password.length <= 1024 ? body.password : "";
   return username && password ? { username, password } : null;
 }
 
