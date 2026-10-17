@@ -43,7 +43,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
     // SSE connections otherwise keep server.close() waiting indefinitely.
     // Interrupted imports retain their running marker and recover on restart.
     const deadline = setTimeout(() => {
-      server.closeAllConnections();
+      if ("closeAllConnections" in server) server.closeAllConnections();
       process.exit(0);
     }, 5000);
     deadline.unref();
