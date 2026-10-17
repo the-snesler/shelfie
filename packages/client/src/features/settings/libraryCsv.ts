@@ -114,7 +114,7 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
       return item;
     } catch (error) {
       const message = error instanceof Error ? error.message : "invalid data";
-      throw new Error(`Row ${rowNumber}: ${message}`);
+      throw new Error(`Row ${rowNumber}: ${message}`, { cause: error });
     }
   });
 }

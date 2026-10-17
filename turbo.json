@@ -11,20 +11,26 @@
     "IGDB_CLIENT_ID",
     "IGDB_CLIENT_SECRET",
     "TMDB_TOKEN",
-    "GOODREADS_APPSYNC_KEY"
+    "GOODREADS_APPSYNC_KEY",
+    "CORS_ORIGIN",
+    "TRUST_PROXY"
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "test": {},
-    "lint": {
-      "dependsOn": ["^build"]
-    },
+    "lint": {},
     "dev": {
       "persistent": true,
       "cache": false

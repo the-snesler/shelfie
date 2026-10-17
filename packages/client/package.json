@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "test": "vitest run --passWithNoTests",
-    "typecheck": "react-router typegen && tsc"
+    "test": "vitest run",
+    "typecheck": "react-router typegen && tsc",
+    "lint": "eslint src --max-warnings 0"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.19",

@@ -1,0 +1,8 @@
+node_modules/
+**/dist/
+**/build/
+**/.react-router/
+.turbo/
+pnpm-lock.yaml
+packages/server/data/
+*.svg
