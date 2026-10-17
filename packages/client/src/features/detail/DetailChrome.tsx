@@ -202,7 +202,7 @@ export function NotFound({
         onClick={onBack}
         className="text-sm font-medium text-accent hover:underline"
       >
-        Back to library
+        Back
       </button>
     </div>
   );

@@ -1,5 +1,7 @@
 import type { LibraryItem } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
+import { useOutletContext } from "react-router";
+import type { AppOutletContext } from "../../App";
 import IconChevronDown from "~icons/tabler/chevron-down";
 import type { ShelfieDatabase } from "../../db/database";
 import { LogPopover } from "./LogPopover";
@@ -21,6 +23,19 @@ export function StatusControl({
   item: RxDocument<LibraryItem> | null | undefined;
 }) {
   const popover = useLogPopover();
+  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
+
+  if (!authenticated) {
+    return (
+      <button
+        type="button"
+        onClick={requestLogin}
+        className="rounded bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
+      >
+        Sign in to add to your pile
+      </button>
+    );
+  }
 
   if (item === undefined) {
     return (

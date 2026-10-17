@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OwnerSettings } from "@shelfie/shared";
-import { Outlet, useLocation } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import {
   clearAuthToken,
   getAuthStatus,
   getAuthToken,
   logout,
   onAuthLost,
+  onAuthTokenStorageChange,
+  onAuthTokenUpdated,
 } from "./auth";
+import { createAuthSessionMonitor } from "./authSession";
 import { AuthScreen } from "./AuthScreen";
 import { getDatabase, type ShelfieDatabase } from "./db/database";
 import { startReplication, stopReplication } from "./db/replication";
@@ -15,65 +18,93 @@ import IconMenu2 from "~icons/tabler/menu-2";
 import { Sidebar } from "./features/layout/Sidebar";
 import { getSettings } from "./settings";
 
-export type AuthMode = "checking" | "setup" | "login" | "app" | "unreachable";
+export type AuthMode =
+  "checking" | "setup" | "login" | "app" | "guest" | "unreachable";
 export type AppOutletContext = {
   db: ShelfieDatabase;
   settings: OwnerSettings;
   setSettings: (settings: OwnerSettings) => void;
+  authenticated: boolean;
+  requestLogin: () => void;
 };
+
+const GUEST_SETTINGS: OwnerSettings = {
+  username: "Visitor",
+  libraryTheme: "classic",
+  showProgressBars: false,
+};
+const SETTINGS_CACHE_KEY = "shelfie.cachedSettings";
+
+function cachedSettings(): OwnerSettings | null {
+  try {
+    const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
+    return cached ? (JSON.parse(cached) as OwnerSettings) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
   const [authMode, setAuthMode] = useState<AuthMode>(() =>
     getAuthToken() ? "app" : "checking",
   );
+  const [setupRequired, setSetupRequired] = useState(false);
+  const session = useRef<ReturnType<typeof createAuthSessionMonitor> | null>(
+    null,
+  );
 
   useEffect(() => {
-    let active = true;
-
-    if (!getAuthToken()) {
-      void getAuthStatus().then(
-        (status) => {
-          if (!active) return;
-          setAuthMode(status.setupRequired ? "setup" : "login");
-        },
-        () => {
-          if (!active) return;
-          setAuthMode("unreachable");
-        },
-      );
-    }
-
+    const monitor = createAuthSessionMonitor({
+      readToken: getAuthToken,
+      readStatus: getAuthStatus,
+      clearToken: clearAuthToken,
+      stopSync: stopReplication,
+      onState: ({ mode, setupRequired }) => {
+        if (setupRequired !== undefined) setSetupRequired(setupRequired);
+        setAuthMode(mode);
+      },
+    });
+    session.current = monitor;
+    void monitor.check({ allowOffline: true });
+    const removeStorageListener = onAuthTokenStorageChange(() => {
+      void monitor.storageChanged();
+    });
+    const removeTokenListener = onAuthTokenUpdated(() => {
+      // These tokens come from a successful same-tab credential request.
+      // Keep the current owner view while checking its replacement token.
+      void monitor.check({ allowOffline: true });
+    });
     const removeListener = onAuthLost(() => {
+      monitor.invalidate();
       clearAuthToken();
       stopReplication();
-      setAuthMode("login");
+      setAuthMode("guest");
     });
-
     return () => {
-      active = false;
+      monitor.dispose();
+      session.current = null;
+      removeStorageListener();
+      removeTokenListener();
       removeListener();
     };
   }, []);
 
-  function retryAuth() {
-    setAuthMode("checking");
-    void getAuthStatus().then(
-      (status) => {
-        setAuthMode(status.setupRequired ? "setup" : "login");
-      },
-      () => {
-        setAuthMode("unreachable");
-      },
-    );
-  }
-
-  if (authMode !== "app") {
+  if (authMode !== "app" && authMode !== "guest") {
     return (
       <AuthScreen
         mode={authMode}
-        onRetry={retryAuth}
+        onRetry={() => {
+          setAuthMode("checking");
+          void session.current?.check();
+        }}
+        onCancel={() => {
+          session.current?.invalidate();
+          setAuthMode("guest");
+        }}
         onAuthenticated={() => {
+          session.current?.invalidate();
           stopReplication();
+          setSetupRequired(false);
           setAuthMode("app");
         }}
       />
@@ -81,45 +112,78 @@ export default function App() {
   }
 
   return (
-    <AuthedApp
+    <BrowsingApp
+      key={authMode}
+      authenticated={authMode === "app"}
+      requestLogin={() => {
+        session.current?.invalidate();
+        setAuthMode(setupRequired ? "setup" : "login");
+      }}
       onLogout={() => {
-        void logout().finally(() => {
-          stopReplication();
-          setAuthMode("login");
-        });
+        // Hide private local state immediately, even if the network is offline.
+        session.current?.invalidate();
+        stopReplication();
+        void logout();
+        clearAuthToken();
+        setAuthMode("guest");
       }}
     />
   );
 }
 
-function AuthedApp({ onLogout }: { onLogout: () => void }) {
+function BrowsingApp({
+  authenticated,
+  requestLogin,
+  onLogout,
+}: {
+  authenticated: boolean;
+  requestLogin: () => void;
+  onLogout: () => void;
+}) {
   const [db, setDb] = useState<ShelfieDatabase | null>(null);
-  const [settings, setSettings] = useState<OwnerSettings | null>(null);
+  const [settings, setSettings] = useState<OwnerSettings | null>(
+    authenticated ? null : GUEST_SETTINGS,
+  );
   const [loadError, setLoadError] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getDatabase(), getSettings()]).then(
-      ([database, ownerSettings]) => {
-        if (!active) return;
+    async function load() {
+      const database = await getDatabase();
+      let ownerSettings = GUEST_SETTINGS;
+      if (authenticated) {
+        try {
+          ownerSettings = await getSettings();
+          localStorage.setItem(
+            SETTINGS_CACHE_KEY,
+            JSON.stringify(ownerSettings),
+          );
+        } catch (error) {
+          const cached = cachedSettings();
+          if (!getAuthToken() || !cached) throw error;
+          ownerSettings = cached;
+        }
+      }
+      if (!active) return;
+      if (authenticated) {
         startReplication({
           collection: database.library_items,
           name: "library_items",
         });
-        setDb(database);
-        setSettings(ownerSettings);
-      },
-      () => {
-        if (active) setLoadError(true);
-      },
-    );
+      }
+      setDb(database);
+      setSettings(ownerSettings);
+    }
+    void load().catch(() => {
+      if (active) setLoadError(true);
+    });
     return () => {
       active = false;
       stopReplication();
     };
-  }, []);
+  }, [authenticated]);
 
   useEffect(() => {
     setNavOpen(false);
@@ -128,11 +192,10 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
   if (loadError) {
     return (
       <div className="flex h-full items-center justify-center text-muted">
-        Could not load Shelfie settings. Refresh to try again.
+        Could not load Shelfie. Refresh to try again.
       </div>
     );
   }
-
   if (!db || !settings) {
     return (
       <div className="flex h-full items-center justify-center text-muted">
@@ -140,6 +203,12 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
       </div>
     );
   }
+
+  const publicPage =
+    /^\/(search|games\/[^/]+|movies\/[^/]+|tv\/[^/]+|books\/[^/]+)\/?$/.test(
+      location.pathname,
+    );
+  if (!authenticated && !publicPage) return <Navigate to="/search" replace />;
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -156,13 +225,23 @@ function AuthedApp({ onLogout }: { onLogout: () => void }) {
       </div>
       <Sidebar
         onLogout={onLogout}
+        onLogin={requestLogin}
+        authenticated={authenticated}
         username={settings.username}
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />
       <main className="room-light min-h-0 min-w-0 flex-1 overflow-y-auto">
         <Outlet
-          context={{ db, settings, setSettings } satisfies AppOutletContext}
+          context={
+            {
+              db,
+              settings,
+              setSettings,
+              authenticated,
+              requestLogin,
+            } satisfies AppOutletContext
+          }
         />
       </main>
     </div>

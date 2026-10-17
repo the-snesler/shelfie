@@ -1,16 +1,23 @@
 import type React from "react";
 import { useState } from "react";
 import type { AuthMode } from "./App";
-import { getRememberedUsername, loginAccount, setupAccount } from "./auth";
+import {
+  AuthRequestError,
+  getRememberedUsername,
+  loginAccount,
+  setupAccount,
+} from "./auth";
 
 export function AuthScreen({
   mode,
   onRetry,
   onAuthenticated,
+  onCancel,
 }: {
   mode: AuthMode;
   onRetry: () => void;
   onAuthenticated: () => void;
+  onCancel?: () => void;
 }) {
   const isSetup = mode === "setup";
   const [username, setUsername] = useState(() =>
@@ -30,11 +37,13 @@ export function AuthScreen({
       else await loginAccount(username, password);
       setPassword("");
       onAuthenticated();
-    } catch {
+    } catch (err) {
       setError(
-        isSetup
-          ? "Could not create account."
-          : "Incorrect username or password.",
+        err instanceof AuthRequestError && err.status === 429
+          ? err.message
+          : isSetup
+            ? "Could not create account."
+            : "Incorrect username or password.",
       );
     } finally {
       setBusy(false);
@@ -112,6 +121,15 @@ export function AuthScreen({
         >
           {busy ? "Working…" : isSetup ? "Create" : "Log in"}
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mt-4 w-full text-sm text-muted hover:text-ink"
+          >
+            Browse the catalog
+          </button>
+        )}
       </form>
     </div>
   );

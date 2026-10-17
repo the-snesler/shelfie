@@ -26,12 +26,13 @@ import {
 } from "./DetailChrome";
 
 export default function BookDetail({ params }: Route.ComponentProps) {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, authenticated } = useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<BookDetailDto>({
     db,
+    authenticated,
     url: `/api/books/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `book:${meta.goodreadsId}`,
     upsertCards: upsertBookCards,
@@ -63,7 +64,12 @@ export default function BookDetail({ params }: Route.ComponentProps) {
   }
 
   if (metaState.status === "error") {
-    return <NotFound message="Book not found" onBack={() => navigate("/")} />;
+    return (
+      <NotFound
+        message={metaState.message ?? "Book not found"}
+        onBack={() => navigate("/")}
+      />
+    );
   }
 
   const meta = metaState.meta;
@@ -124,7 +130,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      <MyActivity item={item} />
+      {authenticated && <MyActivity item={item} />}
       {meta.description && <Description>{meta.description}</Description>}
       {detailRows.length > 0 && (
         <DetailSection title="Details">

@@ -1,6 +1,7 @@
 const TOKEN_KEY = "shelfie.authToken";
 const USERNAME_KEY = "shelfie.username";
 const AUTH_LOST_EVENT = "shelfie-auth-lost";
+const TOKEN_UPDATED_EVENT = "shelfie-auth-token-updated";
 
 export interface AuthStatus {
   setupRequired: boolean;
@@ -11,12 +12,24 @@ interface TokenResponse {
   token: string;
 }
 
+export class AuthRequestError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export function getAuthToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
 export function setAuthToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
+  // Native storage events only reach other tabs. Local credential changes
+  // also supersede any pending status check for the old token.
+  window.dispatchEvent(new Event(TOKEN_UPDATED_EVENT));
 }
 
 export function clearAuthToken(): void {
@@ -34,6 +47,25 @@ export function rememberUsername(username: string): void {
 export function onAuthLost(handler: () => void): () => void {
   window.addEventListener(AUTH_LOST_EVENT, handler);
   return () => window.removeEventListener(AUTH_LOST_EVENT, handler);
+}
+
+/** Storage events are delivered to the other tabs sharing this origin.
+ * A null key represents localStorage.clear(), which also removes the token. */
+export function onAuthTokenStorageChange(handler: () => void): () => void {
+  const listener = (event: StorageEvent) => {
+    if (
+      event.storageArea === localStorage &&
+      (event.key === TOKEN_KEY || event.key === null)
+    )
+      handler();
+  };
+  window.addEventListener("storage", listener);
+  return () => window.removeEventListener("storage", listener);
+}
+
+export function onAuthTokenUpdated(handler: () => void): () => void {
+  window.addEventListener(TOKEN_UPDATED_EVENT, handler);
+  return () => window.removeEventListener(TOKEN_UPDATED_EVENT, handler);
 }
 
 export async function getAuthStatus(): Promise<AuthStatus> {
@@ -66,8 +98,9 @@ export async function loginAccount(
 }
 
 export async function logout(): Promise<void> {
-  await authFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+  const request = authFetch("/api/auth/logout", { method: "POST" });
   clearAuthToken();
+  await request.catch(() => {});
 }
 
 export async function changePassword(
@@ -124,7 +157,7 @@ export async function authFetch(
   const res = await fetch(input, { ...init, headers });
   // Only 401 means "session lost" -> drop the token and bounce to login. A
   // 403 is "authenticated but forbidden", which must not log the user out.
-  if (res.status === 401) {
+  if (res.status === 401 && token && getAuthToken() === token) {
     clearAuthToken();
     window.dispatchEvent(new Event(AUTH_LOST_EVENT));
   }
@@ -152,6 +185,13 @@ async function requestToken(
     body: JSON.stringify({ username, password }),
   });
   if (!res.ok) {
+    if (res.status === 429) {
+      const retry = res.headers.get("Retry-After");
+      throw new AuthRequestError(
+        429,
+        `Too many attempts. Try again${retry ? ` in ${retry} seconds` : " shortly"}.`,
+      );
+    }
     const detail = await res.text().catch(() => "");
     throw new Error(
       `${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`,

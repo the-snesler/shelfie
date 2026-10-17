@@ -100,6 +100,7 @@ function SearchResultRow({
   inLibrary: boolean;
   typeLabel?: string;
 }) {
+  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
   const href = `/games/${encodeURIComponent(result.slug)}`;
   const isTransitioning = useViewTransitionState(href);
   const platform = selectPlatform([], result.platforms, []);
@@ -147,7 +148,11 @@ function SearchResultRow({
           type="button"
           aria-label="Add to library"
           onClick={() =>
-            void db.library_items.insert(newLibraryItem(target, "backlogged"))
+            authenticated
+              ? void db.library_items.insert(
+                  newLibraryItem(target, "backlogged"),
+                )
+              : requestLogin()
           }
           className="shrink-0 rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
         >
@@ -182,6 +187,7 @@ function MediaSearchResultRow({
   inLibrary: boolean;
   typeLabel?: string;
 }) {
+  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
   const target: LogTarget = { mediaType, sourceId, name, platforms: [] };
   const isTransitioning = useViewTransitionState(href);
   const subtitle = [typeLabel, meta].filter(Boolean).join(" · ");
@@ -225,7 +231,11 @@ function MediaSearchResultRow({
           type="button"
           aria-label="Add to library"
           onClick={() =>
-            void db.library_items.insert(newLibraryItem(target, "backlogged"))
+            authenticated
+              ? void db.library_items.insert(
+                  newLibraryItem(target, "backlogged"),
+                )
+              : requestLogin()
           }
           className="shrink-0 rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
         >
@@ -246,7 +256,7 @@ let cachedDebounced = "";
 let cachedBuckets: ResultBuckets = EMPTY_BUCKETS;
 
 export default function Search() {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, authenticated } = useOutletContext<AppOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") ?? "";
   const [filter, setFilter] = useState<Filter>(cachedFilter);
@@ -259,15 +269,20 @@ export default function Search() {
   );
   const [failed, setFailed] = useState<ReadonlySet<MediaType>>(new Set());
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [rateLimited, setRateLimited] = useState(false);
 
   useEffect(() => {
+    if (!authenticated) {
+      setExistingIds(new Set());
+      return;
+    }
     const sub = db.library_items.find().$.subscribe((found) => {
       setExistingIds(
         new Set(found.map((item) => `${item.mediaType}:${item.sourceId}`)),
       );
     });
     return () => sub.unsubscribe();
-  }, [db]);
+  }, [db, authenticated]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 300);
@@ -279,6 +294,7 @@ export default function Search() {
     cachedBuckets = EMPTY_BUCKETS;
     setBuckets(EMPTY_BUCKETS);
     setFailed(new Set());
+    setRateLimited(false);
     setSettled(new Set());
     if (!debounced) return;
 
@@ -288,6 +304,7 @@ export default function Search() {
         `${SEARCH_ENDPOINTS[mediaType]}?q=${encodeURIComponent(debounced)}`,
       )
         .then((res) => {
+          if (res.status === 429 && active) setRateLimited(true);
           if (!res.ok) throw new Error(`search failed: ${res.status}`);
           return res.json() as Promise<ResultBuckets[typeof mediaType]>;
         })
@@ -479,7 +496,13 @@ export default function Search() {
         </div>
       )}
       {loading && <p className="px-2 text-sm text-muted">Searching…</p>}
-      {!loading && debounced && allVisibleFailed && (
+      {rateLimited && (
+        <p className="px-2 text-sm text-muted">
+          Browsing is limited to 10 catalog requests per minute. Wait a minute
+          or sign in to continue.
+        </p>
+      )}
+      {!rateLimited && !loading && debounced && allVisibleFailed && (
         <p className="px-2 text-sm text-danger">Search failed. Try again.</p>
       )}
       {!loading && debounced && visibleCount === 0 && !allVisibleFailed && (

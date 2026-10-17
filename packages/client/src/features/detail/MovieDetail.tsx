@@ -28,12 +28,13 @@ import {
 } from "./DetailChrome";
 
 export default function MovieDetail({ params }: Route.ComponentProps) {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, authenticated } = useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<MovieDetailDto>({
     db,
+    authenticated,
     url: `/api/movies/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `movie:${meta.tmdbId}`,
     upsertCards: upsertMovieCards,
@@ -66,7 +67,12 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
   }
 
   if (metaState.status === "error") {
-    return <NotFound message="Movie not found" onBack={() => navigate("/")} />;
+    return (
+      <NotFound
+        message={metaState.message ?? "Movie not found"}
+        onBack={() => navigate("/")}
+      />
+    );
   }
 
   const meta = metaState.meta;
@@ -124,7 +130,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      <MyActivity item={item} />
+      {authenticated && <MyActivity item={item} />}
       {meta.summary && <Description>{meta.summary}</Description>}
       <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (

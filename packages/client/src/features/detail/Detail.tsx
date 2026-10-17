@@ -57,12 +57,13 @@ function formatHltb(seconds: number): string {
 }
 
 export default function Detail({ params }: Route.ComponentProps) {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, authenticated } = useOutletContext<AppOutletContext>();
   const slug = params.slug;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<GameDetail>({
     db,
+    authenticated,
     url: `/api/games/by-slug/${encodeURIComponent(slug)}`,
     libraryItemId: (meta) => `game:${meta.igdbId}`,
     upsertCards,
@@ -92,7 +93,12 @@ export default function Detail({ params }: Route.ComponentProps) {
   }
 
   if (metaState.status === "error") {
-    return <NotFound message="Game not found" onBack={() => navigate("/")} />;
+    return (
+      <NotFound
+        message={metaState.message ?? "Game not found"}
+        onBack={() => navigate("/")}
+      />
+    );
   }
 
   const meta = metaState.meta;
@@ -180,7 +186,7 @@ export default function Detail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      <MyActivity item={item} />
+      {authenticated && <MyActivity item={item} />}
       {(meta.summary || meta.storyline) && (
         <div className="flex flex-col gap-2">
           {meta.summary && <Description>{meta.summary}</Description>}

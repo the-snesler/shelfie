@@ -6,11 +6,12 @@ import { authFetch } from "../../auth";
 
 export type DetailFetchState<TMeta> =
   | { status: "loading" }
-  | { status: "error" }
+  | { status: "error"; message?: string }
   | { status: "loaded"; meta: TMeta };
 
 export interface UseDetailFetchOptions<TMeta> {
   db: ShelfieDatabase;
+  authenticated: boolean;
   /** Full request path, e.g. `/api/movies/by-id/42`. Re-fetches whenever
    *  this string changes. */
   url: string;
@@ -34,6 +35,7 @@ export interface UseDetailFetchResult<TMeta> {
  *  every terminal failure as its own "<Thing> not found". */
 export function useDetailFetch<TMeta>({
   db,
+  authenticated,
   url,
   libraryItemId,
   upsertCards,
@@ -51,10 +53,18 @@ export function useDetailFetch<TMeta>({
     void authFetch(url)
       .then(async (res) => {
         if (!active) return;
+        if (res.status === 429) {
+          setMetaState({
+            status: "error",
+            message:
+              "Browsing limit reached. Wait a minute or sign in to continue.",
+          });
+          return;
+        }
         if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
         const meta = (await res.json()) as TMeta;
         setMetaState({ status: "loaded", meta });
-        void upsertCards(db, [meta]);
+        if (authenticated) void upsertCards(db, [meta]);
       })
       .catch(() => {
         if (active) setMetaState({ status: "error" });
@@ -62,11 +72,15 @@ export function useDetailFetch<TMeta>({
     return () => {
       active = false;
     };
-  }, [db, url]);
+  }, [db, url, authenticated, upsertCards]);
 
   const itemId =
     metaState.status === "loaded" ? libraryItemId(metaState.meta) : null;
   useEffect(() => {
+    if (!authenticated) {
+      setItem(null);
+      return;
+    }
     if (itemId === null) {
       setItem(undefined);
       return;
@@ -75,7 +89,7 @@ export function useDetailFetch<TMeta>({
       setItem(doc ?? null);
     });
     return () => sub.unsubscribe();
-  }, [db, itemId]);
+  }, [db, itemId, authenticated]);
 
-  return { metaState, item };
+  return { metaState, item: authenticated ? item : null };
 }

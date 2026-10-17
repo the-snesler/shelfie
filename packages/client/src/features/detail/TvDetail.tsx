@@ -43,12 +43,14 @@ function orderedSeasons(seasons: TvSeason[]): TvSeason[] {
 }
 
 export default function TvDetail({ params }: Route.ComponentProps) {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, authenticated, requestLogin } =
+    useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<TvDetailDto>({
     db,
+    authenticated,
     url: `/api/tv/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `tv:${meta.tmdbId}`,
     upsertCards: upsertTvCards,
@@ -65,6 +67,10 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   async function applyWatched(
     updater: (current: Record<string, string>) => Record<string, string>,
   ) {
+    if (!authenticated) {
+      requestLogin();
+      return;
+    }
     if (metaState.status !== "loaded") return;
     const total = metaState.meta.numberOfEpisodes;
     if (item) {
@@ -152,7 +158,12 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   }
 
   if (metaState.status === "error") {
-    return <NotFound message="Show not found" onBack={() => navigate("/")} />;
+    return (
+      <NotFound
+        message={metaState.message ?? "Show not found"}
+        onBack={() => navigate("/")}
+      />
+    );
   }
 
   const meta = metaState.meta;
@@ -216,7 +227,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      <MyActivity item={item} />
+      {authenticated && <MyActivity item={item} />}
       {meta.summary && <Description>{meta.summary}</Description>}
       <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (

@@ -10,6 +10,7 @@ import IconNotebook from "~icons/tabler/notebook";
 import IconLogout from "~icons/tabler/logout";
 import IconSearch from "~icons/tabler/search";
 import IconSettings from "~icons/tabler/settings";
+import IconSparkles from "~icons/tabler/sparkles";
 
 import IconHome from "~icons/tabler/home";
 import { TruncatedText } from "../../components/Tooltip";
@@ -25,11 +26,15 @@ const UPCOMING_NAV = [{ label: "Lists", icon: IconListDetails }] as const;
 
 export function Sidebar({
   onLogout,
+  onLogin,
+  authenticated,
   username,
   open = false,
   onClose,
 }: {
   onLogout: () => void;
+  onLogin: () => void;
+  authenticated: boolean;
   username: string;
   open?: boolean;
   onClose?: () => void;
@@ -53,89 +58,133 @@ export function Sidebar({
         }`}
       >
         <div className="flex justify-start px-5 pt-5 pb-1">
-          <Link to="/" onClick={onClose}>
+          <Link to={authenticated ? "/" : "/search"} onClick={onClose}>
             <img src="/logo.svg" alt="Shelfie" className="h-11 w-auto" />
           </Link>
         </div>
 
         <SidebarSearch />
 
-        <nav className="mt-1 flex flex-col gap-0.5 px-3">
-          <SidebarLink
-            to="/"
-            icon={IconHome}
-            label="Home"
-            active={location.pathname === "/" && !activeType}
-            onClose={onClose}
-          />
-          {MEDIA_NAV.map(({ type, label, icon }) => (
+        {authenticated ? (
+          <nav className="mt-1 flex flex-col gap-0.5 px-3">
             <SidebarLink
-              key={type}
-              to={`/?type=${type}`}
-              icon={icon}
-              label={label}
-              active={activeType === type}
+              to="/"
+              icon={IconHome}
+              label="Home"
+              active={location.pathname === "/" && !activeType}
               onClose={onClose}
             />
-          ))}
-        </nav>
+            {MEDIA_NAV.map(({ type, label, icon }) => (
+              <SidebarLink
+                key={type}
+                to={`/?type=${type}`}
+                icon={icon}
+                label={label}
+                active={activeType === type}
+                onClose={onClose}
+              />
+            ))}
+          </nav>
+        ) : (
+          <nav className="mt-1 px-3">
+            <SidebarLink
+              to="/search"
+              icon={IconSearch}
+              label="Browse catalog"
+              active={location.pathname === "/search"}
+              onClose={onClose}
+            />
+          </nav>
+        )}
 
-        <div className="mx-4 my-3 border-t border-divider" />
+        {authenticated && (
+          <>
+            <div className="mx-4 my-3 border-t border-divider" />
 
-        <nav className="flex flex-col gap-0.5 px-3">
-          <SidebarLink
-            to="/logbook"
-            icon={IconNotebook}
-            label="Logbook"
-            active={location.pathname === "/logbook"}
-            onClose={onClose}
-          />
-          <SidebarLink
-            to="/calendar"
-            icon={IconCalendar}
-            label="Calendar"
-            active={location.pathname === "/calendar"}
-            onClose={onClose}
-          />
-          {UPCOMING_NAV.map(({ label, icon }) => (
-            <SidebarSoon key={label} icon={icon} label={label} />
-          ))}
-        </nav>
+            <nav className="flex flex-col gap-0.5 px-3">
+              <SidebarLink
+                to="/recommendations"
+                icon={IconSparkles}
+                label="Recommendations"
+                active={location.pathname === "/recommendations"}
+                onClose={onClose}
+              />
+              <SidebarLink
+                to="/logbook"
+                icon={IconNotebook}
+                label="Logbook"
+                active={location.pathname === "/logbook"}
+                onClose={onClose}
+              />
+              <SidebarLink
+                to="/calendar"
+                icon={IconCalendar}
+                label="Calendar"
+                active={location.pathname === "/calendar"}
+                onClose={onClose}
+              />
+              {UPCOMING_NAV.map(({ label, icon }) => (
+                <SidebarSoon key={label} icon={icon} label={label} />
+              ))}
+            </nav>
+          </>
+        )}
 
         <div className="flex-1" />
 
         <div className="border-t border-divider p-3">
-          <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-well font-display text-sm font-semibold text-accent ring-1 ring-divider">
-              {username.charAt(0).toUpperCase()}
+          {authenticated ? (
+            <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-well font-display text-sm font-semibold text-accent ring-1 ring-divider">
+                {username.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <TruncatedText
+                  as="div"
+                  className="text-sm font-medium text-ink"
+                >
+                  {username}
+                </TruncatedText>
+              </div>
+              <Link
+                to="/settings"
+                onClick={onClose}
+                aria-label="Settings"
+                aria-current={
+                  location.pathname === "/settings" ? "page" : undefined
+                }
+                className={`rounded-md p-1.5 hover:bg-well hover:text-ink ${
+                  location.pathname === "/settings"
+                    ? "text-accent"
+                    : "text-muted"
+                }`}
+              >
+                <IconSettings className="size-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={onLogout}
+                title="Log out"
+                className="rounded-md p-1.5 text-muted hover:bg-well hover:text-ink"
+              >
+                <IconLogout className="size-4" />
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <TruncatedText as="div" className="text-sm font-medium text-ink">
-                {username}
-              </TruncatedText>
+          ) : (
+            <div className="space-y-3 px-2 py-1.5">
+              <p className="text-sm text-muted">
+                Explore games, movies, TV and books. Sign in to manage your
+                collection.
+              </p>
+              <button
+                type="button"
+                onClick={onLogin}
+                className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
+              >
+                Sign in
+              </button>
             </div>
-            <Link
-              to="/settings"
-              onClick={onClose}
-              aria-label="Settings"
-              aria-current={
-                location.pathname === "/settings" ? "page" : undefined
-              }
-              className={`rounded-md p-1.5 hover:bg-well hover:text-ink ${
-                location.pathname === "/settings" ? "text-accent" : "text-muted"
-              }`}
-            >
-              <IconSettings className="size-4" />
-            </Link>
-            <button
-              type="button"
-              onClick={onLogout}
-              title="Log out"
-              className="rounded-md p-1.5 text-muted hover:bg-well hover:text-ink"
-            >
-              <IconLogout className="size-4" />
-            </button>
-          </div>
+          )}
         </div>
       </aside>
     </>
