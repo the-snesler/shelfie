@@ -11,6 +11,11 @@ import type { AppOutletContext } from "../../App";
 import { changePassword, changeUsername } from "../../auth";
 import { updatePreferences } from "../../settings";
 import {
+  CalendarSubscriptionSection,
+  ReleaseNotificationsSection,
+} from "./IntegrationSettings";
+import { ImportSources } from "./ImportSources";
+import {
   exportLibraryCsv,
   importLibraryCsv,
   prepareLibraryImport,
@@ -211,6 +216,10 @@ export default function Settings() {
           </p>
         )}
       </SettingsSection>
+
+      <ImportSources />
+      <CalendarSubscriptionSection />
+      <ReleaseNotificationsSection />
 
       <SettingsSection title="Account">
         <UsernameForm settings={settings} setSettings={setSettings} />

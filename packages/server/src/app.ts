@@ -1,6 +1,5 @@
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { createAuthMiddleware, registerAuthRoutes } from "./auth/index.js";
 import { registerBooksRoutes } from "./books/routes.js";
@@ -14,6 +13,15 @@ import { pull } from "./sync/pull.js";
 import { push, type PushRow } from "./sync/push.js";
 import { onChange } from "./sync/stream.js";
 import { registerSettingsRoutes } from "./settings/routes.js";
+import { createCorsMiddleware } from "./security.js";
+import {
+  registerCalendarFeedRoutes,
+  registerCalendarSettingsRoutes,
+} from "./calendar/routes.js";
+import { registerNotificationRoutes } from "./notifications/routes.js";
+import { registerImportRoutes } from "./imports/routes.js";
+import { ImportService } from "./imports/service.js";
+import { db } from "./db/index.js";
 
 // Relative to cwd; the Docker runtime sets WORKDIR /app and STATIC_DIR=./public.
 const STATIC_DIR = process.env.STATIC_DIR;
@@ -24,18 +32,26 @@ const BACKGROUND_SVG_CACHE_CONTROL = "public, max-age=31536000, immutable";
  * and binds no port — side-effect-free so tests can drive it via
  * `app.request(...)` in-process. `index.ts` does the actual bootstrap.
  */
-export function createApp(): Hono {
+export function createApp(importService = new ImportService(db)): Hono {
   const app = new Hono();
 
-  app.use("/api/*", cors());
+  const trustProxy = process.env.TRUST_PROXY === "1";
+  app.use("/api/*", createCorsMiddleware(process.env.CORS_ORIGIN));
 
   app.get("/health", (c) => c.json({ status: "ok" }));
 
-  registerAuthRoutes(app);
+  registerAuthRoutes(app, undefined, { trustProxy });
   registerImageRoutes(app);
-  app.use("/api/*", createAuthMiddleware());
+  registerCalendarFeedRoutes(app);
+  app.use(
+    "/api/*",
+    createAuthMiddleware(undefined, { publicCatalog: true, trustProxy }),
+  );
 
   registerSettingsRoutes(app);
+  registerCalendarSettingsRoutes(app);
+  registerNotificationRoutes(app);
+  registerImportRoutes(app, importService);
   registerSyncRoutes(app, libraryItemsSync);
 
   registerGamesRoutes(app);
