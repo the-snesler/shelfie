@@ -84,6 +84,12 @@ deleted. Imports never delete items missing from a source. Malformed mapped
 documents roll back the library transaction. Server writes use the normal
 library sequence cursor and notify connected clients through SSE.
 
+Imports and client sync pushes serialize their collection writes so a pull
+checkpoint cannot skip an edit that is still waiting to commit. Source HTTP
+requests happen before that write queue. Card metadata warms in batches of
+one hundred IDs per medium, so a large imported library stays within upstream
+request limits; failed batches leave existing offline cards intact.
+
 To run periodically, enable “Run periodically” and enter a five-field cron
 expression in UTC: minute, hour, day of month, month, weekday. Examples:
 
