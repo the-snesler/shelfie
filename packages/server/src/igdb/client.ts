@@ -264,8 +264,18 @@ export async function findGameIdBySteamAppId(
   return rows[0]?.game ?? null;
 }
 
+/**
+ * IGDB `game_type` ids worth tracking as library items: main game (0),
+ * expansion (2), standalone expansion (4), remake (8), remaster (9), expanded
+ * game (10) and port (11). Excludes DLC, bundles, mods, episodes/seasons,
+ * forks, packs and updates. Remakes like Ocarina of Time 3D are typed 8, not 0.
+ */
+const SEARCHABLE_GAME_TYPES = [0, 2, 4, 8, 9, 10, 11];
+
 export async function searchGames(q: string): Promise<SearchResult[]> {
-  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name,total_rating_count,hypes; where game_type = 0; limit 50;`;
+  // `version_parent = null` drops editions (e.g. "…3D: First Edition"), which
+  // IGDB types as main games but which duplicate their parent game.
+  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name,total_rating_count,hypes; where game_type = (${SEARCHABLE_GAME_TYPES.join(",")}) & version_parent = null; limit 50;`;
   const res = await igdbFetch(IGDB_GAMES_URL, query);
   if (!res.ok) {
     throw new Error(`IGDB search failed: ${res.status}`);
