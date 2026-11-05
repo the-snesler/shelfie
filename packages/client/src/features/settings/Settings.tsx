@@ -9,6 +9,7 @@ import IconDownload from "~icons/tabler/download";
 import IconUpload from "~icons/tabler/upload";
 import type { AppOutletContext } from "../../App";
 import { changePassword, changeUsername } from "../../auth";
+import { refreshCardCaches } from "../../db/refreshCards";
 import { updatePreferences } from "../../settings";
 import {
   CalendarSubscriptionSection,
@@ -95,6 +96,11 @@ export default function Settings() {
       if (result.error.length > 0) {
         throw new Error("The database rejected one or more rows.");
       }
+      // Warm card metadata for every imported title, not just the ones the
+      // library grid shows — finished items would otherwise have no name or
+      // cover in the logbook. Runs in the background; cards appear as each
+      // batch lands.
+      void refreshCardCaches(db, prepared.documents);
       setDataMessage(
         `Imported ${prepared.added} new and updated ${prepared.updated} existing items.`,
       );

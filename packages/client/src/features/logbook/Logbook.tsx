@@ -1,13 +1,14 @@
 import type { LibraryItem, MediaType } from "@shelfie/shared";
 import { parseEpisodeKey } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import IconStar from "~icons/tabler/star";
 import IconStarFilled from "~icons/tabler/star-filled";
 import IconStarHalfFilled from "~icons/tabler/star-half-filled";
 import type { AppOutletContext } from "../../App";
 import { TruncatedText } from "../../components/Tooltip";
+import { refreshCardCaches } from "../../db/refreshCards";
 import { MediaCover } from "../media/MediaCover";
 import type { CardMeta } from "../media/useLibraryData";
 import {
@@ -296,6 +297,29 @@ export default function Logbook() {
   const { db } = useOutletContext<AppOutletContext>();
   const { items, cards } = useLibraryData(db);
   const [tab, setTab] = useState<"logbook" | "stats">("logbook");
+
+  // The library grid only warms cards for unfinished items, so finished
+  // titles (e.g. a CSV import of past completions) would otherwise render
+  // as bare source ids here. Warm every item that produces a log entry.
+  const logged = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.completedDates.length > 0 ||
+          (item.mediaType === "tv" &&
+            Object.values(item.watchedEpisodes).some((date) => date !== "")),
+      ),
+    [items],
+  );
+  const loggedKey = logged
+    .map((item) => item.id)
+    .sort()
+    .join(",");
+  useEffect(() => {
+    void refreshCardCaches(db, logged);
+    // loggedKey is the stable dependency; logged only matters via its ids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, loggedKey]);
 
   const { completionEntries, feedEntries } = useMemo(() => {
     const completion: Extract<LogEntry, { kind: "completion" }>[] = [];
