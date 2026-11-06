@@ -7,7 +7,7 @@ const GRAPHQL_URL =
 /**
  * liberated from Goodreads _app JS chunk and also Grimmory.
  */
-const DEFAULT_APPSYNC_KEY = "da2-xpgsdydkbregjhpr6ejzqdhuwy";
+const DEFAULT_APPSYNC_KEY = "da2-d2fyuybwsbf3poyquvbp2mbiwu";
 
 /**
  * Goodreads (and its AppSync backend) get a single shared, sequential
