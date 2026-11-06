@@ -1,11 +1,13 @@
 import type {
   BookSearchResult,
+  LibraryItem,
   MediaType,
   MovieSearchResult,
   SearchResult,
   TvSearchResult,
 } from "@shelfie/shared";
 import { useEffect, useState } from "react";
+import type { RxDocument } from "rxdb";
 import {
   Link,
   useOutletContext,
@@ -31,7 +33,8 @@ import {
   MEDIA_SEARCH_COVER_WIDTH,
 } from "../media/MediaCover";
 import type { LogTarget } from "../media/libraryActions";
-import { newLibraryItem } from "../media/libraryActions";
+import { LogPopover } from "../media/LogPopover";
+import { useLogPopover } from "../media/useLogPopover";
 
 type Filter = "all" | MediaType;
 
@@ -77,12 +80,54 @@ interface ResultBuckets {
 
 const EMPTY_BUCKETS: ResultBuckets = { game: [], movie: [], tv: [], book: [] };
 
-/** "On shelf" badge shared by every row kind. */
-function OnShelfBadge() {
+/** Trailing action shared by every row kind: a `+` (not yet owned) or an
+ *  "On shelf" badge (owned), either of which opens the same `LogPopover`
+ *  the library grid's `+` and a Detail page's chevron open. The popover is
+ *  anchored to a wrapper that survives the `+` → badge swap, so picking a
+ *  status (which inserts the item) doesn't unmount it mid-edit. */
+function SearchLogButton({
+  db,
+  target,
+  item,
+}: {
+  db: ShelfieDatabase;
+  target: LogTarget;
+  item: RxDocument<LibraryItem> | null;
+}) {
+  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
+  const popover = useLogPopover();
+
   return (
-    <span className="shrink-0 rounded-full bg-well px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-divider">
-      On shelf
-    </span>
+    <>
+      <span
+        ref={popover.refs.setReference}
+        {...popover.getReferenceProps()}
+        className="flex shrink-0"
+      >
+        {item ? (
+          <button
+            type="button"
+            aria-label="Edit log"
+            onClick={() => popover.setOpen(true)}
+            className="rounded-full bg-well px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-divider hover:ring-accent"
+          >
+            On shelf
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Add to library"
+            onClick={() =>
+              authenticated ? popover.setOpen(true) : requestLogin()
+            }
+            className="rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
+          >
+            <IconPlus />
+          </button>
+        )}
+      </span>
+      <LogPopover popover={popover} db={db} target={target} item={item} />
+    </>
   );
 }
 
@@ -92,15 +137,14 @@ function OnShelfBadge() {
 function SearchResultRow({
   db,
   result,
-  inLibrary,
+  item,
   typeLabel,
 }: {
   db: ShelfieDatabase;
   result: SearchResult;
-  inLibrary: boolean;
+  item: RxDocument<LibraryItem> | null;
   typeLabel?: string;
 }) {
-  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
   const href = `/games/${encodeURIComponent(result.slug)}`;
   const isTransitioning = useViewTransitionState(href);
   const platform = selectPlatform([], result.platforms, []);
@@ -141,24 +185,7 @@ function SearchResultRow({
           </TruncatedText>
         </div>
       </Link>
-      {inLibrary ? (
-        <OnShelfBadge />
-      ) : (
-        <button
-          type="button"
-          aria-label="Add to library"
-          onClick={() =>
-            authenticated
-              ? void db.library_items.insert(
-                  newLibraryItem(target, "backlogged"),
-                )
-              : requestLogin()
-          }
-          className="shrink-0 rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
-        >
-          <IconPlus />
-        </button>
-      )}
+      <SearchLogButton db={db} target={target} item={item} />
     </li>
   );
 }
@@ -174,7 +201,7 @@ function MediaSearchResultRow({
   name,
   meta,
   sourceId,
-  inLibrary,
+  item,
   typeLabel,
 }: {
   db: ShelfieDatabase;
@@ -184,10 +211,9 @@ function MediaSearchResultRow({
   name: string;
   meta: string | null;
   sourceId: string;
-  inLibrary: boolean;
+  item: RxDocument<LibraryItem> | null;
   typeLabel?: string;
 }) {
-  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
   const target: LogTarget = { mediaType, sourceId, name, platforms: [] };
   const isTransitioning = useViewTransitionState(href);
   const subtitle = [typeLabel, meta].filter(Boolean).join(" · ");
@@ -224,24 +250,7 @@ function MediaSearchResultRow({
           )}
         </div>
       </Link>
-      {inLibrary ? (
-        <OnShelfBadge />
-      ) : (
-        <button
-          type="button"
-          aria-label="Add to library"
-          onClick={() =>
-            authenticated
-              ? void db.library_items.insert(
-                  newLibraryItem(target, "backlogged"),
-                )
-              : requestLogin()
-          }
-          className="shrink-0 rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
-        >
-          <IconPlus />
-        </button>
-      )}
+      <SearchLogButton db={db} target={target} item={item} />
     </li>
   );
 }
@@ -268,17 +277,21 @@ export default function Search() {
     query.trim() === cachedDebounced ? new Set(MEDIA_ORDER) : new Set(),
   );
   const [failed, setFailed] = useState<ReadonlySet<MediaType>>(new Set());
-  const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [libraryItems, setLibraryItems] = useState<
+    ReadonlyMap<string, RxDocument<LibraryItem>>
+  >(new Map());
   const [rateLimited, setRateLimited] = useState(false);
 
   useEffect(() => {
     if (!authenticated) {
-      setExistingIds(new Set());
+      setLibraryItems(new Map());
       return;
     }
     const sub = db.library_items.find().$.subscribe((found) => {
-      setExistingIds(
-        new Set(found.map((item) => `${item.mediaType}:${item.sourceId}`)),
+      setLibraryItems(
+        new Map(
+          found.map((item) => [`${item.mediaType}:${item.sourceId}`, item]),
+        ),
       );
     });
     return () => sub.unsubscribe();
@@ -360,7 +373,7 @@ export default function Search() {
             db={db}
             result={result}
             typeLabel={typeLabel}
-            inLibrary={existingIds.has(`game:${result.igdbId}`)}
+            item={libraryItems.get(`game:${result.igdbId}`) ?? null}
           />
         );
       }
@@ -379,7 +392,7 @@ export default function Search() {
             meta={result.year != null ? String(result.year) : null}
             typeLabel={typeLabel}
             sourceId={String(result.tmdbId)}
-            inLibrary={existingIds.has(`movie:${result.tmdbId}`)}
+            item={libraryItems.get(`movie:${result.tmdbId}`) ?? null}
           />
         );
       }
@@ -398,7 +411,7 @@ export default function Search() {
             meta={result.year != null ? String(result.year) : null}
             typeLabel={typeLabel}
             sourceId={String(result.tmdbId)}
-            inLibrary={existingIds.has(`tv:${result.tmdbId}`)}
+            item={libraryItems.get(`tv:${result.tmdbId}`) ?? null}
           />
         );
       }
@@ -419,7 +432,7 @@ export default function Search() {
             }
             typeLabel={typeLabel}
             sourceId={String(result.goodreadsId)}
-            inLibrary={existingIds.has(`book:${result.goodreadsId}`)}
+            item={libraryItems.get(`book:${result.goodreadsId}`) ?? null}
           />
         );
       }
