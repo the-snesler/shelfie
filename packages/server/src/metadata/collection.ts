@@ -46,6 +46,15 @@ export interface MetadataCollection<
   isExpired?(card: TCard, fetchedAt: number, now: number): boolean;
 
   /**
+   * ISO days the card's release status hinges on (a game's first and
+   * per-platform releases, a movie's release, a show's premiere, a book's
+   * publication). Rows refresh daily in the month before one of them and
+   * again once it passes (`releaseExpired` in ./freshness.ts), and the
+   * release refresh worker uses them to pick which owned cards to keep warm.
+   */
+  releaseDays?(card: TCard): string[];
+
+  /**
    * Rows already in the cache for the requested ids, regardless of
    * freshness — the registrar applies the TTL cutoff. Per-medium exclusions
    * (e.g. games' legacy null-slug rows) belong here: an id simply absent

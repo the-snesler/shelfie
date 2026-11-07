@@ -176,7 +176,7 @@ async function upsertDetail(
   return row;
 }
 
-const tvMetadataCollection: MetadataCollection<TvMetadata, TvDetail> = {
+export const tvMetadataCollection: MetadataCollection<TvMetadata, TvDetail> = {
   basePath: "/api/tv",
 
   search: searchTv,
@@ -185,6 +185,8 @@ const tvMetadataCollection: MetadataCollection<TvMetadata, TvDetail> = {
 
   isExpired: (card, fetchedAt, now) =>
     nextEpisodeExpired(card.nextEpisodeToAir, fetchedAt, now),
+
+  releaseDays: (card) => (card.firstAirDate ? [card.firstAirDate] : []),
 
   async fetchCachedCards(database, ids) {
     const cached = await database

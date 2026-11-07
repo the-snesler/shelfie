@@ -140,72 +140,76 @@ async function upsertDetail(
   return row;
 }
 
-const moviesMetadataCollection: MetadataCollection<MovieMetadata, MovieDetail> =
-  {
-    basePath: "/api/movies",
+export const moviesMetadataCollection: MetadataCollection<
+  MovieMetadata,
+  MovieDetail
+> = {
+  basePath: "/api/movies",
 
-    search: searchMovies,
+  search: searchMovies,
 
-    cardId: (card) => card.tmdbId,
+  cardId: (card) => card.tmdbId,
 
-    async fetchCachedCards(database, ids) {
+  releaseDays: (card) => (card.releaseDate ? [card.releaseDate] : []),
+
+  async fetchCachedCards(database, ids) {
+    const cached = await database
+      .selectFrom("movie_metadata")
+      .selectAll()
+      .where("tmdb_id", "in", ids)
+      .execute();
+
+    const result = new Map<number, CachedCard<MovieMetadata>>();
+    for (const row of cached) {
+      result.set(row.tmdb_id, {
+        card: metadataRowToDto(row),
+        fetchedAt: row.fetched_at,
+      });
+    }
+    return result;
+  },
+
+  async fetchMissingCards(database, missingIds) {
+    // TMDB has no batch-by-id endpoint; fan the missing ids out through
+    // the client's throttle queue.
+    const fetched = await Promise.all(
+      missingIds.map((id) => fetchMovieCard(id)),
+    );
+    const cards: MovieMetadata[] = [];
+    for (const metadata of fetched) {
+      const row = await upsertMetadata(database, metadata);
+      cards.push(metadataRowToDto(row));
+    }
+    return cards;
+  },
+
+  detail: {
+    path: "by-id/:id",
+    param: "id",
+
+    parseKey(raw) {
+      const id = Number(raw);
+      return Number.isInteger(id) ? id : undefined;
+    },
+
+    async fetchCached(database, id) {
       const cached = await database
         .selectFrom("movie_metadata")
         .selectAll()
-        .where("tmdb_id", "in", ids)
-        .execute();
-
-      const result = new Map<number, CachedCard<MovieMetadata>>();
-      for (const row of cached) {
-        result.set(row.tmdb_id, {
-          card: metadataRowToDto(row),
-          fetchedAt: row.fetched_at,
-        });
-      }
-      return result;
+        .where("tmdb_id", "=", id)
+        .executeTakeFirst();
+      if (!cached) return null;
+      return {
+        detail: metadataRowToDetail(cached),
+        detailFetchedAt: cached.detail_fetched_at,
+      };
     },
 
-    async fetchMissingCards(database, missingIds) {
-      // TMDB has no batch-by-id endpoint; fan the missing ids out through
-      // the client's throttle queue.
-      const fetched = await Promise.all(
-        missingIds.map((id) => fetchMovieCard(id)),
-      );
-      const cards: MovieMetadata[] = [];
-      for (const metadata of fetched) {
-        const row = await upsertMetadata(database, metadata);
-        cards.push(metadataRowToDto(row));
-      }
-      return cards;
-    },
+    fetchFromSource: (id) => fetchMovieDetail(id),
 
-    detail: {
-      path: "by-id/:id",
-      param: "id",
-
-      parseKey(raw) {
-        const id = Number(raw);
-        return Number.isInteger(id) ? id : undefined;
-      },
-
-      async fetchCached(database, id) {
-        const cached = await database
-          .selectFrom("movie_metadata")
-          .selectAll()
-          .where("tmdb_id", "=", id)
-          .executeTakeFirst();
-        if (!cached) return null;
-        return {
-          detail: metadataRowToDetail(cached),
-          detailFetchedAt: cached.detail_fetched_at,
-        };
-      },
-
-      fetchFromSource: (id) => fetchMovieDetail(id),
-
-      upsert: (database, detail) => upsertDetail(database, detail),
-    },
-  };
+    upsert: (database, detail) => upsertDetail(database, detail),
+  },
+};
 
 export function registerMoviesRoutes(
   app: Hono,

@@ -193,7 +193,7 @@ async function upsertDetail(
  * by-slug detail lookup both treat those legacy rows as absent so every
  * response consistently carries a slug.
  */
-const gamesMetadataCollection: MetadataCollection<
+export const gamesMetadataCollection: MetadataCollection<
   GameMetadata,
   GameDetail,
   string
@@ -203,6 +203,14 @@ const gamesMetadataCollection: MetadataCollection<
   search: searchGames,
 
   cardId: (card) => card.igdbId,
+
+  releaseDays: (card) =>
+    [
+      card.firstReleaseDate,
+      ...card.platformReleaseDates.map((release) => release.date),
+    ]
+      .filter((seconds): seconds is number => seconds != null)
+      .map((seconds) => new Date(seconds * 1000).toISOString().slice(0, 10)),
 
   async fetchCachedCards(database, ids) {
     const cached = await database

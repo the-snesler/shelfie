@@ -2,8 +2,7 @@ import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/types.js";
 import type { MetadataCollection } from "./collection.js";
-
-const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+import { isCardFresh } from "./freshness.js";
 
 export function parseIds(raw: string): number[] {
   return raw
@@ -32,10 +31,8 @@ export function registerMetadataRoutes<
 ): void {
   const { basePath, detail } = collection;
 
-  function isFresh(card: TCard, fetchedAt: number, now: number): boolean {
-    if (fetchedAt < now - METADATA_TTL_MS) return false;
-    return !collection.isExpired?.(card, fetchedAt, now);
-  }
+  const isFresh = (card: TCard, fetchedAt: number, now: number) =>
+    isCardFresh(collection, card, fetchedAt, now);
 
   app.get(`${basePath}/search`, async (c) => {
     const q = c.req.query("q");

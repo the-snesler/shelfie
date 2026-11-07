@@ -106,12 +106,17 @@ async function upsertDetail(
   return row;
 }
 
-const booksMetadataCollection: MetadataCollection<BookMetadata, BookDetail> = {
+export const booksMetadataCollection: MetadataCollection<
+  BookMetadata,
+  BookDetail
+> = {
   basePath: "/api/books",
 
   search: searchBooks,
 
   cardId: (card) => card.goodreadsId,
+
+  releaseDays: (card) => (card.publicationDate ? [card.publicationDate] : []),
 
   async fetchCachedCards(database, ids) {
     const cached = await database
