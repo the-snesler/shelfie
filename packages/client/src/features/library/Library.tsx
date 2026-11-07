@@ -1,17 +1,23 @@
-import type { LibraryItem, MediaType, MetaStatus } from "@shelfie/shared";
-import { MEDIA_TYPES, META_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@shelfie/shared";
+import { MEDIA_TYPES, STATUS_META_GROUP } from "@shelfie/shared";
 import { motion } from "motion/react";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router";
 import type { AppOutletContext } from "../../App";
+import { releaseState } from "../media/release";
 import { META_STATUS_LABELS } from "../media/status";
-import { cardCaption } from "./libraryCaptions";
+import { useToday } from "../media/useToday";
+import { cardCaption, releaseCaption } from "./libraryCaptions";
 import { LibraryItemCard } from "./LibraryItemCard";
 import {
   comparePlannedItems,
+  compareUnreleasedItems,
   normalizeManualOrder,
+  shelfSection,
+  SHELF_SECTIONS,
   type PlannedSort,
+  type ShelfSection,
 } from "./librarySorting";
 import { useLibraryData } from "./useLibraryData";
 
@@ -20,6 +26,11 @@ const MEDIA_LABELS: Record<MediaType, string> = {
   tv: "TV Shows",
   book: "Books",
   game: "Games",
+};
+
+const SECTION_LABELS: Record<ShelfSection, string> = {
+  ...META_STATUS_LABELS,
+  unreleased: "Unreleased",
 };
 
 const PLANNED_SORT_KEY = "shelfie:planned-sort";
@@ -56,6 +67,7 @@ function storedManualOrder(): string[] {
 export default function Library() {
   const { db, settings } = useOutletContext<AppOutletContext>();
   const { items, cards, tvCatalogs } = useLibraryData(db);
+  const today = useToday();
   const [plannedSort, setPlannedSort] = useState(storedPlannedSort);
   const [manualOrder, setManualOrder] = useState(storedManualOrder);
   const draggedId = useRef<string | null>(null);
@@ -96,6 +108,8 @@ export default function Library() {
     [items, activeType],
   );
 
+  // Every planned-bucket item, including those shown under Unreleased, so a
+  // title keeps its manual position while it waits for release.
   const plannedItems = useMemo(
     () => items.filter((item) => STATUS_META_GROUP[item.status] === "planned"),
     [items],
@@ -118,9 +132,9 @@ export default function Library() {
   }, [manualOrder]);
 
   const grouped = useMemo(() => {
-    const map = new Map<MetaStatus, RxDocument<LibraryItem>[]>();
+    const map = new Map<ShelfSection, RxDocument<LibraryItem>[]>();
     for (const item of filtered) {
-      const g = STATUS_META_GROUP[item.status];
+      const g = shelfSection(item, cards.get(item.id), today);
       const arr = map.get(g);
       if (arr) arr.push(item);
       else map.set(g, [item]);
@@ -144,8 +158,11 @@ export default function Library() {
             (manualRank.get(b.id) ?? Number.MAX_SAFE_INTEGER)
           : comparePlannedItems(a, b, plannedSort, cards),
       );
+    map
+      .get("unreleased")
+      ?.sort((a, b) => compareUnreleasedItems(a, b, cards, today));
     return map;
-  }, [filtered, cards, manualOrder, plannedSort]);
+  }, [filtered, cards, manualOrder, plannedSort, today]);
 
   function moveManualItem(overId: string) {
     const fromId = draggedId.current;
@@ -195,11 +212,11 @@ export default function Library() {
             <p className="text-sm">Find some with the search bar.</p>
           </div>
         ) : (
-          META_STATUSES.filter((g) => grouped.get(g)?.length).map((g) => (
+          SHELF_SECTIONS.filter((g) => grouped.get(g)?.length).map((g) => (
             <section key={g} className="flex flex-col">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="font-display text-xl font-medium text-ink">
-                  {META_STATUS_LABELS[g]}
+                  {SECTION_LABELS[g]}
                   <span className="ml-2 text-sm font-normal text-faint">
                     {grouped.get(g)!.length}
                   </span>
@@ -252,7 +269,14 @@ export default function Library() {
                       db={db}
                       item={item}
                       meta={cards.get(item.id)}
-                      caption={cardCaption(item, cards.get(item.id))}
+                      caption={
+                        g === "unreleased"
+                          ? releaseCaption(
+                              releaseState(item, cards.get(item.id), today),
+                              today,
+                            )
+                          : cardCaption(item, cards.get(item.id))
+                      }
                       catalog={
                         item.mediaType === "tv"
                           ? tvCatalogs.get(item.id)

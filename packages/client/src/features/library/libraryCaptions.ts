@@ -6,6 +6,7 @@ import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { formatRuntime } from "../media/duration";
 import { todayLocalIsoDate, yearOf } from "../media/libraryActions";
+import type { ReleaseState } from "../media/release";
 import type { CardMeta } from "./useLibraryData";
 
 /** Whole hours from IGDB seconds, e.g. 79200 -> 22. */
@@ -212,4 +213,15 @@ export function cardCaption(
     case "book":
       return bookCaption(item, meta as BookCardDoc | undefined);
   }
+}
+
+/** Caption for an Unreleased-shelf card: its release day ("Mar 14", or
+ *  "Mar 14, 2027" outside the current year) or "TBA". */
+export function releaseCaption(state: ReleaseState, today: string): string {
+  if (state.kind !== "upcoming") return "TBA";
+  return new Date(`${state.date}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: state.date.slice(0, 4) === today.slice(0, 4) ? undefined : "numeric",
+  });
 }

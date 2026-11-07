@@ -3,7 +3,13 @@ import type { RxDocument } from "rxdb";
 import { describe, expect, it } from "vitest";
 import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
-import { comparePlannedItems, normalizeManualOrder } from "./librarySorting";
+import type { TvCardDoc } from "../../db/tvCards";
+import {
+  comparePlannedItems,
+  compareUnreleasedItems,
+  normalizeManualOrder,
+  shelfSection,
+} from "./librarySorting";
 import type { CardMeta } from "./useLibraryData";
 
 function item(
@@ -81,5 +87,58 @@ describe("library sorting", () => {
         [first, second, added],
       ),
     ).toEqual([second.id, first.id, added.id]);
+  });
+});
+
+describe("unreleased shelf", () => {
+  const today = "2026-11-06";
+  const movie = (id: string, releaseDate: string | null) =>
+    ({ id, name: id, releaseDate }) as MovieCardDoc;
+
+  it("splits out only wishlisted titles that haven't released", () => {
+    const future = movie("movie:1", "2026-12-25");
+    expect(
+      shelfSection(item("movie:1", { status: "wishlisted" }), future, today),
+    ).toBe("unreleased");
+    expect(
+      shelfSection(item("movie:1", { status: "backlogged" }), future, today),
+    ).toBe("planned");
+    expect(
+      shelfSection(
+        item("movie:1", { status: "wishlisted" }),
+        movie("movie:1", today),
+        today,
+      ),
+    ).toBe("planned");
+    expect(
+      shelfSection(item("movie:1", { status: "wishlisted" }), undefined, today),
+    ).toBe("planned");
+  });
+
+  it("orders by soonest release, with TBA titles last", () => {
+    const later = item("movie:1", { status: "wishlisted" });
+    const sooner = item("movie:2", { status: "wishlisted" });
+    const tba = item("tv:3", { status: "wishlisted" });
+    const cards = new Map<string, CardMeta>([
+      [later.id, movie(later.id, "2027-05-01")],
+      [sooner.id, movie(sooner.id, "2026-12-01")],
+      [
+        tba.id,
+        {
+          id: tba.id,
+          name: "Show",
+          firstAirDate: null,
+          firstAirYear: null,
+          status: "Planned",
+          numberOfEpisodes: 0,
+        } as unknown as TvCardDoc,
+      ],
+    ]);
+
+    expect(
+      [tba, later, sooner]
+        .sort((a, b) => compareUnreleasedItems(a, b, cards, today))
+        .map((entry) => entry.id),
+    ).toEqual(["movie:2", "movie:1", "tv:3"]);
   });
 });
