@@ -120,7 +120,10 @@ each backed by its own server-side SQLite table (`game_metadata`,
   its legacy numeric book id).
 
 Server-side, each `<medium>/routes.ts` treats a cached row as stale after
-`METADATA_TTL_MS` (7 days). Card and detail freshness are tracked
+`METADATA_TTL_MS` (7 days), or sooner around a release: a collection's
+`releaseDays` hook names the ISO days its card hinges on, and
+`metadata/freshness.ts` refreshes a row daily in the 30 days before one
+and once after it passes. Card and detail freshness are tracked
 independently (`fetched_at` vs. `detail_fetched_at`), so a card-only row
 backfills its detail columns in place on first detail view. TV detail is the
 expensive one: show + aggregate_credits/videos appends + `content_ratings` +
@@ -128,7 +131,8 @@ one `/tv/{id}/season/{n}` call per season (specials = season 0), all cached
 into `tv_metadata.seasons` as the episode catalog. The TV card also carries
 TMDB's `nextEpisodeToAir` (free with the base `/tv/{id}` call), and a
 collection's optional `isExpired` hook lets a row expire before the TTL —
-TV uses it to refetch once that next episode has aired. `GET
+TV uses it to refetch once that next episode has aired. The TV card's
+`firstAirDate` (TMDB's full premiere day) drives its release state. `GET
 /api/tv/schedule?ids=&from=&to=` is a cache-only (never calls TMDB) read of
 dated episodes across those cached catalogs + card next-episodes; it feeds
 the Calendar screen (`features/calendar/`), which merges it with release
@@ -143,6 +147,19 @@ refetches `/api/<medium>?ids=` per media type present on mount to keep them
 warm. The **detail** tier is never persisted client-side — detail screens
 always fetch fresh and call the card upsert on success (each `*Detail`
 structurally contains every card field).
+
+**Unreleased shelf.** `features/media/release.ts` is the one place a
+title's release day and state (`released | upcoming | tba`) are derived
+from its card: games logged on specific `platforms` use the earliest
+release among those platforms, TV with no date is TBA only when TMDB's
+status says it hasn't aired, and missing metadata always counts as
+released. `Library.tsx` moves _wishlisted_ (not backlogged) unreleased
+titles from Planned into an Unreleased section below it, using the local
+day from `useToday()`; this is view-only and never touches synced state.
+Because the Library only refreshes cards when open, the server's
+`metadata/releaseWorker.ts` refetches stale planned cards near release
+(or missing/dateless) hourly, so the iCal feed and reminders stay current
+too.
 
 Images: IGDB covers go through the server proxy (`/api/images/...`,
 `images.ts` `gameImageUrl()`); TMDB posters/backdrops/stills load directly
@@ -281,5 +298,6 @@ See `docs/integrations.md` for public browsing quotas/CORS, private iCal feeds,
 Apprise reminders, scheduled Trakt/BookOrbit/Steam imports, and recommendations.
 Integration state is server-only (`calendar_subscription`, `notification_settings`,
 `notification_deliveries`, `import_connections`); it never enters RxDB replication.
+The release refresh worker (`metadata/releaseWorker.ts`) follows the same rule.
 Workers start only in `server/src/index.ts`, not `createApp()`, and stop with a
 bounded shutdown so SSE clients cannot hold container termination indefinitely.

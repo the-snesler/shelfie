@@ -46,6 +46,11 @@ Calendar applications choose their own refresh interval.
 The feed and release reminders use cached metadata and never call catalog APIs.
 Opening Shelfie refreshes owned cards; viewing a TV show refreshes its season
 catalog. Dates unknown to the cache cannot appear until that metadata is fetched.
+While the server runs, an hourly job also refreshes planned titles' cards,
+whether missing or dateless, or releasing within the next sixty days or the
+past week, up to twenty-five per medium per pass. Cards within thirty days of
+release refresh daily, so moved dates reach the feed and reminders without
+opening the app.
 
 ## Apprise reminders
 
