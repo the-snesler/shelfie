@@ -1,6 +1,6 @@
 import type { LibraryItem, MediaType } from "@shelfie/shared";
 import type { CardMeta } from "../../db/cardCache";
-import { releaseDateFromEpoch } from "../media/libraryActions";
+import { isUnreleased, releaseState } from "../media/release";
 
 export interface Recommendation<TItem extends LibraryItem = LibraryItem> {
   item: TItem;
@@ -47,16 +47,6 @@ function features(type: MediaType, card: CardMeta): Feature[] {
   return [...unique.values()];
 }
 
-function releaseDate(card: CardMeta): string | null {
-  if ("firstReleaseDate" in card)
-    return releaseDateFromEpoch(card.firstReleaseDate);
-  if ("releaseDate" in card) return card.releaseDate;
-  if ("publicationDate" in card) return card.publicationDate;
-  if ("firstAirYear" in card && card.firstAirYear)
-    return `${card.firstAirYear}-01-01`;
-  return null;
-}
-
 /** An explainable shelf picker: only ratings of 4+ contribute preference
  * evidence, only queued/paused titles are candidates, and future releases
  * stay on the calendar. Never invents a match when metadata is missing. */
@@ -91,8 +81,7 @@ export function rankRecommendations<TItem extends LibraryItem>(
     if (mediaType && item.mediaType !== mediaType) continue;
     const card = cards.get(item.id);
     if (!card) continue;
-    const release = releaseDate(card);
-    if (release && release > today) continue;
+    if (isUnreleased(releaseState(item, card, today))) continue;
 
     const matches = features(item.mediaType, card)
       .map((feature) => {

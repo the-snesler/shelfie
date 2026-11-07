@@ -25,13 +25,9 @@ import {
   MEDIA_LIBRARY_COVER_WIDTH,
   mediaCoverTransitionName,
 } from "../media/MediaCover";
-import {
-  deriveEpisodeWatch,
-  releaseDateFromEpoch,
-  releaseDateFromYear,
-  todayLocalIsoDate,
-} from "../media/libraryActions";
+import { deriveEpisodeWatch, todayLocalIsoDate } from "../media/libraryActions";
 import type { LogTarget } from "../media/libraryActions";
+import { itemReleaseDate } from "../media/release";
 import { useLogPopover } from "../media/useLogPopover";
 import {
   airingLabel,
@@ -219,18 +215,14 @@ export function LibraryItemCard({
           sourceId: item.sourceId,
           name,
           platforms: gameMeta?.platforms ?? [],
-          releaseDate: releaseDateFromEpoch(gameMeta?.firstReleaseDate ?? null),
+          releaseDate: itemReleaseDate(item, meta),
         }
       : {
           mediaType: item.mediaType,
           sourceId: item.sourceId,
           name,
           platforms: [],
-          releaseDate:
-            movieMeta?.releaseDate ??
-            bookMeta?.publicationDate ??
-            tvMeta?.firstAirDate ??
-            releaseDateFromYear(tvMeta?.firstAirYear ?? null),
+          releaseDate: itemReleaseDate(item, meta),
         };
 
   const displayCaption = airedNext

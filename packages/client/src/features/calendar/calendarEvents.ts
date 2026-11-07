@@ -1,9 +1,6 @@
 import type { LibraryItem, TvScheduledEpisode } from "@shelfie/shared";
-import type { BookCardDoc } from "../../db/bookCards";
-import type { GameCardDoc } from "../../db/gameCards";
-import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
-import { releaseDateFromEpoch } from "../media/libraryActions";
+import { cardReleaseDate } from "../media/release";
 import type { CardMeta } from "../media/useLibraryData";
 
 /** One thing on one calendar day. Episodes of the same show and season that
@@ -44,22 +41,6 @@ export function episodeLabel(season: number, episodes: number[]): string {
   return `S${season} · ${episodes.length} episodes`;
 }
 
-function releaseDateOf(
-  mediaType: "game" | "movie" | "book",
-  card: CardMeta | undefined,
-): string | null {
-  switch (mediaType) {
-    case "game":
-      return releaseDateFromEpoch(
-        (card as GameCardDoc | undefined)?.firstReleaseDate ?? null,
-      );
-    case "movie":
-      return (card as MovieCardDoc | undefined)?.releaseDate ?? null;
-    case "book":
-      return (card as BookCardDoc | undefined)?.publicationDate ?? null;
-  }
-}
-
 /**
  * Flattens the library into dated calendar events, sorted by day:
  *
@@ -90,7 +71,8 @@ export function buildCalendarEvents<TItem extends LibraryItem>(
       showsById.set(item.sourceId, item);
       continue;
     }
-    const date = releaseDateOf(item.mediaType, card);
+    // Card-level, not per-platform, to match the server's iCal feed.
+    const date = cardReleaseDate(card);
     if (date) events.push({ kind: "release", date, item, card });
   }
 
