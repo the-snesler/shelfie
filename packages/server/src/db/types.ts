@@ -258,6 +258,29 @@ export interface Database {
   calendar_subscription: CalendarSubscriptionTable;
   notification_settings: NotificationSettingsTable;
   notification_deliveries: NotificationDeliveriesTable;
+  sgdb_games: SgdbGamesTable;
+  sgdb_grids: SgdbGridsTable;
+}
+
+/** Server-only IGDB → SteamGridDB game mapping cache (never synced). */
+export interface SgdbGamesTable {
+  igdb_id: number;
+  /** NULL caches "no SteamGridDB match" until fetched_at goes stale. */
+  sgdb_id: number | null;
+  /** epoch ms */
+  fetched_at: number;
+}
+
+/** Server-only top SteamGridDB grid per game and shape bucket (never synced). */
+export interface SgdbGridsTable {
+  igdb_id: number;
+  /** CoverShape: "square" | "iso" | "tall" */
+  shape: string;
+  /** NULL (with thumb_url) caches "no grid in this bucket". */
+  url: string | null;
+  thumb_url: string | null;
+  /** epoch ms */
+  fetched_at: number;
 }
 
 export interface ImportConnectionsTable {

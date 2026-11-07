@@ -454,6 +454,27 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 16,
+    name: "steamgriddb-covers",
+    async up(db) {
+      await db.schema
+        .createTable("sgdb_games")
+        .addColumn("igdb_id", "integer", (c) => c.primaryKey())
+        .addColumn("sgdb_id", "integer")
+        .addColumn("fetched_at", "integer", (c) => c.notNull())
+        .execute();
+      await db.schema
+        .createTable("sgdb_grids")
+        .addColumn("igdb_id", "integer", (c) => c.notNull())
+        .addColumn("shape", "text", (c) => c.notNull())
+        .addColumn("url", "text")
+        .addColumn("thumb_url", "text")
+        .addColumn("fetched_at", "integer", (c) => c.notNull())
+        .addPrimaryKeyConstraint("sgdb_grids_pk", ["igdb_id", "shape"])
+        .execute();
+    },
+  },
 ];
 
 /**

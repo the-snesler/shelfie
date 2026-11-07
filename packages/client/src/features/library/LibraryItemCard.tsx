@@ -150,6 +150,7 @@ export function LibraryItemCard({
     item.mediaType === "game" ? (
       <GameCover
         coverUrl={cover}
+        igdbId={gameMeta?.igdbId}
         platform={platform}
         name={name}
         scale={LIBRARY_COVER_SCALE}
@@ -247,7 +248,12 @@ export function LibraryItemCard({
           <Link
             to={href}
             viewTransition
-            state={{ coverUrl: cover, platform, name }}
+            state={{
+              coverUrl: cover,
+              platform,
+              name,
+              igdbId: gameMeta?.igdbId,
+            }}
             className="rounded text-left"
           >
             {coverBox}
@@ -261,7 +267,12 @@ export function LibraryItemCard({
           <Link
             to={href}
             viewTransition
-            state={{ coverUrl: cover, platform, name }}
+            state={{
+              coverUrl: cover,
+              platform,
+              name,
+              igdbId: gameMeta?.igdbId,
+            }}
             className="relative overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
             style={{ height: `${TV_STILL_HEIGHT}px`, aspectRatio: "16 / 9" }}
           >

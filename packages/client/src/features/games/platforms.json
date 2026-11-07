@@ -1,10 +1,98 @@
 {
+  "PlayStation": {
+    "aspectRatio": 1.136,
+    "heightMm": 125,
+    "caseColor": "#1B1B1D"
+  },
+  "PlayStation 2": {
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 22
+  },
+  "PlayStation 3": {
+    "aspectRatio": 0.8,
+    "heightMm": 170,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 22
+  },
+  "PlayStation 4": {
+    "aspectRatio": 0.794,
+    "heightMm": 170,
+    "caseColor": "#0B3D91",
+    "paddingTop": 20
+  },
   "PlayStation 5": {
     "overlay": "/assets/games/ps5-cover.png",
     "aspectRatio": 0.803,
     "heightMm": 173,
     "caseColor": "#0F52CA",
     "paddingTop": 20
+  },
+  "PlayStation Portable": {
+    "aspectRatio": 0.578,
+    "heightMm": 180,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 20
+  },
+  "PlayStation Vita": {
+    "aspectRatio": 0.778,
+    "heightMm": 135,
+    "caseColor": "#1B3F8F",
+    "paddingTop": 18
+  },
+  "Xbox": {
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "Xbox 360": {
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#3A8A2E",
+    "paddingTop": 25
+  },
+  "Xbox One": {
+    "aspectRatio": 0.794,
+    "heightMm": 170,
+    "caseColor": "#107C10",
+    "paddingTop": 18
+  },
+  "Xbox Series X|S": {
+    "aspectRatio": 0.794,
+    "heightMm": 170,
+    "caseColor": "#107C10",
+    "paddingTop": 18
+  },
+  "Nintendo GameCube": {
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D"
+  },
+  "Wii": {
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#F3F1F6",
+    "paddingTop": 15
+  },
+  "Wii U": {
+    "aspectRatio": 0.794,
+    "heightMm": 170,
+    "caseColor": "#1D9BD7",
+    "paddingTop": 18
+  },
+  "Nintendo DS": {
+    "aspectRatio": 0.912,
+    "heightMm": 137,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 15
+  },
+  "Nintendo 3DS": {
+    "aspectRatio": 0.912,
+    "heightMm": 137,
+    "caseColor": "#F3F1F6",
+    "paddingTop": 15
   },
   "Nintendo Switch": {
     "overlay": "/assets/games/switch-cover.png",
