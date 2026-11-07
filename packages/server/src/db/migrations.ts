@@ -475,6 +475,23 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 17,
+    name: "tv-first-air-date",
+    async up(db) {
+      // The card tier gains TMDB's full first-air date (it only kept the
+      // year). Expire both tiers so every cached show refetches it; the
+      // detail route also writes card columns, so a fresh detail row would
+      // otherwise keep serving a null date.
+      await db.schema
+        .alterTable("tv_metadata")
+        .addColumn("first_air_date", "text")
+        .execute();
+      await sql`UPDATE tv_metadata SET fetched_at = 0, detail_fetched_at = CASE WHEN detail_fetched_at IS NULL THEN NULL ELSE 0 END`.execute(
+        db,
+      );
+    },
+  },
 ];
 
 /**

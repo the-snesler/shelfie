@@ -123,6 +123,8 @@ export interface TvMetadataTable {
   /** JSON-encoded string[] */
   genres: string;
   first_air_year: number | null;
+  /** ISO YYYY-MM-DD of the first aired episode; card tier */
+  first_air_date: string | null;
   /** TMDB series status, e.g. "Returning Series" | "Ended" */
   status: string | null;
   /** excludes season 0 (Specials) */

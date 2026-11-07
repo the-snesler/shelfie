@@ -22,6 +22,9 @@ export interface TvMetadata {
   posterPath: string | null;
   genres: string[];
   firstAirYear: number | null;
+  /** ISO "YYYY-MM-DD" of the first aired episode; null when TMDB has none
+   *  yet. Drives the library's Unreleased split. */
+  firstAirDate: string | null;
   /** TMDB series status, e.g. "Returning Series" | "Ended" | "Canceled". */
   status: string | null;
   /** Excludes season 0 (Specials), matching TMDB's convention. */

@@ -221,7 +221,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
               sourceId: String(meta.tmdbId),
               name: meta.name,
               platforms: [],
-              releaseDate: releaseDateFromYear(meta.firstAirYear),
+              releaseDate:
+                meta.firstAirDate ?? releaseDateFromYear(meta.firstAirYear),
             }}
             item={item}
           />

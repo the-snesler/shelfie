@@ -306,6 +306,7 @@ function tvToMetadata(tv: TmdbTv): TvMetadata {
     posterPath: tv.poster_path,
     genres: (tv.genres ?? []).map((genre) => genre.name),
     firstAirYear: yearFromDate(tv.first_air_date),
+    firstAirDate: isoDateOrNull(tv.first_air_date),
     status: tv.status ?? null,
     numberOfSeasons: tv.number_of_seasons ?? 0,
     numberOfEpisodes: tv.number_of_episodes ?? 0,

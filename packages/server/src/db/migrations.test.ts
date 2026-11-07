@@ -42,3 +42,35 @@ describe("movie-book-release-dates migration", () => {
     ).toEqual({ publication_date: "1999-04-01", fetched_at: 500 });
   });
 });
+
+describe("tv-first-air-date migration", () => {
+  it("adds the column and expires both cached tiers", async () => {
+    await runMigrations(database, 15);
+    await sql`INSERT INTO tv_metadata (tmdb_id, name, first_air_year, fetched_at, detail_fetched_at) VALUES (1, 'Detailed', 2024, 500, 400), (2, 'Card only', 2025, 500, NULL)`.execute(
+      database,
+    );
+
+    await runMigrations(database);
+
+    expect(
+      await database
+        .selectFrom("tv_metadata")
+        .select([
+          "tmdb_id",
+          "first_air_date",
+          "fetched_at",
+          "detail_fetched_at",
+        ])
+        .orderBy("tmdb_id")
+        .execute(),
+    ).toEqual([
+      { tmdb_id: 1, first_air_date: null, fetched_at: 0, detail_fetched_at: 0 },
+      {
+        tmdb_id: 2,
+        first_air_date: null,
+        fetched_at: 0,
+        detail_fetched_at: null,
+      },
+    ]);
+  });
+});

@@ -62,6 +62,7 @@ function card(
       tmdbId: Number(id),
       posterPath: null,
       firstAirYear: null,
+      firstAirDate: null,
       status: null,
       numberOfSeasons: 0,
       numberOfEpisodes: 0,

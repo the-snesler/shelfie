@@ -48,6 +48,8 @@ export const collections = {
         ...doc,
         nextEpisodeToAir: null,
       }),
+      // The full date arrives with the next card refresh.
+      2: (doc: RxDocumentData<TvCardDoc>) => ({ ...doc, firstAirDate: null }),
     },
   },
   book_metadata: {

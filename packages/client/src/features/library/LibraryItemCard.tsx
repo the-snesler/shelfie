@@ -229,6 +229,7 @@ export function LibraryItemCard({
           releaseDate:
             movieMeta?.releaseDate ??
             bookMeta?.publicationDate ??
+            tvMeta?.firstAirDate ??
             releaseDateFromYear(tvMeta?.firstAirYear ?? null),
         };
 

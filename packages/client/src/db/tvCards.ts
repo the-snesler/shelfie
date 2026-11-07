@@ -15,6 +15,7 @@ export interface TvCardDoc {
   posterPath: string | null;
   genres: string[];
   firstAirYear: number | null;
+  firstAirDate: string | null;
   status: string | null;
   numberOfSeasons: number;
   numberOfEpisodes: number;
@@ -23,7 +24,7 @@ export interface TvCardDoc {
 
 export const tvCardSchema: RxJsonSchema<TvCardDoc> = {
   title: "tv card cache schema",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -43,6 +44,7 @@ export const tvCardSchema: RxJsonSchema<TvCardDoc> = {
       maximum: 9999,
       multipleOf: 1,
     },
+    firstAirDate: { type: ["string", "null"], maxLength: 10 },
     status: { type: ["string", "null"], maxLength: 64 },
     numberOfSeasons: {
       type: "number",
@@ -86,6 +88,7 @@ export function cardToDoc(card: TvMetadata): TvCardDoc {
     posterPath: card.posterPath,
     genres: card.genres,
     firstAirYear: card.firstAirYear,
+    firstAirDate: card.firstAirDate ?? null,
     status: card.status,
     numberOfSeasons: card.numberOfSeasons,
     numberOfEpisodes: card.numberOfEpisodes,
