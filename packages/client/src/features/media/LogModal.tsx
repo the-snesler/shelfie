@@ -6,7 +6,7 @@ import type {
   MetaStatus,
 } from "@shelfie/shared";
 import { randomToken, type RxDocument } from "rxdb";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ShelfieDatabase } from "../../db/database";
 import type { LogTarget } from "./libraryActions";
 import { newLibraryItem, todayLocalIsoDate } from "./libraryActions";
@@ -20,7 +20,7 @@ import { LogCompletionPrompt } from "./LogCompletionPrompt";
 import { LogHeader } from "./LogHeader";
 import { LogNotesField } from "./LogNotesField";
 import { LogPlatformSection } from "./LogPlatformSection";
-import { LogProgressSection } from "./LogProgressSection";
+import { LogProgressSection, parseProgressDraft } from "./LogProgressSection";
 import { LogRatingSection } from "./LogRatingSection";
 import { LogStatusSection } from "./LogStatusSection";
 
@@ -49,6 +49,19 @@ export function LogModal({
     date: string;
     picking: boolean;
   } | null>(null);
+  // Progress edits stay local until the popup closes (unmounts), however it
+  // closes: dismiss, the close button, or the trigger unmounting because a
+  // status change moved the card. One write means one activity entry.
+  const [progressDraft, setProgressDraft] = useState<string | null>(null);
+  const pendingProgress = useRef({ item, draft: progressDraft });
+  pendingProgress.current = { item, draft: progressDraft };
+  useEffect(() => {
+    const pending = pendingProgress;
+    return () => {
+      const { item, draft } = pending.current;
+      if (item && draft !== null) void commitProgress(item, draft);
+    };
+  }, []);
 
   function handleStatusChange(status: ItemStatus) {
     // Completion statuses defer the actual write until a date is chosen
@@ -87,6 +100,8 @@ export function LogModal({
 
   function handleRemove() {
     if (!item) return;
+    setProgressDraft(null);
+    pendingProgress.current.draft = null;
     void item
       .incrementalPatch({ updatedAt: Date.now() })
       .then((doc) => doc.incrementalRemove());
@@ -150,6 +165,7 @@ export function LogModal({
 
   function handleFormatChange(format: LogFormat) {
     if (!item || item.progressFormat === format) return;
+    setProgressDraft(null);
     // No cross-unit conversion (42% ≠ 42h ≠ 42p) — reset value on switch.
     void item.incrementalPatch({
       progressFormat: format,
@@ -221,6 +237,8 @@ export function LogModal({
         item={item}
         formats={formats}
         formatLabels={FORMAT_LABELS}
+        draft={progressDraft}
+        onChangeDraft={setProgressDraft}
         onChangeFormat={handleFormatChange}
       />
       <LogRatingSection item={item} onChange={handleRating} />
@@ -237,4 +255,15 @@ export function LogModal({
       )}
     </div>
   );
+}
+
+async function commitProgress(item: RxDocument<LibraryItem>, draft: string) {
+  const latest = item.getLatest();
+  if (latest.deleted) return;
+  const value = parseProgressDraft(draft, latest.progressFormat);
+  if (value === null || value === latest.progressValue) return;
+  await latest.incrementalPatch({
+    progressValue: value,
+    updatedAt: Date.now(),
+  });
 }

@@ -2,24 +2,24 @@ import type { ReactNode } from "react";
 import type { ActivityChanges, LibraryItem } from "@shelfie/shared";
 import { parseEpisodeKey } from "@shelfie/shared";
 import { STATUS_LABELS } from "../media/status";
+import {
+  describeProgressLine,
+  progressLines,
+  type ProgressLine,
+} from "./activityProgress";
 import { DetailSection } from "./DetailChrome";
 
+/** `progress` is this event's derived progress line (see `progressLines`);
+ *  undefined when the event has none or a later correction undid it. */
 function describeChanges(
   changes: ActivityChanges,
   item: LibraryItem,
+  progress: ProgressLine | undefined,
 ): string[] {
   const lines: string[] = [];
   if (changes.status)
     lines.push(`Marked as ${STATUS_LABELS[item.mediaType][changes.status]}`);
-  if (changes.progressValue !== undefined) {
-    const format = changes.progressFormat ?? item.progressFormat;
-    const suffix = { percent: "%", hours: " hours", pages: " pages" }[format];
-    lines.push(
-      changes.progressValue === null
-        ? "Cleared progress"
-        : `Logged ${changes.progressValue}${suffix}`,
-    );
-  }
+  if (progress) lines.push(describeProgressLine(progress));
   if (changes.progressFormat && changes.progressValue == null) {
     lines.push(`Changed progress format to ${changes.progressFormat}`);
   }
@@ -94,7 +94,14 @@ export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
     );
 
   // Each progress event carries its format at the time of the edit.
-  const events = [...item.activity].reverse();
+  const progress = progressLines(item.activity, item.progressFormat);
+  const events = item.activity
+    .map((event) => ({
+      event,
+      lines: describeChanges(event.changes, item, progress.get(event.id)),
+    }))
+    .filter(({ lines }) => lines.length > 0)
+    .reverse();
   const recordedDates = new Set(
     item.activity.flatMap((event) => event.changes.completedDates ?? []),
   );
@@ -115,9 +122,9 @@ export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
   return (
     <DetailSection title="My activity">
       <ol className="max-h-96 overflow-y-auto p-1">
-        {events.map((event) => (
+        {events.map(({ event, lines }) => (
           <TimelineEntry key={event.id} at={event.at}>
-            {describeChanges(event.changes, item).map((line, index) => (
+            {lines.map((line, index) => (
               <p
                 key={index}
                 className="text-sm whitespace-pre-wrap break-words text-ink"
