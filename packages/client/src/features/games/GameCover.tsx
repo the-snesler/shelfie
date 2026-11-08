@@ -28,9 +28,9 @@ export function GameCover({
     width: `${heightMm * scale * aspectRatio}px`,
     aspectRatio: String(aspectRatio),
     "--case-color": template?.caseColor ?? "#131314",
-    "--art-padding-top": template?.paddingTop
-      ? `${template.paddingTop}px`
-      : "0px",
+    "--art-padding-top": `${template?.paddingTop ?? 0}px`,
+    "--art-padding-left": `${template?.paddingLeft ?? 0}px`,
+    "--art-padding-right": `${template?.paddingRight ?? 0}px`,
     "--scale": scale,
     viewTransitionName: viewTransitionName ?? "none",
   } as React.CSSProperties;
@@ -45,7 +45,7 @@ export function GameCover({
           src={coverUrl}
           alt={name}
           style={{ "--scale": scale } as React.CSSProperties}
-          className="h-full w-full object-cover pt-[calc(var(--scale)*var(--art-padding-top))]"
+          className="h-full w-full object-cover pt-[calc(var(--scale)*var(--art-padding-top))] pr-[calc(var(--scale)*var(--art-padding-right))] pl-[calc(var(--scale)*var(--art-padding-left))]"
           loading="lazy"
         />
       ) : (
@@ -58,7 +58,7 @@ export function GameCover({
           src={template.overlay}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute top-(--box-art-padding) left-0 bottom-(--box-art-padding) right-(--box-art-padding) object-fill pr-(--box-art-padding)"
+          className="pointer-events-none absolute top-(--box-art-padding) left-0 h-[calc(100%-2*var(--box-art-padding))] right-(--box-art-padding) object-fill pr-(--box-art-padding) w-full"
         />
       )}
       {children}

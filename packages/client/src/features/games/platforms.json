@@ -2,25 +2,30 @@
   "PlayStation": {
     "aspectRatio": 1.136,
     "heightMm": 125,
-    "caseColor": "#1B1B1D"
+    "caseColor": "#1B1B1D",
+    "overlay": "/assets/games/ps1-cover.png",
+    "paddingLeft": 23
   },
   "PlayStation 2": {
     "aspectRatio": 0.711,
     "heightMm": 190,
     "caseColor": "#1B1B1D",
-    "paddingTop": 22
+    "paddingTop": 20,
+    "overlay": "/assets/games/ps2-cover.png"
   },
   "PlayStation 3": {
     "aspectRatio": 0.8,
     "heightMm": 170,
     "caseColor": "#1B1B1D",
-    "paddingTop": 22
+    "paddingTop": 16,
+    "overlay": "/assets/games/ps3-cover.png"
   },
   "PlayStation 4": {
     "aspectRatio": 0.794,
     "heightMm": 170,
     "caseColor": "#0B3D91",
-    "paddingTop": 20
+    "paddingTop": 21,
+    "overlay": "/assets/games/ps4-cover.png"
   },
   "PlayStation 5": {
     "overlay": "/assets/games/ps5-cover.png",
@@ -39,7 +44,8 @@
     "aspectRatio": 0.778,
     "heightMm": 135,
     "caseColor": "#1B3F8F",
-    "paddingTop": 18
+    "paddingTop": 12,
+    "overlay": "/assets/games/ps-vita-cover.png"
   },
   "Xbox": {
     "aspectRatio": 0.711,
@@ -51,19 +57,22 @@
     "aspectRatio": 0.711,
     "heightMm": 190,
     "caseColor": "#3A8A2E",
-    "paddingTop": 25
+    "paddingTop": 25,
+    "overlay": "/assets/games/xbox-360-cover.png"
   },
   "Xbox One": {
     "aspectRatio": 0.794,
     "heightMm": 170,
     "caseColor": "#107C10",
-    "paddingTop": 18
+    "paddingTop": 15,
+    "overlay": "/assets/games/xbox-one-cover.png"
   },
   "Xbox Series X|S": {
     "aspectRatio": 0.794,
     "heightMm": 170,
     "caseColor": "#107C10",
-    "paddingTop": 18
+    "paddingTop": 17,
+    "overlay": "/assets/games/xbox-series-cover.png"
   },
   "Nintendo GameCube": {
     "aspectRatio": 0.711,
@@ -74,25 +83,29 @@
     "aspectRatio": 0.711,
     "heightMm": 190,
     "caseColor": "#F3F1F6",
-    "paddingTop": 15
+    "paddingTop": 7,
+    "overlay": "/assets/games/wii-cover.png"
   },
   "Wii U": {
-    "aspectRatio": 0.794,
-    "heightMm": 170,
+    "aspectRatio": 0.711,
+    "heightMm": 190,
     "caseColor": "#1D9BD7",
-    "paddingTop": 18
+    "paddingTop": 5,
+    "overlay": "/assets/games/wii-u-cover.png"
   },
   "Nintendo DS": {
-    "aspectRatio": 0.912,
-    "heightMm": 137,
+    "aspectRatio": 1.106,
+    "heightMm": 135,
     "caseColor": "#1B1B1D",
-    "paddingTop": 15
+    "overlay": "/assets/games/ds-cover.png",
+    "paddingLeft": 23
   },
   "Nintendo 3DS": {
-    "aspectRatio": 0.912,
-    "heightMm": 137,
+    "aspectRatio": 1.106,
+    "heightMm": 135,
     "caseColor": "#F3F1F6",
-    "paddingTop": 15
+    "overlay": "/assets/games/3ds-cover.png",
+    "paddingRight": 19
   },
   "Nintendo Switch": {
     "overlay": "/assets/games/switch-cover.png",

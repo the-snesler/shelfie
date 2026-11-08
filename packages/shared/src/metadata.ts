@@ -14,6 +14,7 @@ export interface SearchResult {
   coverUrl: string | null;
   year: number | null;
   platforms: string[];
+  platformReleaseDates: PlatformRelease[];
 }
 
 /** Earliest known release date for one platform of a game. */

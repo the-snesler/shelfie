@@ -147,7 +147,11 @@ function SearchResultRow({
 }) {
   const href = `/games/${encodeURIComponent(result.slug)}`;
   const isTransitioning = useViewTransitionState(href);
-  const platform = selectPlatform([], result.platforms, []);
+  const platform = selectPlatform(
+    [],
+    result.platforms,
+    result.platformReleaseDates,
+  );
   const target: LogTarget = {
     mediaType: "game",
     sourceId: String(result.igdbId),

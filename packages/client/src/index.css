@@ -254,7 +254,7 @@
   }
 
   .video-game {
-    --box-art-padding: 3px;
+    --box-art-padding: calc(2px * var(--scale));
     --border-radius: 4px;
     --case-transparency: color-mix(in srgb, var(--case-color) 80%, transparent);
     position: relative;

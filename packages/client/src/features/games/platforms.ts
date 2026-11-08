@@ -2,11 +2,13 @@ import templates from "./platforms.json";
 import type { PlatformRelease } from "@shelfie/shared";
 
 export interface PlatformTemplate {
-  overlay: string;
+  overlay?: string;
   aspectRatio: number; // case width / height
   heightMm: number; // physical case height, drives relative sizing
   caseColor: string; // hex, exposed as --case-color
   paddingTop?: number; // optional, in px. for platforms with "strip across the top" overlays, so the logos don't get cut off by the top of the box.
+  paddingLeft?: number; // optional, in px. same idea for overlays with a strip/bezel down the left edge (e.g. DS/3DS).
+  paddingRight?: number; // optional, in px. same idea for overlays with a strip/bezel down the right edge.
 }
 
 export const platformTemplates: Record<string, PlatformTemplate> = templates;

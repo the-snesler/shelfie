@@ -2,6 +2,7 @@ import type {
   GameMetadata,
   GameDetail,
   GameVideo,
+  PlatformRelease,
   SearchResult,
   StoreLink,
   StoreName,
@@ -59,6 +60,7 @@ interface IgdbSearchGame {
   cover?: IgdbCover;
   first_release_date?: number;
   platforms?: IgdbPlatform[];
+  release_dates?: IgdbReleaseDate[];
   total_rating_count?: number;
   hypes?: number;
 }
@@ -122,20 +124,27 @@ const DETAIL_FIELDS =
   CARD_FIELDS +
   ",storyline,screenshots.image_id,videos.video_id,videos.name,game_modes.name,themes.name,player_perspectives.name,involved_companies.publisher,aggregated_rating,aggregated_rating_count,rating,rating_count,websites.type,websites.url,websites.trusted";
 
-/** Maps a raw IGDB metadata game into the DTO; null when IGDB omitted the slug. */
-function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
-  if (!game.slug) return null;
+/** Earliest dated release per platform, oldest first; undated rows are skipped. */
+function earliestReleasePerPlatform(
+  releaseDates: IgdbReleaseDate[] | undefined,
+): PlatformRelease[] {
   const releaseByPlatform = new Map<string, number>();
-  for (const rd of game.release_dates ?? []) {
+  for (const rd of releaseDates ?? []) {
     const name = rd.platform?.name;
     if (!name || rd.date === undefined) continue;
     const prev = releaseByPlatform.get(name);
     if (prev === undefined || rd.date < prev)
       releaseByPlatform.set(name, rd.date);
   }
-  const platformReleaseDates = [...releaseByPlatform.entries()]
+  return [...releaseByPlatform.entries()]
     .map(([platform, date]) => ({ platform, date }))
     .sort((a, b) => a.date - b.date);
+}
+
+/** Maps a raw IGDB metadata game into the DTO; null when IGDB omitted the slug. */
+function metadataGameToDto(game: IgdbMetadataGame): GameMetadata | null {
+  if (!game.slug) return null;
+  const platformReleaseDates = earliestReleasePerPlatform(game.release_dates);
   return {
     igdbId: game.id,
     slug: game.slug,
@@ -275,7 +284,7 @@ const SEARCHABLE_GAME_TYPES = [0, 2, 4, 8, 9, 10, 11];
 export async function searchGames(q: string): Promise<SearchResult[]> {
   // `version_parent = null` drops editions (e.g. "…3D: First Edition"), which
   // IGDB types as main games but which duplicate their parent game.
-  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name,total_rating_count,hypes; where game_type = (${SEARCHABLE_GAME_TYPES.join(",")}) & version_parent = null; limit 50;`;
+  const query = `search "${escapeApicalypseString(q)}"; fields name,slug,cover.image_id,first_release_date,platforms.name,release_dates.date,release_dates.platform.name,total_rating_count,hypes; where game_type = (${SEARCHABLE_GAME_TYPES.join(",")}) & version_parent = null; limit 50;`;
   const res = await igdbFetch(IGDB_GAMES_URL, query);
   if (!res.ok) {
     throw new Error(`IGDB search failed: ${res.status}`);
@@ -292,6 +301,7 @@ export async function searchGames(q: string): Promise<SearchResult[]> {
       coverUrl: coverUrl(game.cover?.image_id),
       year: epochSecondsToYear(game.first_release_date),
       platforms: (game.platforms ?? []).map((platform) => platform.name),
+      platformReleaseDates: earliestReleasePerPlatform(game.release_dates),
     });
   }
   return results;
