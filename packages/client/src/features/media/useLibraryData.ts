@@ -31,22 +31,28 @@ function replacePrefix(
   return next;
 }
 
-/** Subscribes to `library_items` plus the four local-only card caches and
- *  exposes a merged, reactive view — the same data `Library.tsx` renders
- *  the grid from, minus its module-level view-transition cache (that cache
- *  exists solely so a remount can redraw synchronously for a view
- *  transition; screens without that concern, like the logbook, don't need
- *  it and should use this hook instead of duplicating subscriptions). */
+/** Last-known snapshot, so a remount (e.g. back from a detail page) paints
+ *  the previous view on its first frame instead of flashing empty while the
+ *  RxDB subscriptions reconnect. Same idea as Home's cache in
+ *  `library/useLibraryData.ts`, which only holds unfinished items. */
+let cachedItems: RxDocument<LibraryItem>[] = [];
+let cachedCards: Map<string, CardMeta> = new Map();
+
+/** Subscribes to every `library_items` doc plus the four local-only card
+ *  caches and exposes a merged, reactive view. Screens that need the whole
+ *  library (logbook, calendar, lists, recommendations) share this hook
+ *  instead of duplicating subscriptions. */
 export function useLibraryData(db: ShelfieDatabase): {
   items: RxDocument<LibraryItem>[];
   cards: Map<string, CardMeta>;
 } {
-  const [items, setItems] = useState<RxDocument<LibraryItem>[]>([]);
-  const [cards, setCards] = useState<Map<string, CardMeta>>(new Map());
+  const [items, setItems] = useState<RxDocument<LibraryItem>[]>(cachedItems);
+  const [cards, setCards] = useState<Map<string, CardMeta>>(cachedCards);
 
   useEffect(() => {
     const sub = db.library_items.find().$.subscribe((found) => {
-      setItems([...found]);
+      cachedItems = [...found];
+      setItems(cachedItems);
     });
     return () => sub.unsubscribe();
   }, [db]);
@@ -61,7 +67,8 @@ export function useLibraryData(db: ShelfieDatabase): {
         db,
         idsKey ? idsKey.split(",") : [],
         (prefix, found) => {
-          setCards((prev) => replacePrefix(prev, prefix, found));
+          cachedCards = replacePrefix(cachedCards, prefix, found);
+          setCards(cachedCards);
         },
       ),
     [db, idsKey],

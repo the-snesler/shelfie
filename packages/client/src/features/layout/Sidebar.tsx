@@ -22,8 +22,6 @@ const MEDIA_NAV = [
   { type: "game", label: "Games", icon: IconDeviceGamepad2 },
 ] as const;
 
-const UPCOMING_NAV = [{ label: "Lists", icon: IconListDetails }] as const;
-
 export function Sidebar({
   onLogout,
   onLogin,
@@ -123,9 +121,16 @@ export function Sidebar({
                 active={location.pathname === "/calendar"}
                 onClose={onClose}
               />
-              {UPCOMING_NAV.map(({ label, icon }) => (
-                <SidebarSoon key={label} icon={icon} label={label} />
-              ))}
+              <SidebarLink
+                to="/lists"
+                icon={IconListDetails}
+                label="Lists"
+                active={
+                  location.pathname === "/lists" ||
+                  location.pathname.startsWith("/lists/")
+                }
+                onClose={onClose}
+              />
             </nav>
           </>
         )}
@@ -266,27 +271,5 @@ function SidebarLink({
       <Icon className={`size-5 shrink-0 ${active ? "text-accent" : ""}`} />
       <span>{label}</span>
     </Link>
-  );
-}
-
-function SidebarSoon({
-  icon: Icon,
-  label,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-}) {
-  return (
-    <div
-      aria-disabled="true"
-      title={`${label} — coming soon`}
-      className="flex cursor-default items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-faint"
-    >
-      <Icon className="size-5 shrink-0" />
-      <span className="flex-1">{label}</span>
-      <span className="rounded-full border border-divider px-1.5 py-px text-[10px] leading-4 text-faint">
-        Soon
-      </span>
-    </div>
   );
 }

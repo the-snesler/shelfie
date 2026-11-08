@@ -6,9 +6,37 @@ import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { itemReleaseDate, releaseState } from "../media/release";
+import { libraryProgressPercent } from "./libraryProgress";
 import type { CardMeta } from "./useLibraryData";
 
 export type PlannedSort = "manual" | "recent" | "release" | "title" | "type";
+
+/** Every sort a list view offers. Home's Planned shelf uses a subset (plus
+ *  its own "manual" order, which only makes sense for a hand-kept shelf). */
+export type LibrarySort =
+  | "recent"
+  | "added"
+  | "title"
+  | "release"
+  | "type"
+  | "rating"
+  | "completed"
+  | "progress";
+
+export type SortDirection = "asc" | "desc";
+
+/** The direction each sort reads most naturally in: newest/highest first,
+ *  except alphabetical and type order. */
+export const NATURAL_DIRECTION: Record<LibrarySort, SortDirection> = {
+  recent: "desc",
+  added: "desc",
+  title: "asc",
+  release: "desc",
+  type: "asc",
+  rating: "desc",
+  completed: "desc",
+  progress: "desc",
+};
 
 const TYPE_ORDER: Record<MediaType, number> = {
   game: 0,
@@ -24,11 +52,57 @@ function title(meta: CardMeta | undefined, fallback: string): string {
   );
 }
 
-export function comparePlannedItems(
+/** Latest day an item was marked finished, or null when never. */
+export function lastCompletedDate(item: LibraryItem): string | null {
+  let latest: string | null = null;
+  for (const date of item.completedDates) {
+    if (latest == null || date > latest) latest = date;
+  }
+  return latest;
+}
+
+/** Progress used for sorting: TV episode ratio or logged percent/hours/pages
+ *  against the card's length; finished titles count as complete. */
+function sortProgress(item: LibraryItem, meta: CardMeta | undefined) {
+  if (STATUS_META_GROUP[item.status] === "finished") {
+    return item.status === "dropped" ? null : 100;
+  }
+  return libraryProgressPercent(item, meta);
+}
+
+function sortKey(
+  item: RxDocument<LibraryItem>,
+  meta: CardMeta | undefined,
+  sort: Exclude<LibrarySort, "title">,
+): number | string | null {
+  switch (sort) {
+    case "recent":
+      return item.updatedAt;
+    case "added":
+      return item.addedAt;
+    // ISO days, so dates of every medium compare as strings.
+    case "release":
+      return itemReleaseDate(item, meta);
+    case "type":
+      return TYPE_ORDER[item.mediaType];
+    case "rating":
+      return item.rating;
+    case "completed":
+      return lastCompletedDate(item);
+    case "progress":
+      return sortProgress(item, meta);
+  }
+}
+
+/** Sorts by `sort` in `direction`. Items with no value for the key (unrated,
+ *  never finished, undated) always sink to the end whichever way the list
+ *  runs; ties fall back to A–Z, then id, so the order is total. */
+export function compareLibraryItems(
   a: RxDocument<LibraryItem>,
   b: RxDocument<LibraryItem>,
-  sort: Exclude<PlannedSort, "manual">,
+  sort: LibrarySort,
   cards: Map<string, CardMeta>,
+  direction: SortDirection = NATURAL_DIRECTION[sort],
 ): number {
   const aMeta = cards.get(a.id);
   const bMeta = cards.get(b.id);
@@ -37,23 +111,25 @@ export function comparePlannedItems(
     undefined,
     { sensitivity: "base" },
   );
+  const sign = direction === "asc" ? 1 : -1;
+  if (sort === "title") return sign * byTitle || a.id.localeCompare(b.id);
 
-  switch (sort) {
-    case "recent":
-      return b.updatedAt - a.updatedAt || byTitle || a.id.localeCompare(b.id);
-    case "release": {
-      // ISO days, so dates of every medium compare as strings.
-      const aDate = itemReleaseDate(a, aMeta);
-      const bDate = itemReleaseDate(b, bMeta);
-      if (aDate == null) return bDate == null ? byTitle : 1;
-      if (bDate == null) return -1;
-      return bDate.localeCompare(aDate) || byTitle;
-    }
-    case "title":
-      return byTitle || a.id.localeCompare(b.id);
-    case "type":
-      return TYPE_ORDER[a.mediaType] - TYPE_ORDER[b.mediaType] || byTitle;
-  }
+  const aKey = sortKey(a, aMeta, sort);
+  const bKey = sortKey(b, bMeta, sort);
+  let byKey = 0;
+  if (aKey == null) byKey = bKey == null ? 0 : 1;
+  else if (bKey == null) byKey = -1;
+  else if (aKey !== bKey) byKey = sign * (aKey < bKey ? -1 : 1);
+  return byKey || byTitle || a.id.localeCompare(b.id);
+}
+
+export function comparePlannedItems(
+  a: RxDocument<LibraryItem>,
+  b: RxDocument<LibraryItem>,
+  sort: Exclude<PlannedSort, "manual">,
+  cards: Map<string, CardMeta>,
+): number {
+  return compareLibraryItems(a, b, sort, cards);
 }
 
 export function normalizeManualOrder(

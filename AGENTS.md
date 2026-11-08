@@ -39,9 +39,10 @@ packages/
 │       │   ├── library/Library.tsx   grid of owned items across all media, reads card metadata reactively from the four local caches (renders offline), refreshed over HTTP on mount
 │       │   ├── search/Search.tsx     tabbed search (Games/Movies/TV/Books) against the per-medium /api/*/search endpoints
 │       │   ├── detail/Detail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens + status/progress editor; each warms its card cache on load. TvDetail owns the episode watched-checklist.
+│       │   ├── lists/          automatic lists (/lists index + /lists/:id shelf/list view): predicate-defined, never stored or synced
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
 │       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
-│       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /logbook, /calendar, /settings, catch-all
+│       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /logbook, /calendar, /lists, /lists/:listId, /recommendations, /settings, catch-all
 │       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
 │       ├── App.tsx, main.tsx, AuthScreen.tsx, index.css (Tailwind v4 theme tokens)
@@ -193,6 +194,17 @@ active | paused | dropped | finished | completed`. Per-media display
   `LibraryItem` (whole-doc LWW — a deliberate simplicity tradeoff for a
   single-user app), while the episode _catalog_ lives in TV detail metadata.
 
+**Automatic lists.** `features/lists/automaticLists.ts` defines every list
+as a predicate over `LibraryItem` (plus a `now`/`today` clock): one per
+status, one per meta-status group (the finished bucket is titled "Done"
+since it also holds `dropped`), smart lists (recently finished, needs a
+rating, top rated, gathering dust, revisited) and one game-only list per
+logged platform. Membership is computed client-side from the whole library
+(`media/useLibraryData`), so lists need no schema, sync, or server work.
+View state lives in the URL, falling back to a per-list `localStorage`
+preference, then the list's defaults (`listViewState.ts`). Home's section
+headers link to the matching group list ("See all").
+
 ## Key Directories
 
 - `packages/shared/src` — canonical doc types, RxDB schema, zod validation, conflict handler. Touch this first when the `LibraryItem` shape changes.
@@ -216,7 +228,7 @@ Run from the repo root (pnpm workspaces + Turbo):
 - `pnpm lint` — ESLint across all three packages (TypeScript recommended rules and React hook checks), with zero warnings allowed.
 - `pnpm format` — Prettier across supported repository files; `pnpm format:check` verifies formatting in CI. Uses Prettier defaults and `.prettierignore`.
 - `pnpm seed` (`scripts/seed.mjs`) — claims the owner password (`admin`, the dev convention) against a running server, resolves a mix of real games, movies, TV shows, and books through the server's own per-medium search routes (so seeded items get real cover art), then pushes them through `/api/sync/library_items/push` (the TV seed includes a few `watchedEpisodes`). Card metadata is _not_ pre-warmed by seeding — the client populates its local caches on first `Library.tsx` mount; the very first book/movie cards can take a couple of seconds to appear while the server fetches upstream. Idempotent: re-running skips ids already present. Needs the server up (`pnpm dev`) plus `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET` and `TMDB_TOKEN` set; targets `http://localhost:$SERVER_PORT` (default 3001) unless `SHELFIE_SERVER_URL` is set; `SHELFIE_PASSWORD` overrides the claimed/expected password.
-- `pnpm screenshot [path]` (`scripts/screenshot.mjs`) — opens the client in headless Chromium (Playwright), logs in if needed, waits for the library grid (or empty state) to settle, and saves a PNG (default `scripts/screenshot.png`). Needs the client up too; targets `http://localhost:$CLIENT_PORT` (default 5173) unless `SHELFIE_CLIENT_URL` is set; `SHELFIE_PASSWORD` overrides the expected password.
+- `pnpm screenshot [path] [route]` (`scripts/screenshot.mjs`) — opens the client in headless Chromium (Playwright), signs in if needed, waits for the library grid (or empty state) to settle, optionally navigates to `route` (e.g. `/lists/dropped?type=game`), and saves a PNG (default `scripts/screenshot.png`). Needs the client up too; targets `http://localhost:$CLIENT_PORT` (default 5173) unless `SHELFIE_CLIENT_URL` is set; `SHELFIE_PASSWORD` overrides the expected password.
 
 Typical flow for a task that needs to look at the UI: `pnpm dev` in the
 background, then `pnpm seed`, then `pnpm screenshot [path]`.
@@ -233,7 +245,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - **Async.** `async`/`await` throughout; no raw `.then()` chains except isolated cases (`Promise.withResolvers()` for the IGDB throttle queue and scrypt promisification).
 - **Migrations are append-only.** `db/migrations.ts` is a numbered `Migration[]` array bookkept in a `migrations` table — add a new numbered entry, never edit a shipped one (contrast with RxDB's `migrationStrategies`, which is a separate, currently-empty seam in `shared/src/schema.ts`).
 - **State management (client).** No global store, no React Query. RxDB is the reactive data layer (`collection.find().$` subscriptions via `useEffect`); everything else is local `useState`/`useEffect` per feature screen, with a `let active = true` unmount guard pattern on async effects.
-- **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/settings`, catch-all → `/`.
+- **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/lists`, `/lists/:listId` (`?type=&view=&sort=&dir=&group=`), `/recommendations`, `/settings`, catch-all → `/`.
 - **Adding a media type.** Widen `MEDIA_TYPES` + zod, add per-media label/subset entries in `features/media/status.ts` and `LOG_FORMATS_BY_MEDIA`, add shared card/detail DTOs, a server client + `<medium>/routes.ts` + metadata table migration, a client `*Cards.ts` cache + collection, a detail screen + route, a Search tab, and Library href/caption/refresh branches. Statuses themselves need no schema bump.
 - **Auth (client).** Never call bare `fetch` for `/api/*` — use `authFetch()` (`auth.ts`), which attaches the bearer token and treats a 401 (not 403) as session loss, dispatching a `shelfie-auth-lost` window event.
 - **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `Detail.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.

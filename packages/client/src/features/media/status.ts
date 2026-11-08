@@ -53,6 +53,29 @@ export const STATUS_LABELS: Record<MediaType, Record<ItemStatus, string>> = {
   },
 };
 
+/** Media-neutral wording for when several media types share one view (e.g.
+ *  an "All media" list), where per-media labels like Played/Abandoned or
+ *  Playing/Reading would each be wrong for some of the items. */
+export const NEUTRAL_STATUS_LABELS: Record<ItemStatus, string> = {
+  wishlisted: "Wishlist",
+  backlogged: "Backlog",
+  active: "Active",
+  paused: "Paused",
+  dropped: "Dropped",
+  finished: "Finished",
+  completed: "Completed",
+};
+
+/** Status wording for one media type, or the neutral wording for null. */
+export function statusLabel(
+  status: ItemStatus,
+  mediaType: MediaType | null,
+): string {
+  return mediaType
+    ? STATUS_LABELS[mediaType][status]
+    : NEUTRAL_STATUS_LABELS[status];
+}
+
 export const META_STATUS_LABELS: Record<MetaStatus, string> = {
   planned: "Planned",
   "in-progress": "In Progress",
