@@ -26,8 +26,7 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { deriveEpisodeWatch, todayLocalIsoDate } from "../media/libraryActions";
-import type { LogTarget } from "../media/libraryActions";
-import { itemReleaseDate } from "../media/release";
+import { itemLogTarget } from "../media/logTarget";
 import { useLogPopover } from "../media/useLogPopover";
 import {
   airingLabel,
@@ -62,6 +61,7 @@ export function LibraryItemCard({
   caption,
   catalog,
   showProgressBar,
+  onLogOpenChange,
 }: {
   db: ShelfieDatabase;
   item: RxDocument<LibraryItem>;
@@ -69,8 +69,16 @@ export function LibraryItemCard({
   caption: string | null;
   catalog?: TvSeason[];
   showProgressBar: boolean;
+  /** Told when this card's log popover opens/closes, so a filtered view can
+   *  keep the card mounted while an edit moves it out of the filter. Must be
+   *  a stable callback. */
+  onLogOpenChange?: (itemId: string, open: boolean) => void;
 }) {
   const popover = useLogPopover();
+
+  useEffect(() => {
+    onLogOpenChange?.(item.id, popover.open);
+  }, [onLogOpenChange, item.id, popover.open]);
 
   const gameMeta =
     item.mediaType === "game" ? (meta as GameCardDoc | undefined) : undefined;
@@ -207,22 +215,7 @@ export function LibraryItemCard({
     }));
   }
 
-  const logTarget: LogTarget =
-    item.mediaType === "game"
-      ? {
-          mediaType: "game",
-          sourceId: item.sourceId,
-          name,
-          platforms: gameMeta?.platforms ?? [],
-          releaseDate: itemReleaseDate(item, meta),
-        }
-      : {
-          mediaType: item.mediaType,
-          sourceId: item.sourceId,
-          name,
-          platforms: [],
-          releaseDate: itemReleaseDate(item, meta),
-        };
+  const logTarget = itemLogTarget(item, meta);
 
   const displayCaption = airedNext
     ? `S${airedNext.season}E${airedNext.episode} ${airedNext.name}${caption ? ` · ${caption}` : ""}`

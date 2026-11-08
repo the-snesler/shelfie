@@ -7,7 +7,9 @@
  * Expects the dev server (and ideally `scripts/seed.mjs`) to already be
  * running; this only drives the browser.
  *
- * Usage:   node scripts/screenshot.mjs [output-path]
+ * Usage:   node scripts/screenshot.mjs [output-path] [route]
+ *          route is an app path to capture after login, e.g.
+ *          "/lists/dropped?type=game" (default: the library home)
  * Env:     SHELFIE_CLIENT_URL  full override, default derived from CLIENT_PORT
  *          CLIENT_PORT         default 5173 (matches packages/client's own default;
  *                              set alongside SERVER_PORT to run several dev
@@ -24,7 +26,11 @@ const CLIENT_URL =
 const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 const OUTPUT_PATH = process.argv[2] ?? "scripts/screenshot.png";
-const EMPTY_STATE_TEXT = /your library is empty/i;
+const ROUTE = process.argv[3] ?? null;
+// After navigating to a non-home route, how long to let RxDB, card caches and
+// cover images settle. Routes vary too much for one "ready" selector.
+const ROUTE_SETTLE_MS = 2500;
+const EMPTY_STATE_TEXT = /your shelf is empty/i;
 // How long to keep waiting for a library item after the empty state shows. A
 // fresh profile flashes "empty" for a beat before its first replication pull
 // lands, then the app swaps in the synced items on its own. This grace gives
@@ -44,7 +50,16 @@ async function main() {
     // "load" plus explicit element waits is the reliable signal here.
     await page.goto(CLIENT_URL, { waitUntil: "load" });
     await login(page);
+    // Guests are sent to the catalog; signing in there doesn't leave it.
+    if (new URL(page.url()).pathname !== "/") {
+      await page.goto(CLIENT_URL, { waitUntil: "load" });
+    }
     await waitForLibraryToSettle(page);
+    if (ROUTE) {
+      await page.goto(new URL(ROUTE, CLIENT_URL).href, { waitUntil: "load" });
+      await page.locator("h1").first().waitFor({ timeout: 15_000 });
+      await page.waitForTimeout(ROUTE_SETTLE_MS);
+    }
 
     await page.screenshot({ path: OUTPUT_PATH, fullPage: false });
     console.log(`Saved screenshot to ${OUTPUT_PATH}`);
@@ -59,6 +74,15 @@ async function login(page) {
   // accepting a `timeout` option, so use `waitFor` (a real actionability
   // wait) wherever "is this here yet" matters.
   const passwordInput = page.locator('input[type="password"]');
+  // Logged-out visitors land on the public catalog; the account screen only
+  // opens from the sidebar's "Sign in" button.
+  const signIn = page.getByRole("button", { name: "Sign in", exact: true });
+  await passwordInput
+    .or(signIn)
+    .first()
+    .waitFor({ state: "visible", timeout: 5000 })
+    .catch(() => {});
+  if (await signIn.isVisible().catch(() => false)) await signIn.click();
   const sawPasswordInput = await passwordInput
     .waitFor({ state: "visible", timeout: 5000 })
     .then(() => true)
@@ -83,11 +107,10 @@ async function login(page) {
   }
 }
 
-// Library grid items are `<button type="button">` cover tiles inside the
-// route content div; the header's nav buttons aren't in a `.grid`, so this
-// stays unambiguous without needing a landmark wrapper (the app renders none).
+// Library cards are cover links on a `.shelf-rows` shelf; nothing else in the
+// app renders inside one, so this stays unambiguous.
 function libraryItem(page) {
-  return page.locator(".flex > button").first();
+  return page.locator(".shelf-rows a").first();
 }
 
 /**

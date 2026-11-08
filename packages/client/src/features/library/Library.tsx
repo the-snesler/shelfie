@@ -3,8 +3,11 @@ import { MEDIA_TYPES, STATUS_META_GROUP } from "@shelfie/shared";
 import { motion } from "motion/react";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext, useSearchParams } from "react-router";
+import { Link, useOutletContext, useSearchParams } from "react-router";
+import IconChevronRight from "~icons/tabler/chevron-right";
 import type { AppOutletContext } from "../../App";
+import { groupListId } from "../lists/automaticLists";
+import { listHref } from "../lists/listHref";
 import { releaseState } from "../media/release";
 import { META_STATUS_LABELS } from "../media/status";
 import { useToday } from "../media/useToday";
@@ -221,24 +224,37 @@ export default function Library() {
                     {grouped.get(g)!.length}
                   </span>
                 </h2>
-                {g === "planned" && (
-                  <label className="flex items-center gap-2 text-xs text-muted">
-                    Sort
-                    <select
-                      value={plannedSort}
-                      onChange={(event) =>
-                        setPlannedSort(event.currentTarget.value as PlannedSort)
-                      }
-                      className="rounded-md border border-divider bg-panel px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                <div className="flex items-center gap-4">
+                  {g === "planned" && (
+                    <label className="flex items-center gap-2 text-xs text-muted">
+                      Sort
+                      <select
+                        value={plannedSort}
+                        onChange={(event) =>
+                          setPlannedSort(
+                            event.currentTarget.value as PlannedSort,
+                          )
+                        }
+                        className="rounded-md border border-divider bg-panel px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                      >
+                        {PLANNED_SORT_OPTIONS.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {g !== "unreleased" && (
+                    <Link
+                      to={listHref(groupListId(g), activeType)}
+                      className="inline-flex items-center gap-0.5 text-sm text-muted hover:text-accent"
                     >
-                      {PLANNED_SORT_OPTIONS.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                      See all
+                      <IconChevronRight className="size-4" />
+                    </Link>
+                  )}
+                </div>
               </div>
               <div className="shelf-rows -mt-2 flex flex-wrap items-start gap-x-6">
                 {grouped.get(g)!.map((item) => (
