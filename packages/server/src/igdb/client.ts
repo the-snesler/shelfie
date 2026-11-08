@@ -264,21 +264,6 @@ export async function findGameIdBySteamAppId(
   return rows[0]?.game ?? null;
 }
 
-/** Reverse of {@link findGameIdBySteamAppId}: the game's Steam app id, if any. */
-export async function findSteamAppIdByGameId(
-  igdbId: number,
-): Promise<number | null> {
-  if (!Number.isSafeInteger(igdbId) || igdbId <= 0) return null;
-  const res = await igdbFetch(
-    "https://api.igdb.com/v4/external_games",
-    `fields uid; where game = ${igdbId} & external_game_source = 1; limit 1;`,
-  );
-  if (!res.ok) throw new Error(`IGDB Steam lookup failed (${res.status})`);
-  const rows = (await res.json()) as { uid?: string }[];
-  const appId = Number(rows[0]?.uid);
-  return Number.isSafeInteger(appId) && appId > 0 ? appId : null;
-}
-
 /**
  * IGDB `game_type` ids worth tracking as library items: main game (0),
  * expansion (2), standalone expansion (4), remake (8), remaster (9), expanded

@@ -45,9 +45,6 @@ const STORE_LABELS: Record<StoreName, string> = {
  *  element is actually present in the DOM when each snapshot is taken. */
 interface DetailLinkState {
   coverUrl: string | null;
-  /** Lets the placeholder request the same fitted (thumb) cover the link's
-   *  source already loaded, so the transition snapshot isn't blank. */
-  igdbId?: number;
   platform: string | null;
   name: string;
 }
@@ -83,7 +80,6 @@ export default function Detail({ params }: Route.ComponentProps) {
           cover={
             <GameCover
               coverUrl={linkState?.coverUrl ?? null}
-              igdbId={linkState?.igdbId}
               platform={linkState?.platform ?? null}
               name={linkState?.name ?? "Loading…"}
               scale={DETAIL_COVER_SCALE}
@@ -156,8 +152,6 @@ export default function Detail({ params }: Route.ComponentProps) {
         cover={
           <GameCover
             coverUrl={cover}
-            igdbId={meta.igdbId}
-            coverSize="full"
             platform={detailPlatform}
             name={meta.name}
             scale={DETAIL_COVER_SCALE}

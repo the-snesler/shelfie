@@ -42,7 +42,7 @@ packages/
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
 │       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
 │       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /logbook, /calendar, /settings, catch-all
-│       ├── images.ts       gameImageUrl() (IGDB proxy) + gameCoverUrl() (platform-fitted SteamGridDB route) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly
+│       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
 │       ├── App.tsx, main.tsx, AuthScreen.tsx, index.css (Tailwind v4 theme tokens)
 └── server/  @shelfie/server  Hono on @hono/node-server
@@ -62,7 +62,6 @@ packages/
         ├── auth/index.ts   single-user scrypt password + sha256-hashed bearer session tokens
         ├── igdb/           IGDB v4 API client (Twitch OAuth2, self-throttle, 401-retry-once); CARD_FIELDS/DETAIL_FIELDS query splitting, best-effort time-to-beat
         ├── tmdb/           TMDB v3 client (static Bearer TMDB_TOKEN, ~100ms self-throttle, 429-retry-once); movie/tv search + card/detail fetches, per-season episode fetches
-        ├── steamgriddb/    SteamGridDB client (optional STEAMGRIDDB_API_KEY; ~100ms throttle) + IGDB→SGDB title/year/Steam-id matching + cached per-shape cover resolver
         ├── goodreads/      Goodreads client (autocomplete search JSON + internal AppSync GraphQL getBookPageData; ~1s+jitter throttle; GOODREADS_APPSYNC_KEY env override)
         └── games/ movies/ tv/ books/   cache-first metadata endpoints per medium — search / batch-by-ids card / detail (by-slug for games, by-id elsewhere); row↔DTO mappers and upserts live directly in each routes.ts
 ```
@@ -166,23 +165,6 @@ Images: IGDB covers go through the server proxy (`/api/images/...`,
 from `image.tmdb.org` via `tmdbImageUrl(path, size)`; Goodreads covers are
 full gr-assets URLs loaded directly.
 
-Platform-fitted game covers: each case template in
-`features/games/platforms.json` (`aspectRatio`, `heightMm`, `paddingTop` =
-banner height in mm, optional `overlay` PNG) defines an art window that
-`platformCoverShape()` maps to the nearest SteamGridDB grid bucket
-(`CoverShape` in `shared/src/covers.ts`: `square` 1:1, `iso` 342×482,
-`tall` 600×900). `GameCover` then requests
-`GET /api/images/covers/{thumb|full}/{shape}/{igdbId}?fallback=<igdbImageId>`
-(public, registered beside the IGDB proxy). The server resolves only games
-already in `game_metadata` (`steamgriddb/covers.ts`): autocomplete by title
-plus release year (±1), then the IGDB Steam app id, then an unambiguous title
-match. It caches the mapping (`sgdb_games`) and the top grid per shape
-(`sgdb_grids`), hits and misses alike, for 7 days, walks `iso`↔`tall`
-fallbacks (never into or out of `square`), and disk-caches the CDN image
-under `images/sgdb/`. Any miss, missing key or upstream error is a `no-store`
-302 to the IGDB cover, and the client also drops back to it on an image
-error. Untemplated platforms (PC etc.) keep the IGDB cover.
-
 ### Domain model
 
 `LibraryItem`: `id` (`${mediaType}:${sourceId}`), `mediaType` (`game | movie
@@ -218,7 +200,7 @@ active | paused | dropped | finished | completed`. Per-media display
 - `packages/client/src/features/*` — one directory per screen (`library`, `search`, `detail`) plus `media/` (the shared status/log editing layer + per-media labels) and `games/` (game-only cover/platform visuals); each screen owns its own effects/local state, no shared feature-level state store.
 - `packages/server/src/sync` — generic pull/push/stream machinery, keyed by a `SyncCollection<TDoc>` descriptor; today only `library_items` uses it.
 - `packages/server/src/db` — Kysely + better-sqlite3, numbered migrations, seq counters.
-- `packages/server/src/{igdb,tmdb,goodreads,steamgriddb}` — external API clients (throttling, retries, card/detail field handling per source).
+- `packages/server/src/{igdb,tmdb,goodreads}` — external API clients (throttling, retries, card/detail field handling per source).
 - `packages/server/src/{games,movies,tv,books}` — cache-first metadata endpoints per medium; row↔DTO mappers and upsert helpers live in each `routes.ts`.
 - `packages/server/src/auth` — single-user password/session auth.
 - `scripts/` — dev-only Node scripts (`seed.mjs`, `screenshot.mjs`) that drive a _running_ dev instance; not part of the build.
@@ -271,7 +253,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - `packages/client/src/features/media/libraryActions.ts` — `LogTarget` + `newLibraryItem()`, the single choke point every add-to-library path goes through.
 - `packages/client/src/db/replication.ts` — client-side RxDB replication wiring against the sync routes.
 - `packages/client/src/auth.ts` — `authFetch()`, the required wrapper for all authenticated client requests.
-- `.env` (root, gitignored) — `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` / `TMDB_TOKEN` (TMDB API Read Access Token, Bearer). Optional: `GOODREADS_APPSYNC_KEY` (overrides the built-in AppSync api key if Goodreads rotates it), `STEAMGRIDDB_API_KEY` (enables platform-fitted game covers; without it every cover is IGDB's). Server also reads `SERVER_PORT` (falls back to `PORT`), `DATABASE_URL`, `DATA_DIR`, `STATIC_DIR`; client (`vite.config.ts`) reads `CLIENT_PORT` and `SERVER_PORT` for its own port and proxy target (all optional, sensible defaults). `.env.example` (root, committed) is the template — `cp .env.example .env` and fill in real values.
+- `.env` (root, gitignored) — `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` / `TMDB_TOKEN` (TMDB API Read Access Token, Bearer). Optional: `GOODREADS_APPSYNC_KEY` (overrides the built-in AppSync api key if Goodreads rotates it). Server also reads `SERVER_PORT` (falls back to `PORT`), `DATABASE_URL`, `DATA_DIR`, `STATIC_DIR`; client (`vite.config.ts`) reads `CLIENT_PORT` and `SERVER_PORT` for its own port and proxy target (all optional, sensible defaults). `.env.example` (root, committed) is the template — `cp .env.example .env` and fill in real values.
 - `turbo.json` — task graph (`build`/`typecheck`/`lint` depend on `^build`; `test`/`dev` don't) + `globalPassThroughEnv` (the allowlist that lets `SERVER_PORT`/`DATA_DIR`/API keys reach tasks under Turbo 2 strict env mode).
 
 ## Runtime/Tooling Preferences

@@ -1,18 +1,12 @@
 import templates from "./platforms.json";
-import {
-  nearestCoverShape,
-  type CoverShape,
-  type PlatformRelease,
-} from "@shelfie/shared";
+import type { PlatformRelease } from "@shelfie/shared";
 
 export interface PlatformTemplate {
-  /** Case-front PNG drawn over the art; optional so a platform can get
-   *  real case geometry (and a fitted art shape) before its overlay exists. */
-  overlay?: string;
+  overlay: string;
   aspectRatio: number; // case width / height
   heightMm: number; // physical case height, drives relative sizing
   caseColor: string; // hex, exposed as --case-color
-  paddingTop?: number; // optional, in mm (scaled like heightMm). Height of the case's top banner strip, kept clear of art so overlay logos don't cover it.
+  paddingTop?: number; // optional, in px. for platforms with "strip across the top" overlays, so the logos don't get cut off by the top of the box.
 }
 
 export const platformTemplates: Record<string, PlatformTemplate> = templates;
@@ -24,20 +18,6 @@ export const DEFAULT_TEMPLATE = { aspectRatio: 0.71, heightMm: 172 } as const;
 export const LIBRARY_COVER_SCALE = 1.0;
 export const DETAIL_COVER_SCALE = 1.5;
 export const SEARCH_COVER_SCALE = 0.37;
-
-/**
- * SteamGridDB art bucket for a platform's art window — the case front below
- * its banner (`paddingTop`). Null for untemplated platforms, which keep the
- * IGDB cover at the default case ratio.
- */
-export function platformCoverShape(platform: string | null): CoverShape | null {
-  const template = platform ? platformTemplates[platform] : undefined;
-  if (!template) return null;
-  const artHeightMm = template.heightMm - (template.paddingTop ?? 0);
-  return nearestCoverShape(
-    (template.aspectRatio * template.heightMm) / artHeightMm,
-  );
-}
 
 /** Computes the rendered width for a game cover at a given scale. */
 export function gameCoverWidth(platform: string | null, scale: number): number {

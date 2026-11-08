@@ -160,18 +160,12 @@ function SearchResultRow({
       <Link
         to={href}
         viewTransition
-        state={{
-          coverUrl: result.coverUrl,
-          igdbId: result.igdbId,
-          platform,
-          name: result.name,
-        }}
+        state={{ coverUrl: result.coverUrl, platform, name: result.name }}
         className="flex min-w-0 flex-1 items-center gap-4 text-left"
       >
         <div className="shrink-0">
           <GameCover
             coverUrl={result.coverUrl}
-            igdbId={result.igdbId}
             platform={platform}
             name={result.name}
             scale={SEARCH_COVER_SCALE}

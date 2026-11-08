@@ -38,13 +38,6 @@ export type {
   StoreName,
   TimeToBeat,
 } from "./metadata.js";
-export {
-  COVER_SHAPES,
-  COVER_SHAPE_ASPECT,
-  COVER_SIZES,
-  nearestCoverShape,
-} from "./covers.js";
-export type { CoverShape, CoverSize } from "./covers.js";
 export type {
   MovieSearchResult,
   MovieMetadata,
