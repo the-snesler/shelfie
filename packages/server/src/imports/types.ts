@@ -8,6 +8,9 @@ export interface ImportedItem {
   progressValue?: number | null;
   rating?: number | null;
   completedDates?: string[];
+  /** Used only while the merged item is finished and has no completion date,
+   *  for sources that know when reading stopped but not when it finished. */
+  fallbackCompletedDate?: string;
   watchedEpisodes?: Record<string, string>;
   platforms?: string[];
 }

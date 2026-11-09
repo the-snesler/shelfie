@@ -4,6 +4,11 @@ import {
   type ItemStatus,
 } from "@shelfie/shared";
 import { findGameIdBySteamAppId } from "../igdb/client.js";
+import {
+  GoodreadsLookupError,
+  type BookMatch,
+  type BookMatcher,
+} from "./bookLinks.js";
 import type { ImportedItem, SourceConfig, SourceData } from "./types.js";
 
 type JsonObject = Record<string, unknown>;
@@ -75,8 +80,10 @@ export async function sourceJson(
 export interface SourceDependencies {
   request: typeof sourceJson;
   steamId: typeof findGameIdBySteamAppId;
+  /** Matches source books to Goodreads IDs; required for BookOrbit. */
+  books?: BookMatcher;
 }
-const defaults: SourceDependencies = {
+export const sourceDefaults: SourceDependencies = {
   request: sourceJson,
   steamId: findGameIdBySteamAppId,
 };
@@ -84,7 +91,7 @@ const defaults: SourceDependencies = {
 export async function fetchSource(
   source: ImportSource,
   config: SourceConfig,
-  deps = defaults,
+  deps = sourceDefaults,
 ): Promise<SourceData> {
   if (source === "steam") return fetchSteam(config, deps);
   if (source === "bookorbit") return fetchBookOrbit(config, deps);
@@ -257,90 +264,145 @@ async function fetchTrakt(
   };
 }
 
+/** Accepts the KOReader sync URL BookOrbit shows as well as the server root. */
+export function bookOrbitRoot(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, "").replace(/\/api\/v1\/koreader$/, "");
+}
+
+const BOOKORBIT_STATUSES: Record<string, ItemStatus> = {
+  unread: "backlogged",
+  want_to_read: "wishlisted",
+  reading: "active",
+  rereading: "active",
+  on_hold: "paused",
+  read: "finished",
+  skimmed: "finished",
+  abandoned: "dropped",
+};
+/** Consecutive Goodreads failures before a run stops matching new books. */
+const MAX_LOOKUP_FAILURES = 3;
+
+/**
+ * Reads BookOrbit through the catalog its KOReader plugin uses. KOReader sync
+ * credentials do not expire, unlike web-session bearer tokens. The catalog has
+ * no Goodreads IDs, so books are matched through `deps.books`.
+ */
 async function fetchBookOrbit(
   config: SourceConfig,
   deps: SourceDependencies,
 ): Promise<SourceData> {
-  const base = config.baseUrl.replace(/\/$/, "");
+  const matcher = deps.books;
+  if (!matcher) throw new Error("BookOrbit import needs a Goodreads matcher.");
+  const catalog = `${bookOrbitRoot(config.baseUrl)}/api/v1/koreader/plugin/catalog`;
   const headers = {
-    Authorization: `Bearer ${config.accessToken}`,
-    "content-type": "application/json",
+    "x-auth-user": config.account,
+    "x-auth-key": config.apiKey,
+    accept: "application/json",
   };
   const items: ImportedItem[] = [];
   let skipped = 0;
-  const statuses: Record<string, ItemStatus> = {
-    unread: "backlogged",
-    want_to_read: "wishlisted",
-    reading: "active",
-    rereading: "active",
-    on_hold: "paused",
-    read: "finished",
-    skimmed: "finished",
-    abandoned: "dropped",
-  };
-  for (let page = 0; page < 100; page++) {
-    const { data } = await deps.request(`${base}/api/v1/books/query`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        pagination: { page, size: 100 },
-        sort: [{ field: "title", dir: "asc" }],
-        collapseSeries: false,
-      }),
-    });
+  let unmatched = 0;
+  let pending = 0;
+  let failures = 0;
+  for (let page = 1; page <= 100; page++) {
+    const { data } = await deps.request(
+      `${catalog}/books?page=${page}&size=100&sort=title&order=asc`,
+      { headers },
+    );
     const response = object(data);
     if (!Array.isArray(response.items))
       throw new Error("BookOrbit returned an invalid books page.");
     for (const raw of response.items) {
       const card = object(raw);
-      const localId = numericId(card.id);
-      if (!localId) {
+      const externalId = numericId(card.id);
+      const title = typeof card.title === "string" ? card.title : "";
+      if (!externalId || !title) {
         skipped++;
         continue;
       }
-      const { data: detailData } = await deps.request(
-        `${base}/api/v1/books/${localId}`,
-        { headers },
-      );
-      const detail = object(detailData);
-      const id = numericId(
-        object(detail.providerIds).goodreads ?? detail.goodreadsId,
-      );
-      if (!id) {
-        skipped++;
+      const authors = Array.isArray(card.authors)
+        ? card.authors.filter(
+            (name): name is string => typeof name === "string",
+          )
+        : [];
+      const book = { externalId, title, authors };
+      let detail: JsonObject | undefined;
+      const loadDetail = async (): Promise<JsonObject> => {
+        detail ??= object(
+          (await deps.request(`${catalog}/books/${externalId}`, { headers }))
+            .data,
+        );
+        return detail;
+      };
+      let match: BookMatch | undefined;
+      if (failures >= MAX_LOOKUP_FAILURES) {
+        // Matched books still import while Goodreads is unavailable.
+        match = await matcher.known(book);
+      } else {
+        try {
+          match = await matcher.match(book, async () => {
+            const found = await loadDetail();
+            const isbn = found.isbn13 ?? found.isbn10;
+            return typeof isbn === "string" ? isbn : null;
+          });
+          failures = 0;
+        } catch (error) {
+          if (!(error instanceof GoodreadsLookupError)) throw error;
+          failures++;
+        }
+      }
+      if (!match) {
+        pending++;
         continue;
       }
-      const state = object(detail.readStatus ?? card.readStatus);
-      const completed = day(state.finishedAt);
-      const progress =
-        typeof card.readingProgress === "number"
-          ? Math.max(0, Math.min(100, Math.round(card.readingProgress)))
-          : null;
+      const { goodreadsId } = match;
+      if (goodreadsId === null) {
+        if (match.method === "ignored") skipped++;
+        else unmatched++;
+        continue;
+      }
+      // 0% is BookOrbit's default for books never opened, not logged progress.
+      const rounded =
+        typeof card.progressPercentage === "number"
+          ? Math.min(100, Math.round(card.progressPercentage))
+          : 0;
+      const progress = rounded > 0 ? rounded : null;
+      const status =
+        BOOKORBIT_STATUSES[String(card.readStatus)] ??
+        (progress ? "active" : "backlogged");
+      const lastRead = day(card.lastReadAt);
+      // Personal ratings are only on the detail response; unread books are
+      // left out so a routine run does not fetch the whole catalog.
+      const tracked = card.readStatus != null && card.readStatus !== "unread";
       items.push({
         mediaType: "book",
-        sourceId: id,
-        status: statuses[String(state.status)] ?? "backlogged",
-        rating: rating(detail.rating),
-        completedDates: completed ? [completed] : [],
+        sourceId: String(goodreadsId),
+        status,
+        rating: tracked ? rating((await loadDetail()).rating) : undefined,
         progressFormat: "percent",
         progressValue: progress,
+        ...(status === "finished" && lastRead
+          ? { fallbackCompletedDate: lastRead }
+          : {}),
       });
     }
     if (
       response.items.length < 100 ||
-      (typeof response.total === "number" && (page + 1) * 100 >= response.total)
+      response.hasNext === false ||
+      (typeof response.total === "number" && page * 100 >= response.total)
     )
       break;
-    if (page === 99)
+    if (page === 100)
       throw new Error("BookOrbit import exceeds the 10,000-item limit.");
   }
-  return {
-    items,
-    skipped,
-    warnings: skipped
-      ? [
-          `${skipped} BookOrbit books without a Goodreads ID were skipped. Add the Goodreads provider ID in BookOrbit to import them.`,
-        ]
-      : [],
-  };
+  const warnings: string[] = [];
+  if (unmatched)
+    warnings.push(
+      `${unmatched} BookOrbit books have no Goodreads match. Link them under Book matches.`,
+    );
+  if (pending)
+    warnings.push(
+      `${pending} BookOrbit books could not be matched because Goodreads search failed. They will be retried on the next run.`,
+    );
+  return { items, skipped: skipped + unmatched + pending, warnings };
 }

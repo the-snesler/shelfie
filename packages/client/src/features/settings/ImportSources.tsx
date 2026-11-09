@@ -4,24 +4,14 @@ import type {
   ImportSource,
 } from "@shelfie/shared";
 import { useEffect, useState, type FormEvent } from "react";
-import { authFetch } from "../../auth";
+import { BookMatches } from "./BookMatches";
+import { buttonClass, inputClass, request } from "./importRequest";
 
 const LABELS: Record<ImportSource, string> = {
   trakt: "Trakt",
   bookorbit: "BookOrbit",
   steam: "Steam",
 };
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await authFetch(path, init);
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    throw new Error(body?.error ?? `Request failed (${res.status})`);
-  }
-  return res.json() as Promise<T>;
-}
 
 export function ImportSources() {
   const [connections, setConnections] = useState<ImportConnection[] | null>(
@@ -182,7 +172,9 @@ function SourceForm({
       setApiKey("");
       setAccessToken("");
       setMessage(
-        "Source disconnected and saved credentials removed. Imported items remain in your library.",
+        source === "bookorbit"
+          ? "Source disconnected; saved credentials and book matches removed. Imported items remain in your library."
+          : "Source disconnected and saved credentials removed. Imported items remain in your library.",
       );
     } catch (reason) {
       setError(
@@ -210,14 +202,14 @@ function SourceForm({
           ? "Import your public Steam library and playtime with a Steam Web API key and SteamID64. Apps without an exact IGDB mapping are skipped."
           : source === "trakt"
             ? "Import movies, TV watch history, watchlist, and ratings. Enter your profile slug and Trakt application's client ID. Private profiles also need an access token; replace it when it expires."
-            : "Connect to a BookOrbit server with a bearer access token. Books need a Goodreads provider ID in BookOrbit. Replace the token when it expires."}
+            : "Import reading status, progress and ratings from BookOrbit. Use the KOReader sync credentials from BookOrbit's Settings → Devices & Sync → KOReader; they do not expire. Books are matched to Goodreads by title and author, then ISBN."}
       </p>
       <form className="mt-4" onSubmit={(event) => void save(event)}>
         <fieldset
           disabled={busy || connection.running}
           className="flex flex-col gap-3"
         >
-          {source === "bookorbit" ? (
+          {source === "bookorbit" && (
             <label className="text-sm text-muted">
               BookOrbit server URL
               <input
@@ -229,40 +221,44 @@ function SourceForm({
                 placeholder="http://bookorbit:3000"
               />
             </label>
-          ) : (
-            <label className="text-sm text-muted">
-              {source === "steam" ? "SteamID64" : "Trakt profile slug"}
-              <input
-                className={inputClass}
-                required
-                value={account}
-                onChange={(event) => setAccount(event.currentTarget.value)}
-              />
-            </label>
           )}
-          {source !== "bookorbit" && (
+          <label className="text-sm text-muted">
+            {source === "steam"
+              ? "SteamID64"
+              : source === "trakt"
+                ? "Trakt profile slug"
+                : "KOReader username"}
+            <input
+              className={inputClass}
+              required
+              value={account}
+              onChange={(event) => setAccount(event.currentTarget.value)}
+              autoComplete="off"
+            />
+          </label>
+          <label className="text-sm text-muted">
+            {source === "steam"
+              ? "Steam Web API key"
+              : source === "trakt"
+                ? "Trakt client ID"
+                : "KOReader password"}
+            <input
+              className={inputClass}
+              type="password"
+              autoComplete="new-password"
+              value={apiKey}
+              onChange={(event) => setApiKey(event.currentTarget.value)}
+              placeholder={
+                connection.hasApiKey
+                  ? "Saved — leave blank to keep"
+                  : "Required"
+              }
+              required={!connection.hasApiKey}
+            />
+          </label>
+          {source === "trakt" && (
             <label className="text-sm text-muted">
-              {source === "steam" ? "Steam Web API key" : "Trakt client ID"}
-              <input
-                className={inputClass}
-                type="password"
-                autoComplete="new-password"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.currentTarget.value)}
-                placeholder={
-                  connection.hasApiKey
-                    ? "Saved — leave blank to keep"
-                    : "Required"
-                }
-                required={!connection.hasApiKey}
-              />
-            </label>
-          )}
-          {source !== "steam" && (
-            <label className="text-sm text-muted">
-              {source === "bookorbit"
-                ? "Bearer access token"
-                : "Access token (optional for public profiles)"}
+              Access token (optional for public profiles)
               <input
                 className={inputClass}
                 type="password"
@@ -272,7 +268,6 @@ function SourceForm({
                 placeholder={
                   connection.hasAccessToken ? "Saved — leave blank to keep" : ""
                 }
-                required={source === "bookorbit" && !connection.hasAccessToken}
               />
             </label>
           )}
@@ -343,11 +338,13 @@ function SourceForm({
           </p>
         )}
       </div>
+      {source === "bookorbit" && connection.hasApiKey && (
+        <BookMatches
+          source={source}
+          running={connection.running}
+          lastRunAt={connection.lastRunAt}
+        />
+      )}
     </details>
   );
 }
-
-const inputClass =
-  "mt-1 w-full rounded bg-bg px-3 py-2 text-ink outline-none ring-1 ring-divider focus:ring-accent";
-const buttonClass =
-  "inline-flex items-center rounded border border-divider bg-well px-3 py-2 text-sm font-medium text-ink hover:border-muted disabled:cursor-not-allowed disabled:opacity-50";

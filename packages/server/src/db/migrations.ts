@@ -471,6 +471,40 @@ const migrations: Migration[] = [
       );
     },
   },
+  {
+    id: 18,
+    name: "bookorbit-koreader-credentials-and-book-links",
+    async up(db) {
+      await db.schema
+        .createTable("import_book_links")
+        .addColumn("source", "text", (c) => c.notNull())
+        .addColumn("external_id", "text", (c) => c.notNull())
+        .addColumn("title", "text", (c) => c.notNull())
+        .addColumn("authors", "text", (c) => c.notNull().defaultTo("[]"))
+        .addColumn("goodreads_id", "integer")
+        .addColumn("method", "text", (c) => c.notNull())
+        .addColumn("checked_at", "integer", (c) => c.notNull())
+        .addPrimaryKeyConstraint("import_book_links_pk", [
+          "source",
+          "external_id",
+        ])
+        .execute();
+      // BookOrbit switched from an expiring bearer token to its static
+      // KOReader credentials. Drop the old token and pause the schedule so
+      // it cannot fail every run until the owner enters the new credentials.
+      await db
+        .updateTable("import_connections")
+        .set({
+          access_token: "",
+          enabled: 0,
+          schedule: "",
+          last_error:
+            "BookOrbit now connects with KOReader sync credentials. Enter them to resume imports.",
+        })
+        .where("source", "=", "bookorbit")
+        .execute();
+    },
+  },
 ];
 
 /**

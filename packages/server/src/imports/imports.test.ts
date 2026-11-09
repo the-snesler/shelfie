@@ -217,40 +217,6 @@ describe("source adapters", () => {
       ]),
     );
   });
-  it("reads BookOrbit paged cards and detail Goodreads IDs, never local book IDs", async () => {
-    const request: SourceDependencies["request"] = vi.fn(async (url, init) => {
-      expect(new Headers(init?.headers).get("authorization")).toBe(
-        "Bearer private-token",
-      );
-      if (String(url).endsWith("query"))
-        return response({
-          items: [{ id: 88, readingProgress: 23 }, { id: 89 }],
-          total: 2,
-        });
-      return response(
-        String(url).endsWith("88")
-          ? {
-              providerIds: { goodreads: "1234" },
-              readStatus: { status: "read", finishedAt: "2026-10-15" },
-              rating: 4,
-            }
-          : { providerIds: {} },
-      );
-    });
-    const result = await fetchSource("bookorbit", config, {
-      request,
-      steamId: vi.fn(),
-    });
-    expect(result.items).toEqual([
-      expect.objectContaining({
-        sourceId: "1234",
-        status: "finished",
-        progressValue: 23,
-        completedDates: ["2026-10-15"],
-      }),
-    ]);
-    expect(result.skipped).toBe(1);
-  });
 });
 
 describe("persisted import jobs", () => {

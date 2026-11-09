@@ -1,11 +1,14 @@
 import {
   IMPORT_SOURCES,
+  type BookLinkSource,
+  type ImportBookLink,
   type ImportConnection,
   type ImportSource,
   type ImportResult,
   type ImportConnectionInput,
   type ReplicatedLibraryItem,
 } from "@shelfie/shared";
+import { createHash } from "node:crypto";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import type { Database, ImportConnectionsTable } from "../db/types.js";
@@ -14,8 +17,27 @@ import { libraryItemDocToRow, libraryItemRowToDoc } from "../sync/row.js";
 import { emitChange } from "../sync/stream.js";
 import { withCollectionWriteLock } from "../sync/writeQueue.js";
 import { parseCron } from "./cron.js";
+import {
+  GoodreadsBookMatcher,
+  listBookLinks,
+  resetBookLink,
+  setBookLink,
+} from "./bookLinks.js";
 import { mergeImportedItem } from "./merge.js";
-import { fetchSource } from "./sources.js";
+import { bookOrbitRoot, fetchSource, sourceDefaults } from "./sources.js";
+import type { SourceConfig, SourceData } from "./types.js";
+
+export type SourceLoader = (
+  source: ImportSource,
+  config: SourceConfig,
+) => Promise<SourceData>;
+
+/** KOReader sends md5(password) as its key; BookOrbit accepts either form. */
+function koreaderKey(value: string): string {
+  return /^[0-9a-f]{32}$/i.test(value)
+    ? value.toLowerCase()
+    : createHash("md5").update(value).digest("hex");
+}
 
 const inputSchema = z
   .object({
@@ -69,10 +91,21 @@ export class ImportService {
   private busy = false;
   private stopping = false;
   private idleWaiters: Array<() => void> = [];
+  private readonly loadSource: SourceLoader;
+
   constructor(
     private readonly database: Kysely<Database>,
-    private readonly loadSource: typeof fetchSource = fetchSource,
-  ) {}
+    loadSource?: SourceLoader,
+  ) {
+    this.loadSource =
+      loadSource ??
+      ((source, config) =>
+        fetchSource(source, config, {
+          ...sourceDefaults,
+          // A fresh matcher per run reloads links and the library index.
+          books: new GoodreadsBookMatcher(database, "bookorbit"),
+        }));
+  }
 
   get isRunning(): boolean {
     return this.busy;
@@ -86,10 +119,34 @@ export class ImportService {
 
   async disconnect(source: ImportSource): Promise<void> {
     if (this.busy) throw new Error("Wait for the current import to finish.");
-    await this.database
-      .deleteFrom("import_connections")
-      .where("source", "=", source)
-      .execute();
+    await this.database.transaction().execute(async (trx) => {
+      await trx
+        .deleteFrom("import_connections")
+        .where("source", "=", source)
+        .execute();
+      // Matches belong to one source server; a new connection starts fresh.
+      await trx
+        .deleteFrom("import_book_links")
+        .where("source", "=", source)
+        .execute();
+    });
+  }
+
+  listBookLinks(source: BookLinkSource): Promise<ImportBookLink[]> {
+    return listBookLinks(this.database, source);
+  }
+
+  /** Takes effect on the next import run. */
+  setBookLink(
+    source: BookLinkSource,
+    externalId: string,
+    goodreadsId: number | null,
+  ): Promise<ImportBookLink | null> {
+    return setBookLink(this.database, source, externalId, goodreadsId);
+  }
+
+  resetBookLink(source: BookLinkSource, externalId: string): Promise<boolean> {
+    return resetBookLink(this.database, source, externalId);
   }
 
   async list(): Promise<ImportConnection[]> {
@@ -128,6 +185,8 @@ export class ImportService {
       base_url: parsed.baseUrl.replace(/\/+$/, ""),
       api_key: parsed.apiKey ?? current.api_key,
       access_token: parsed.accessToken ?? current.access_token,
+      // An error from the previous settings no longer describes this connection.
+      last_error: null,
     };
     if (source === "steam" && (!/^\d{17}$/.test(row.account) || !row.api_key))
       throw new Error("Steam needs a 17-digit SteamID64 and Web API key.");
@@ -139,7 +198,7 @@ export class ImportService {
     if (source === "bookorbit") {
       let url: URL;
       try {
-        url = new URL(row.base_url);
+        url = new URL(bookOrbitRoot(row.base_url));
       } catch (error) {
         throw new Error("Enter the BookOrbit server URL.", { cause: error });
       }
@@ -149,11 +208,16 @@ export class ImportService {
         url.password ||
         url.search ||
         url.hash ||
-        !row.access_token
+        !row.account ||
+        !row.api_key
       )
         throw new Error(
-          "BookOrbit needs an HTTP(S) server URL and bearer token.",
+          "BookOrbit needs an HTTP(S) server URL and KOReader sync username and password.",
         );
+      row.base_url = bookOrbitRoot(row.base_url);
+      if (parsed.apiKey) row.api_key = koreaderKey(parsed.apiKey);
+      // Bearer tokens from the earlier BookOrbit adapter are no longer used.
+      row.access_token = "";
     }
     await this.database
       .insertInto("import_connections")

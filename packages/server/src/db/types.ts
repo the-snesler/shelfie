@@ -249,6 +249,7 @@ export interface NotificationDeliveriesTable {
 
 export interface Database {
   import_connections: ImportConnectionsTable;
+  import_book_links: ImportBookLinksTable;
   library_items: LibraryItemsTable;
   game_metadata: GameMetadataTable;
   movie_metadata: MovieMetadataTable;
@@ -275,4 +276,18 @@ export interface ImportConnectionsTable {
   last_run_at: number | null;
   last_error: string | null;
   last_result: string | null;
+}
+
+/** Server-only source book → Goodreads ID matches, cached across import runs. */
+export interface ImportBookLinksTable {
+  source: string;
+  external_id: string;
+  title: string;
+  /** JSON-encoded string[] */
+  authors: string;
+  /** Goodreads legacy book id; NULL when unmatched or ignored. */
+  goodreads_id: number | null;
+  /** BookLinkMethod */
+  method: string;
+  checked_at: number;
 }

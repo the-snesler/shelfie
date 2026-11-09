@@ -291,7 +291,9 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 See `docs/integrations.md` for public browsing quotas/CORS, private iCal feeds,
 Apprise reminders, scheduled Trakt/BookOrbit/Steam imports, and recommendations.
 Integration state is server-only (`calendar_subscription`, `notification_settings`,
-`notification_deliveries`, `import_connections`); it never enters RxDB replication.
+`notification_deliveries`, `import_connections`, `import_book_links`); it never
+enters RxDB replication. BookOrbit imports use its static KOReader sync
+credentials and match books to Goodreads in `server/src/imports/bookLinks.ts`.
 The release refresh worker (`metadata/releaseWorker.ts`) follows the same rule.
 Workers start only in `server/src/index.ts`, not `createApp()`, and stop with a
 bounded shutdown so SSE clients cannot hold container termination indefinitely.

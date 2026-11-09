@@ -33,3 +33,33 @@ export interface ImportConnectionInput {
   apiKey?: string;
   accessToken?: string;
 }
+
+/** Sources whose books are matched to Goodreads IDs by Shelfie. */
+export const BOOK_LINK_SOURCES = [
+  "bookorbit",
+] as const satisfies readonly ImportSource[];
+export type BookLinkSource = (typeof BOOK_LINK_SOURCES)[number];
+
+/**
+ * How a source book reached its Goodreads ID. `manual` and `ignored` are user
+ * choices that imports never revisit; `none` means automatic matching found
+ * nothing and will retry later.
+ */
+export type BookLinkMethod =
+  "manual" | "ignored" | "library" | "title" | "isbn" | "none";
+
+export interface ImportBookLink {
+  /** The source's own book ID, e.g. BookOrbit's numeric book id. */
+  externalId: string;
+  title: string;
+  authors: string[];
+  /** Goodreads legacy book id; null when unmatched or ignored. */
+  goodreadsId: number | null;
+  method: BookLinkMethod;
+  checkedAt: number;
+}
+
+/** `null` marks the book as not on Goodreads, so imports skip it quietly. */
+export interface ImportBookLinkInput {
+  goodreadsId: number | null;
+}
