@@ -6,6 +6,7 @@ import { Link, useOutletContext, useSearchParams } from "react-router";
 import type { AppOutletContext } from "../../App";
 import { StaticStars } from "../../components/StaticStars";
 import { TruncatedText } from "../../components/Tooltip";
+import { useContainerVirtualizer } from "../../components/virtualList";
 import { refreshCardCaches } from "../../db/refreshCards";
 import { emptyTypeCounts } from "../lists/listStats";
 import { parseMediaType } from "../lists/listViewState";
@@ -149,6 +150,42 @@ const LogbookRow = memo(function LogbookRow({
   );
 }, sameRow);
 
+/** The feed flattened into month headers and entries, so the whole logbook
+ *  is one windowed list (a Trakt import can log thousands of episodes). */
+type FeedRow =
+  | { kind: "month"; key: string; month: string; first: boolean }
+  | { kind: "entry"; key: string; entry: LogEntry };
+
+function feedRows(entries: LogEntry[]): FeedRow[] {
+  const rows: FeedRow[] = [];
+  let month: string | null = null;
+  let indexInMonth = 0;
+  for (const entry of entries) {
+    const entryMonth = entry.date.slice(0, 7);
+    if (entryMonth !== month) {
+      rows.push({
+        kind: "month",
+        key: `month:${entryMonth}`,
+        month: entryMonth,
+        first: month === null,
+      });
+      month = entryMonth;
+      indexInMonth = 0;
+    }
+    rows.push({
+      kind: "entry",
+      key: entryKey(entry, indexInMonth++),
+      entry,
+    });
+  }
+  return rows;
+}
+
+function estimateRowSize(row: FeedRow): number {
+  if (row.kind === "month") return row.first ? 32 : 56;
+  return row.entry.kind === "completion" ? 78 : 32;
+}
+
 function LogbookList({
   entries,
   cards,
@@ -158,16 +195,12 @@ function LogbookList({
   cards: Map<string, CardMeta>;
   type: MediaType | null;
 }) {
-  const months = useMemo(() => {
-    const map = new Map<string, LogEntry[]>();
-    for (const entry of entries) {
-      const month = entry.date.slice(0, 7);
-      const arr = map.get(month);
-      if (arr) arr.push(entry);
-      else map.set(month, [entry]);
-    }
-    return [...map.entries()];
-  }, [entries]);
+  const rows = useMemo(() => feedRows(entries), [entries]);
+  const { virtualizer, listRef, scrollMargin } = useContainerVirtualizer({
+    count: rows.length,
+    estimateSize: (index) => estimateRowSize(rows[index]),
+    getItemKey: (index) => rows[index].key,
+  });
 
   if (entries.length === 0) {
     return (
@@ -183,23 +216,40 @@ function LogbookList({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {months.map(([month, monthEntries]) => (
-        <section key={month} className="flex flex-col gap-1">
-          <h2 className="px-2 font-display text-lg font-medium text-ink">
-            {monthLabel(month)}
-          </h2>
-          <div className="flex flex-col">
-            {monthEntries.map((entry, i) => (
+    <div
+      ref={listRef}
+      className="relative w-full"
+      style={{ height: virtualizer.getTotalSize() }}
+    >
+      {virtualizer.getVirtualItems().map((virtualRow) => {
+        const row = rows[virtualRow.index];
+        return (
+          <div
+            key={virtualRow.key}
+            data-index={virtualRow.index}
+            ref={virtualizer.measureElement}
+            className="absolute left-0 top-0 w-full"
+            style={{
+              transform: `translateY(${virtualRow.start - scrollMargin}px)`,
+            }}
+          >
+            {row.kind === "month" ? (
+              <h2
+                className={`px-2 pb-1 font-display text-lg font-medium text-ink ${
+                  row.first ? "" : "pt-6"
+                }`}
+              >
+                {monthLabel(row.month)}
+              </h2>
+            ) : (
               <LogbookRow
-                key={entryKey(entry, i)}
-                entry={entry}
-                card={cards.get(entry.item.id)}
+                entry={row.entry}
+                card={cards.get(row.entry.item.id)}
               />
-            ))}
+            )}
           </div>
-        </section>
-      ))}
+        );
+      })}
     </div>
   );
 }

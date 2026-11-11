@@ -15,6 +15,7 @@ import { AuthScreen } from "./AuthScreen";
 import { getDatabase, type ShelfieDatabase } from "./db/database";
 import { startReplication, stopReplication } from "./db/replication";
 import IconMenu2 from "~icons/tabler/menu-2";
+import { ScrollContainerContext } from "./components/virtualList";
 import { Sidebar } from "./features/layout/Sidebar";
 import { getSettings } from "./settings";
 
@@ -151,6 +152,7 @@ function BrowsingApp({
   );
   const [loadError, setLoadError] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -236,18 +238,23 @@ function BrowsingApp({
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />
-      <main className="room-light min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <Outlet
-          context={
-            {
-              db,
-              settings,
-              setSettings,
-              authenticated,
-              requestLogin,
-            } satisfies AppOutletContext
-          }
-        />
+      <main
+        ref={setMainEl}
+        className="room-light min-h-0 min-w-0 flex-1 overflow-y-auto"
+      >
+        <ScrollContainerContext.Provider value={mainEl}>
+          <Outlet
+            context={
+              {
+                db,
+                settings,
+                setSettings,
+                authenticated,
+                requestLogin,
+              } satisfies AppOutletContext
+            }
+          />
+        </ScrollContainerContext.Provider>
       </main>
     </div>
   );
