@@ -8,6 +8,7 @@ import IconChevronRight from "~icons/tabler/chevron-right";
 import type { AppOutletContext } from "../../App";
 import { groupListId } from "../lists/automaticLists";
 import { listHref } from "../lists/listHref";
+import { MEDIA_LIBRARY_COVER_WIDTH } from "../media/MediaCover";
 import { releaseState } from "../media/release";
 import { META_STATUS_LABELS } from "../media/status";
 import { useToday } from "../media/useToday";
@@ -216,96 +217,139 @@ export default function Library() {
             <p className="text-sm">Find some with the search bar.</p>
           </div>
         ) : (
-          SHELF_SECTIONS.filter((g) => grouped.get(g)?.length).map((g) => (
-            <section key={g} className="flex flex-col">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-xl font-medium text-ink">
-                  {SECTION_LABELS[g]}
-                  <span className="ml-2 text-sm font-normal text-faint">
-                    {grouped.get(g)!.length}
-                  </span>
-                </h2>
-                <div className="flex items-center gap-4">
-                  {g === "planned" && (
-                    <label className="flex items-center gap-2 text-xs text-muted">
-                      Sort
-                      <select
-                        value={plannedSort}
-                        onChange={(event) =>
-                          setPlannedSort(
-                            event.currentTarget.value as PlannedSort,
-                          )
-                        }
-                        className="rounded-md border border-divider bg-panel px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
-                      >
-                        {PLANNED_SORT_OPTIONS.map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  {g !== "unreleased" && (
-                    <Link
-                      to={listHref(groupListId(g), activeType)}
-                      className="inline-flex items-center gap-0.5 text-sm text-muted hover:text-accent"
-                    >
-                      See all
-                      <IconChevronRight className="size-4" />
-                    </Link>
-                  )}
-                </div>
-              </div>
-              <div className="shelf-rows -mt-2 flex flex-wrap items-start gap-x-6">
-                {grouped.get(g)!.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    layout="position"
-                    transition={{ type: "spring", stiffness: 420, damping: 38 }}
-                    draggable={g === "planned" && plannedSort === "manual"}
-                    onDragStart={() => {
-                      draggedId.current = item.id;
-                    }}
-                    onDragEnd={() => {
-                      draggedId.current = null;
-                    }}
-                    onDragOver={(event) => {
-                      if (g === "planned" && plannedSort === "manual") {
-                        event.preventDefault();
-                      }
-                    }}
-                    onDrop={() => moveManualItem(item.id)}
-                    className={
-                      g === "planned" && plannedSort === "manual"
-                        ? "cursor-grab active:cursor-grabbing"
-                        : undefined
-                    }
-                  >
-                    <LibraryItemCard
-                      db={db}
-                      item={item}
-                      meta={cards.get(item.id)}
-                      caption={
-                        g === "unreleased"
-                          ? releaseCaption(
-                              releaseState(item, cards.get(item.id), today),
-                              today,
+          SHELF_SECTIONS.filter((g) => grouped.get(g)?.length).map((g) => {
+            const sectionItems = grouped.get(g)!;
+            // Paused titles stay counted in In Progress but collapse into one
+            // tile at the end; "See all" (or the tile) lists them in full.
+            const shownItems =
+              g === "in-progress"
+                ? sectionItems.filter((item) => item.status !== "paused")
+                : sectionItems;
+            const pausedCount = sectionItems.length - shownItems.length;
+            return (
+              <section key={g} className="flex flex-col">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="font-display text-xl font-medium text-ink">
+                    {SECTION_LABELS[g]}
+                    <span className="ml-2 text-sm font-normal text-faint">
+                      {sectionItems.length}
+                    </span>
+                  </h2>
+                  <div className="flex items-center gap-4">
+                    {g === "planned" && (
+                      <label className="flex items-center gap-2 text-xs text-muted">
+                        Sort
+                        <select
+                          value={plannedSort}
+                          onChange={(event) =>
+                            setPlannedSort(
+                              event.currentTarget.value as PlannedSort,
                             )
-                          : cardCaption(item, cards.get(item.id))
-                      }
-                      catalog={
-                        item.mediaType === "tv"
-                          ? tvCatalogs.get(item.id)
+                          }
+                          className="rounded-md border border-divider bg-panel px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                        >
+                          {PLANNED_SORT_OPTIONS.map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {g !== "unreleased" && (
+                      <Link
+                        to={listHref(groupListId(g), activeType)}
+                        className="inline-flex items-center gap-0.5 text-sm text-muted hover:text-accent"
+                      >
+                        See all
+                        <IconChevronRight className="size-4" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="shelf-rows -mt-2 flex flex-wrap items-start gap-x-6">
+                  {shownItems.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout="position"
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 38,
+                      }}
+                      draggable={g === "planned" && plannedSort === "manual"}
+                      onDragStart={() => {
+                        draggedId.current = item.id;
+                      }}
+                      onDragEnd={() => {
+                        draggedId.current = null;
+                      }}
+                      onDragOver={(event) => {
+                        if (g === "planned" && plannedSort === "manual") {
+                          event.preventDefault();
+                        }
+                      }}
+                      onDrop={() => moveManualItem(item.id)}
+                      className={
+                        g === "planned" && plannedSort === "manual"
+                          ? "cursor-grab active:cursor-grabbing"
                           : undefined
                       }
-                      showProgressBar={settings.showProgressBars}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            </section>
-          ))
+                    >
+                      <LibraryItemCard
+                        db={db}
+                        item={item}
+                        meta={cards.get(item.id)}
+                        caption={
+                          g === "unreleased"
+                            ? releaseCaption(
+                                releaseState(item, cards.get(item.id), today),
+                                today,
+                              )
+                            : cardCaption(item, cards.get(item.id))
+                        }
+                        catalog={
+                          item.mediaType === "tv"
+                            ? tvCatalogs.get(item.id)
+                            : undefined
+                        }
+                        showProgressBar={settings.showProgressBars}
+                      />
+                    </motion.div>
+                  ))}
+                  {pausedCount > 0 && (
+                    <motion.div
+                      key="paused"
+                      layout="position"
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 38,
+                      }}
+                      className="flex items-end"
+                      style={{ height: "var(--shelf-cover-h)" }}
+                    >
+                      <Link
+                        to={listHref("paused", activeType)}
+                        className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-faint/60 text-muted transition-colors hover:border-accent hover:text-accent"
+                        style={{
+                          width: `${MEDIA_LIBRARY_COVER_WIDTH}px`,
+                          aspectRatio: "2 / 3",
+                        }}
+                      >
+                        <span className="font-display text-4xl font-semibold">
+                          +{pausedCount}
+                        </span>
+                        <span className="text-xs">
+                          paused {pausedCount === 1 ? "item" : "items"}
+                        </span>
+                      </Link>
+                    </motion.div>
+                  )}
+                </div>
+              </section>
+            );
+          })
         )}
       </div>
     </div>
