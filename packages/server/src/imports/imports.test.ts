@@ -284,6 +284,120 @@ describe("source adapters", () => {
       ]),
     );
   });
+  it("finishes Trakt shows once every aired non-special episode is watched", async () => {
+    const episode = (
+      show: number,
+      season: number,
+      number: number,
+      day: string,
+    ) => ({
+      type: "episode",
+      show: { ids: { tmdb: show } },
+      episode: { season, number },
+      watched_at: `${day}T12:00:00Z`,
+    });
+    const request: SourceDependencies["request"] = vi.fn(async (url) => {
+      const { pathname, searchParams } = new URL(url);
+      if (pathname.endsWith("history"))
+        return response([
+          episode(2, 1, 1, "2026-01-01"),
+          episode(2, 1, 2, "2026-01-03"),
+          episode(2, 0, 1, "2026-02-01"),
+          episode(3, 1, 1, "2026-01-01"),
+          episode(3, 0, 1, "2026-01-02"),
+          // Trakt's "date unknown" marker.
+          episode(4, 1, 1, "1970-01-01"),
+        ]);
+      if (pathname.endsWith("watched/shows")) {
+        expect(searchParams.get("extended")).toContain("full");
+        return response([
+          { show: { ids: { tmdb: 2 }, aired_episodes: 2 } },
+          { show: { ids: { tmdb: 3 }, aired_episodes: 2 } },
+          { show: { ids: { tmdb: 4 }, aired_episodes: 1 } },
+        ]);
+      }
+      return response([]);
+    });
+    const { items } = await fetchSource("trakt", config, {
+      request,
+      steamId: vi.fn(),
+    });
+    expect(items.find((i) => i.sourceId === "2")).toMatchObject({
+      status: "finished",
+      // The last regular episode, not the later special.
+      completedDates: ["2026-01-03"],
+    });
+    // A watched special doesn't stand in for a missing regular episode.
+    expect(items.find((i) => i.sourceId === "3")).toMatchObject({
+      status: "active",
+    });
+    expect(
+      items.find((i) => i.sourceId === "3")?.completedDates,
+    ).toBeUndefined();
+    const unknown = items.find((i) => i.sourceId === "4");
+    expect(unknown).toMatchObject({
+      status: "finished",
+      watchedEpisodes: { s1e1: "" },
+    });
+    expect(unknown?.completedDates).toBeUndefined();
+  });
+  it("plans Trakt watchlist items as backlogged and repairs earlier wishlisted ones", async () => {
+    const request: SourceDependencies["request"] = vi.fn(async (url) =>
+      new URL(url).pathname.endsWith("watchlist")
+        ? response([
+            { type: "movie", movie: { ids: { tmdb: 1 } } },
+            { type: "show", show: { ids: { tmdb: 2 } } },
+          ])
+        : response([]),
+    );
+    const { items } = await fetchSource("trakt", config, {
+      request,
+      steamId: vi.fn(),
+    });
+    expect(items.map((i) => i.status)).toEqual(["backlogged", "backlogged"]);
+
+    const planned = { ...item, status: "backlogged" as const };
+    const stuck = {
+      ...mergeImportedItem(planned, null, 100)!,
+      status: "wishlisted" as const,
+    };
+    expect(mergeImportedItem(planned, stuck, 200)?.status).toBe("backlogged");
+    // Books do expose a wishlist, so theirs is left alone.
+    const book = {
+      mediaType: "book" as const,
+      sourceId: "9",
+      status: "wishlisted" as const,
+    };
+    expect(
+      mergeImportedItem(book, mergeImportedItem(book, null, 100)!, 200),
+    ).toBeNull();
+  });
+  it("lets re-imports advance TV status but never undo local finished or dropped", () => {
+    const show = {
+      mediaType: "tv" as const,
+      sourceId: "5",
+      status: "active" as const,
+      watchedEpisodes: { s1e1: "2026-01-01" },
+    };
+    const active = mergeImportedItem(show, null, 100)!;
+    const finished = mergeImportedItem(
+      { ...show, status: "finished", completedDates: ["2026-01-01"] },
+      active,
+      200,
+    )!;
+    expect(finished).toMatchObject({
+      status: "finished",
+      completedDates: ["2026-01-01"],
+    });
+    expect(mergeImportedItem(show, finished, 300)).toBeNull();
+    expect(
+      mergeImportedItem(
+        { ...show, status: "finished" },
+        { ...active, status: "dropped" },
+        300,
+      )?.status ?? "dropped",
+    ).toBe("dropped");
+  });
 });
 
 describe("persisted import jobs", () => {

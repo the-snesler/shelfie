@@ -8,10 +8,11 @@ import {
 import type { ImportedItem } from "./types.js";
 
 /**
- * Book statuses an import may move forward, as reading progresses in the
- * source. Dropped, finished and completed are never changed by an import.
+ * Statuses an import may move forward as reading/watching progresses in the
+ * source (books, and TV via episode history). Dropped, finished and completed
+ * are never changed by an import.
  */
-const BOOK_ADVANCES: Partial<Record<ItemStatus, ItemStatus[]>> = {
+const PROGRESS_ADVANCES: Partial<Record<ItemStatus, ItemStatus[]>> = {
   wishlisted: ["active", "finished"],
   backlogged: ["active", "finished"],
   active: ["finished"],
@@ -60,12 +61,20 @@ export function mergeImportedItem(
       _deleted: false,
     });
   }
-  // Reading progress comes from the source; other media keep local statuses.
-  const status =
-    incoming.mediaType === "book" &&
-    BOOK_ADVANCES[current.status]?.includes(incoming.status)
-      ? incoming.status
+  // Movies and TV never expose "wishlisted"; earlier Trakt imports wrote it
+  // anyway, so repair those to the planned status they do expose.
+  const currentStatus =
+    current.status === "wishlisted" &&
+    (current.mediaType === "movie" || current.mediaType === "tv")
+      ? "backlogged"
       : current.status;
+  // Reading/episode progress comes from the source; movies and games keep
+  // local statuses.
+  const status =
+    (incoming.mediaType === "book" || incoming.mediaType === "tv") &&
+    PROGRESS_ADVANCES[currentStatus]?.includes(incoming.status)
+      ? incoming.status
+      : currentStatus;
   const merged = {
     ...current,
     status,

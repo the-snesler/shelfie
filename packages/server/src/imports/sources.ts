@@ -23,6 +23,8 @@ const numericId = (value: unknown): string | null =>
 function day(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const iso = value.slice(0, 10);
+  // Trakt reports "watched, date unknown" as the Unix epoch.
+  if (iso === "1970-01-01") return undefined;
   const parsed = new Date(iso);
   return /^\d{4}-\d{2}-\d{2}$/.test(iso) &&
     Number.isFinite(parsed.getTime()) &&
@@ -275,15 +277,16 @@ async function fetchTrakt(
   };
   if (config.accessToken)
     headers.Authorization = `Bearer ${config.accessToken}`;
-  const items = new Map<string, ImportedItem>();
-  let skipped = 0;
-  // History wins over watchlist state. Ratings add missing items as planned.
-  for (const kind of ["watchlist", "ratings", "history"] as const) {
+  async function* pages(
+    path: string,
+    params: Record<string, string> = {},
+  ): AsyncGenerator<unknown[]> {
     for (let page = 1; page <= 100; page++) {
       const url = new URL(
-        `https://api.trakt.tv/users/${encodeURIComponent(config.account)}/${kind}`,
+        `https://api.trakt.tv/users/${encodeURIComponent(config.account)}/${path}`,
       );
       url.search = new URLSearchParams({
+        ...params,
         page: String(page),
         limit: "100",
       }).toString();
@@ -292,6 +295,20 @@ async function fetchTrakt(
       });
       if (!Array.isArray(data))
         throw new Error("Trakt returned an invalid collection.");
+      yield data;
+      const count = Number(pagination.get("x-pagination-page-count"));
+      if ((count > 0 && page >= count) || data.length < 100) return;
+      if (page === 100)
+        throw new Error(
+          "Trakt import exceeds 10,000 rows per category. Narrow the source library.",
+        );
+    }
+  }
+  const items = new Map<string, ImportedItem>();
+  let skipped = 0;
+  // History wins over watchlist state. Ratings add missing items as planned.
+  for (const kind of ["watchlist", "ratings", "history"] as const) {
+    for await (const data of pages(kind)) {
       for (const raw of data) {
         const entry = object(raw);
         if (
@@ -313,10 +330,12 @@ async function fetchTrakt(
           continue;
         }
         const key = `${mediaType}:${id}`;
+        // Movies and TV plan with "backlogged" (Watchlist); they never expose
+        // "wishlisted" (client `STATUSES_BY_MEDIA`).
         const item = items.get(key) ?? {
           mediaType,
           sourceId: id,
-          status: "wishlisted",
+          status: "backlogged",
         };
         const score = rating(entry.rating, 2);
         if (score) item.rating = score;
@@ -353,14 +372,34 @@ async function fetchTrakt(
         }
         items.set(key, item);
       }
-      const pages = Number(pagination.get("x-pagination-page-count"));
-      if ((pages > 0 && page >= pages) || data.length < 100) break;
-      if (page === 100)
-        throw new Error(
-          "Trakt import exceeds 10,000 rows per category. Narrow the source library.",
-        );
     }
   }
+  // History alone can't tell "watching" from "watched everything", so compare
+  // against Trakt's aired count — the same rule the client applies when the
+  // last episode is checked off (`deriveEpisodeWatch`), specials excluded.
+  if ([...items.values()].some((item) => item.watchedEpisodes))
+    for await (const data of pages("watched/shows", {
+      extended: "full,noseasons",
+    }))
+      for (const raw of data) {
+        const show = object(object(raw).show);
+        const id = numericId(object(show.ids).tmdb);
+        const item = id ? items.get(`tv:${id}`) : undefined;
+        const aired = show.aired_episodes;
+        if (!item?.watchedEpisodes || typeof aired !== "number" || aired <= 0)
+          continue;
+        const watched = Object.entries(item.watchedEpisodes).filter(
+          ([key]) => !key.startsWith("s0e"),
+        );
+        if (watched.length < aired) continue;
+        item.status = "finished";
+        const last = watched
+          .map(([, date]) => date)
+          .filter(Boolean)
+          .sort()
+          .at(-1);
+        if (last) item.completedDates = [last];
+      }
   return {
     items: [...items.values()],
     skipped,
