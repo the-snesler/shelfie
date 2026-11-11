@@ -1,7 +1,7 @@
 import type { LibraryItem, MediaType } from "@shelfie/shared";
 import { parseEpisodeKey } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";
 import type { AppOutletContext } from "../../App";
 import { StaticStars } from "../../components/StaticStars";
@@ -33,39 +33,78 @@ const EMPTY_NOUN: Record<MediaType, string> = {
   book: "books",
 };
 
+/** Entries carry no card metadata: cards are looked up per row, so a card
+ *  cache update re-renders only the rows whose card changed instead of
+ *  rebuilding (and re-rendering) the whole feed. */
 type LogEntry =
   | {
       kind: "completion";
       date: string;
       item: RxDocument<LibraryItem>;
-      card: CardMeta | undefined;
     }
   | {
       kind: "episode";
       date: string;
       item: RxDocument<LibraryItem>;
-      card: CardMeta | undefined;
       season: number;
       episode: number;
     };
 
+// `toLocaleDateString` builds a fresh Intl formatter on every call, which
+// dominated row rendering for large logbooks; format with shared ones.
+const MONTH_FORMAT = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "long",
+});
+const ENTRY_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
 function monthLabel(month: string): string {
-  return new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-  });
+  return MONTH_FORMAT.format(new Date(`${month}-01T00:00:00`));
 }
 
 function entryDateLabel(date: string): string {
-  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return ENTRY_DATE_FORMAT.format(new Date(`${date}T00:00:00`));
 }
 
-function LogbookRow({ entry }: { entry: LogEntry }) {
-  const { item, card, date } = entry;
+function entryKey(entry: LogEntry, index: number): string {
+  return entry.kind === "episode"
+    ? `${entry.item.id}:s${entry.season}e${entry.episode}:${entry.date}`
+    : `${entry.item.id}:${entry.date}:${index}`;
+}
+
+/** Entry objects are rebuilt whenever any library item changes, so compare
+ *  their contents rather than identity. RxDB hands back the same document
+ *  instance for an unchanged revision, so `item` identity is meaningful. */
+function sameRow(
+  prev: { entry: LogEntry; card: CardMeta | undefined },
+  next: { entry: LogEntry; card: CardMeta | undefined },
+): boolean {
+  const a = prev.entry;
+  const b = next.entry;
+  return (
+    prev.card === next.card &&
+    a.item === b.item &&
+    a.date === b.date &&
+    a.kind === b.kind &&
+    (a.kind !== "episode" ||
+      (b.kind === "episode" &&
+        a.season === b.season &&
+        a.episode === b.episode))
+  );
+}
+
+const LogbookRow = memo(function LogbookRow({
+  entry,
+  card,
+}: {
+  entry: LogEntry;
+  card: CardMeta | undefined;
+}) {
+  const { item, date } = entry;
   const name = cardName(item, card);
   const href = detailHref(item, card);
   const rowClass =
@@ -108,13 +147,15 @@ function LogbookRow({ entry }: { entry: LogEntry }) {
   ) : (
     <div className={`${rowClass} cursor-default opacity-60`}>{row}</div>
   );
-}
+}, sameRow);
 
 function LogbookList({
   entries,
+  cards,
   type,
 }: {
   entries: LogEntry[];
+  cards: Map<string, CardMeta>;
   type: MediaType | null;
 }) {
   const months = useMemo(() => {
@@ -151,12 +192,9 @@ function LogbookList({
           <div className="flex flex-col">
             {monthEntries.map((entry, i) => (
               <LogbookRow
-                key={
-                  entry.kind === "episode"
-                    ? `${entry.item.id}:s${entry.season}e${entry.episode}:${entry.date}`
-                    : `${entry.item.id}:${entry.date}:${i}`
-                }
+                key={entryKey(entry, i)}
                 entry={entry}
+                card={cards.get(entry.item.id)}
               />
             ))}
           </div>
@@ -318,12 +356,7 @@ export default function Logbook() {
     const completion: Extract<LogEntry, { kind: "completion" }>[] = [];
     for (const item of items) {
       for (const date of item.completedDates) {
-        completion.push({
-          kind: "completion",
-          date,
-          item,
-          card: cards.get(item.id),
-        });
+        completion.push({ kind: "completion", date, item });
       }
     }
     completion.sort((a, b) => b.date.localeCompare(a.date));
@@ -334,20 +367,13 @@ export default function Logbook() {
       for (const [key, date] of Object.entries(item.watchedEpisodes)) {
         if (date === "") continue;
         const { season, episode } = parseEpisodeKey(key);
-        feed.push({
-          kind: "episode",
-          date,
-          item,
-          card: cards.get(item.id),
-          season,
-          episode,
-        });
+        feed.push({ kind: "episode", date, item, season, episode });
       }
     }
     feed.sort((a, b) => b.date.localeCompare(a.date));
 
     return { completionEntries: completion, feedEntries: feed };
-  }, [items, cards]);
+  }, [items]);
 
   // Chip counts follow the active tab: every feed entry on the logbook,
   // completions only on stats (episodes don't count toward stats).
@@ -410,7 +436,7 @@ export default function Logbook() {
         <MediaFilter type={type} counts={typeCounts} />
       </header>
       {tab === "logbook" ? (
-        <LogbookList entries={visibleFeed} type={type} />
+        <LogbookList entries={visibleFeed} cards={cards} type={type} />
       ) : (
         <StatsPanel
           entries={visibleCompletions}
