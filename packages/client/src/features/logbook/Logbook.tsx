@@ -2,11 +2,14 @@ import type { LibraryItem, MediaType } from "@shelfie/shared";
 import { parseEpisodeKey } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router";
+import { Link, useOutletContext, useSearchParams } from "react-router";
 import type { AppOutletContext } from "../../App";
 import { StaticStars } from "../../components/StaticStars";
 import { TruncatedText } from "../../components/Tooltip";
 import { refreshCardCaches } from "../../db/refreshCards";
+import { emptyTypeCounts } from "../lists/listStats";
+import { parseMediaType } from "../lists/listViewState";
+import { MediaFilter } from "../lists/MediaFilter";
 import { MediaCover } from "../media/MediaCover";
 import type { CardMeta } from "../media/useLibraryData";
 import {
@@ -21,6 +24,13 @@ const MEDIA_LABEL: Record<MediaType, string> = {
   movie: "Movie",
   tv: "TV",
   book: "Book",
+};
+
+const EMPTY_NOUN: Record<MediaType, string> = {
+  game: "games",
+  movie: "movies",
+  tv: "TV",
+  book: "books",
 };
 
 type LogEntry =
@@ -100,7 +110,13 @@ function LogbookRow({ entry }: { entry: LogEntry }) {
   );
 }
 
-function LogbookList({ entries }: { entries: LogEntry[] }) {
+function LogbookList({
+  entries,
+  type,
+}: {
+  entries: LogEntry[];
+  type: MediaType | null;
+}) {
   const months = useMemo(() => {
     const map = new Map<string, LogEntry[]>();
     for (const entry of entries) {
@@ -115,7 +131,9 @@ function LogbookList({ entries }: { entries: LogEntry[] }) {
   if (entries.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center text-muted">
-        <p className="font-display text-xl text-ink">Nothing logged yet</p>
+        <p className="font-display text-xl text-ink">
+          {type ? `No ${EMPTY_NOUN[type]} logged yet` : "Nothing logged yet"}
+        </p>
         <p className="text-sm">
           Mark something finished to start your logbook.
         </p>
@@ -151,9 +169,11 @@ function LogbookList({ entries }: { entries: LogEntry[] }) {
 function StatsPanel({
   entries,
   items,
+  type,
 }: {
   entries: LogEntry[];
   items: RxDocument<LibraryItem>[];
+  type: MediaType | null;
 }) {
   const stats = useMemo(() => {
     const thisYear = String(new Date().getFullYear());
@@ -216,18 +236,20 @@ function StatsPanel({
         />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-muted">By type</h3>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(Object.keys(MEDIA_LABEL) as MediaType[]).map((type) => (
-            <StatTile
-              key={type}
-              label={MEDIA_LABEL[type]}
-              value={String(stats.byType[type])}
-            />
-          ))}
+      {type == null && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-muted">By type</h3>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {(Object.keys(MEDIA_LABEL) as MediaType[]).map((type) => (
+              <StatTile
+                key={type}
+                label={MEDIA_LABEL[type]}
+                value={String(stats.byType[type])}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-medium text-muted">Logged over time</h3>
@@ -266,6 +288,8 @@ export default function Logbook() {
   const { db } = useOutletContext<AppOutletContext>();
   const { items, cards } = useLibraryData(db);
   const [tab, setTab] = useState<"logbook" | "stats">("logbook");
+  const [searchParams] = useSearchParams();
+  const type = parseMediaType(searchParams.get("type"));
 
   // The library grid only warms cards for unfinished items, so finished
   // titles (e.g. a CSV import of past completions) would otherwise render
@@ -325,41 +349,74 @@ export default function Logbook() {
     return { completionEntries: completion, feedEntries: feed };
   }, [items, cards]);
 
+  // Chip counts follow the active tab: every feed entry on the logbook,
+  // completions only on stats (episodes don't count toward stats).
+  const tabEntries = tab === "logbook" ? feedEntries : completionEntries;
+  const typeCounts = useMemo(() => {
+    const counts = emptyTypeCounts();
+    for (const entry of tabEntries) counts[entry.item.mediaType] += 1;
+    return counts;
+  }, [tabEntries]);
+
+  const visibleFeed = useMemo(
+    () =>
+      type ? feedEntries.filter((e) => e.item.mediaType === type) : feedEntries,
+    [feedEntries, type],
+  );
+  const visibleCompletions = useMemo(
+    () =>
+      type
+        ? completionEntries.filter((e) => e.item.mediaType === type)
+        : completionEntries,
+    [completionEntries, type],
+  );
+  const visibleItems = useMemo(
+    () => (type ? items.filter((item) => item.mediaType === type) : items),
+    [items, type],
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-8 md:px-8">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
-          Logbook
-        </h1>
-        <div className="flex gap-1 rounded bg-well p-1">
-          <button
-            type="button"
-            onClick={() => setTab("logbook")}
-            className={
-              tab === "logbook"
-                ? "rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
-                : "rounded px-3 py-1.5 text-sm text-muted hover:text-ink"
-            }
-          >
+      <header className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
             Logbook
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("stats")}
-            className={
-              tab === "stats"
-                ? "rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
-                : "rounded px-3 py-1.5 text-sm text-muted hover:text-ink"
-            }
-          >
-            Stats
-          </button>
+          </h1>
+          <div className="flex gap-1 rounded bg-well p-1">
+            <button
+              type="button"
+              onClick={() => setTab("logbook")}
+              className={
+                tab === "logbook"
+                  ? "rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
+                  : "rounded px-3 py-1.5 text-sm text-muted hover:text-ink"
+              }
+            >
+              Logbook
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("stats")}
+              className={
+                tab === "stats"
+                  ? "rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
+                  : "rounded px-3 py-1.5 text-sm text-muted hover:text-ink"
+              }
+            >
+              Stats
+            </button>
+          </div>
         </div>
+        <MediaFilter type={type} counts={typeCounts} />
       </header>
       {tab === "logbook" ? (
-        <LogbookList entries={feedEntries} />
+        <LogbookList entries={visibleFeed} type={type} />
       ) : (
-        <StatsPanel entries={completionEntries} items={items} />
+        <StatsPanel
+          entries={visibleCompletions}
+          items={visibleItems}
+          type={type}
+        />
       )}
     </div>
   );
