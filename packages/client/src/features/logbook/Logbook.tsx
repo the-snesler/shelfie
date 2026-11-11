@@ -12,6 +12,12 @@ import { emptyTypeCounts } from "../lists/listStats";
 import { parseMediaType } from "../lists/listViewState";
 import { MediaFilter } from "../lists/MediaFilter";
 import { MediaCover } from "../media/MediaCover";
+import {
+  feedRows,
+  type FeedEntry,
+  type FeedRow,
+  type LogEntry,
+} from "./logbookFeed";
 import type { CardMeta } from "../media/useLibraryData";
 import {
   cardCover,
@@ -34,22 +40,7 @@ const EMPTY_NOUN: Record<MediaType, string> = {
   book: "books",
 };
 
-/** Entries carry no card metadata: cards are looked up per row, so a card
- *  cache update re-renders only the rows whose card changed instead of
- *  rebuilding (and re-rendering) the whole feed. */
-type LogEntry =
-  | {
-      kind: "completion";
-      date: string;
-      item: RxDocument<LibraryItem>;
-    }
-  | {
-      kind: "episode";
-      date: string;
-      item: RxDocument<LibraryItem>;
-      season: number;
-      episode: number;
-    };
+type LibraryDoc = RxDocument<LibraryItem>;
 
 // `toLocaleDateString` builds a fresh Intl formatter on every call, which
 // dominated row rendering for large logbooks; format with shared ones.
@@ -71,18 +62,12 @@ function entryDateLabel(date: string): string {
   return ENTRY_DATE_FORMAT.format(new Date(`${date}T00:00:00`));
 }
 
-function entryKey(entry: LogEntry, index: number): string {
-  return entry.kind === "episode"
-    ? `${entry.item.id}:s${entry.season}e${entry.episode}:${entry.date}`
-    : `${entry.item.id}:${entry.date}:${index}`;
-}
-
-/** Entry objects are rebuilt whenever any library item changes, so compare
+/** Feed entries are rebuilt whenever any library item changes, so compare
  *  their contents rather than identity. RxDB hands back the same document
  *  instance for an unchanged revision, so `item` identity is meaningful. */
 function sameRow(
-  prev: { entry: LogEntry; card: CardMeta | undefined },
-  next: { entry: LogEntry; card: CardMeta | undefined },
+  prev: { entry: FeedEntry<LibraryDoc>; card: CardMeta | undefined },
+  next: { entry: FeedEntry<LibraryDoc>; card: CardMeta | undefined },
 ): boolean {
   const a = prev.entry;
   const b = next.entry;
@@ -91,10 +76,7 @@ function sameRow(
     a.item === b.item &&
     a.date === b.date &&
     a.kind === b.kind &&
-    (a.kind !== "episode" ||
-      (b.kind === "episode" &&
-        a.season === b.season &&
-        a.episode === b.episode))
+    (a.kind !== "episodes" || (b.kind === "episodes" && a.label === b.label))
   );
 }
 
@@ -102,7 +84,7 @@ const LogbookRow = memo(function LogbookRow({
   entry,
   card,
 }: {
-  entry: LogEntry;
+  entry: FeedEntry<LibraryDoc>;
   card: CardMeta | undefined;
 }) {
   const { item, date } = entry;
@@ -137,7 +119,7 @@ const LogbookRow = memo(function LogbookRow({
         <span className="text-xs text-faint">{entryDateLabel(date)}</span>
         <TruncatedText className="text-sm text-ink">{name}</TruncatedText>
         <span className="shrink-0 text-xs text-faint tabular-nums">
-          S{entry.season}E{entry.episode}
+          {entry.label}
         </span>
       </p>
     );
@@ -150,38 +132,7 @@ const LogbookRow = memo(function LogbookRow({
   );
 }, sameRow);
 
-/** The feed flattened into month headers and entries, so the whole logbook
- *  is one windowed list (a Trakt import can log thousands of episodes). */
-type FeedRow =
-  | { kind: "month"; key: string; month: string; first: boolean }
-  | { kind: "entry"; key: string; entry: LogEntry };
-
-function feedRows(entries: LogEntry[]): FeedRow[] {
-  const rows: FeedRow[] = [];
-  let month: string | null = null;
-  let indexInMonth = 0;
-  for (const entry of entries) {
-    const entryMonth = entry.date.slice(0, 7);
-    if (entryMonth !== month) {
-      rows.push({
-        kind: "month",
-        key: `month:${entryMonth}`,
-        month: entryMonth,
-        first: month === null,
-      });
-      month = entryMonth;
-      indexInMonth = 0;
-    }
-    rows.push({
-      kind: "entry",
-      key: entryKey(entry, indexInMonth++),
-      entry,
-    });
-  }
-  return rows;
-}
-
-function estimateRowSize(row: FeedRow): number {
+function estimateRowSize(row: FeedRow<LibraryDoc>): number {
   if (row.kind === "month") return row.first ? 32 : 56;
   return row.entry.kind === "completion" ? 78 : 32;
 }
@@ -191,7 +142,7 @@ function LogbookList({
   cards,
   type,
 }: {
-  entries: LogEntry[];
+  entries: LogEntry<LibraryDoc>[];
   cards: Map<string, CardMeta>;
   type: MediaType | null;
 }) {
@@ -259,7 +210,7 @@ function StatsPanel({
   items,
   type,
 }: {
-  entries: LogEntry[];
+  entries: LogEntry<LibraryDoc>[];
   items: RxDocument<LibraryItem>[];
   type: MediaType | null;
 }) {
@@ -403,7 +354,8 @@ export default function Logbook() {
   }, [db, loggedKey]);
 
   const { completionEntries, feedEntries } = useMemo(() => {
-    const completion: Extract<LogEntry, { kind: "completion" }>[] = [];
+    const completion: Extract<LogEntry<LibraryDoc>, { kind: "completion" }>[] =
+      [];
     for (const item of items) {
       for (const date of item.completedDates) {
         completion.push({ kind: "completion", date, item });
@@ -411,7 +363,7 @@ export default function Logbook() {
     }
     completion.sort((a, b) => b.date.localeCompare(a.date));
 
-    const feed: LogEntry[] = [...completion];
+    const feed: LogEntry<LibraryDoc>[] = [...completion];
     for (const item of items) {
       if (item.mediaType !== "tv") continue;
       for (const [key, date] of Object.entries(item.watchedEpisodes)) {
