@@ -320,7 +320,13 @@ export class ImportService {
         .execute();
       return result;
     } catch (error) {
-      if (claimed)
+      // Stored errors are deliberately terse; the log carries the detail
+      // (source responses are logged in full by `sourceJson`).
+      if (claimed) {
+        console.error(
+          `[imports] ${source} import failed:`,
+          error instanceof Error ? (error.stack ?? error.message) : error,
+        );
         await this.database
           .updateTable("import_connections")
           .set({
@@ -333,6 +339,7 @@ export class ImportService {
           })
           .where("source", "=", source)
           .execute();
+      }
       throw error;
     } finally {
       this.busy = false;

@@ -147,6 +147,73 @@ describe("source adapters", () => {
     );
     expect(cancelled).toBe(true);
   });
+  it("sends a User-Agent but keeps a caller-provided one", async () => {
+    const fetch = vi.fn(async () => Response.json([]));
+    vi.stubGlobal("fetch", fetch);
+    await sourceJson("https://api.trakt.tv/users/a/watchlist", {
+      headers: { "trakt-api-key": "k" },
+    });
+    await sourceJson("https://example.com", {
+      headers: { "User-Agent": "custom" },
+    });
+    const sent = fetch.mock.calls.map(
+      (call) =>
+        new Headers((call as unknown as [string, RequestInit])[1].headers),
+    );
+    expect(sent[0].get("user-agent")).toMatch(/^Shelfie\//);
+    expect(sent[0].get("trakt-api-key")).toBe("k");
+    expect(sent[1].get("user-agent")).toBe("custom");
+  });
+  it("logs a CDN block in detail without leaking query credentials", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            "<html><head><title>Attention Required! | Cloudflare</title></head><body>blocked</body></html>",
+            {
+              status: 403,
+              statusText: "Forbidden",
+              headers: {
+                "content-type": "text/html; charset=UTF-8",
+                server: "cloudflare",
+                "cf-ray": "abc-ORD",
+              },
+            },
+          ),
+      ),
+    );
+    await expect(
+      sourceJson("https://api.example.com/v1/games?key=secret-key"),
+    ).rejects.toThrow(/^Source request failed \(403\)/);
+    const logged = warn.mock.calls.flat().join("\n");
+    warn.mockRestore();
+    expect(logged).toContain("api.example.com/v1/games -> 403 Forbidden");
+    expect(logged).toContain("cf-ray=abc-ORD");
+    expect(logged).toContain("blocked by Cloudflare");
+    expect(logged).toContain('"Attention Required! | Cloudflare"');
+    expect(logged).not.toContain("secret-key");
+  });
+  it("logs an API rejection with its body", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response('{"error":"invalid api key"}', {
+            status: 403,
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+    await expect(sourceJson("https://api.trakt.tv/x")).rejects.toThrow("403");
+    const logged = warn.mock.calls.flat().join("\n");
+    warn.mockRestore();
+    expect(logged).toContain("credentials rejected");
+    expect(logged).not.toContain("Cloudflare");
+    expect(logged).toContain('{"error":"invalid api key"}');
+  });
   it("maps Steam using exact app IDs and minutes, skips unmatched apps", async () => {
     const deps: SourceDependencies = {
       request: vi.fn(async () =>

@@ -36,20 +36,128 @@ function rating(value: unknown, divisor = 1): number | undefined {
     : undefined;
 }
 
+/**
+ * Sent on every source request. Trakt's Cloudflare front rejects Node's
+ * default `User-Agent: node` with a 403 challenge page before the request
+ * reaches the API, which looks exactly like a bad API key.
+ */
+export const SOURCE_USER_AGENT =
+  "Shelfie/1.0 (+https://github.com/the-snesler/shelfie)";
+
+/**
+ * Host + path only: query strings carry credentials (Steam's `key=`) and
+ * userinfo may too, so neither may reach a stored error or a log line.
+ */
+function describeUrl(url: string | URL): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.host}${parsed.pathname}`;
+  } catch {
+    return "the source";
+  }
+}
+
+const STATUS_HINTS: Record<number, string> = {
+  401: "authorization required: credentials missing/expired, or the profile is private",
+  403: "credentials rejected: check the API key and profile visibility",
+  404: "account or resource not found: check the account name/ID",
+  429: "rate limited by the source",
+};
+
+/** Collapses a response body to one log-friendly line (HTML → its title + text). */
+function bodySnippet(body: string, html: boolean): string {
+  if (!html) return body.replace(/\s+/g, " ").trim().slice(0, 300);
+  const title = /<title[^>]*>([^<]*)<\/title>/i.exec(body)?.[1]?.trim();
+  const text = body
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+  return title ? `[HTML "${title}"] ${text}` : `[HTML] ${text}`;
+}
+
+/**
+ * Logs everything useful about a failed source response (never request
+ * headers, which carry credentials) and returns the short user-facing error.
+ */
+async function sourceError(
+  url: string | URL,
+  response: Response,
+): Promise<Error> {
+  const type = response.headers.get("content-type") ?? "";
+  const html = type.includes("text/html");
+  let body = "";
+  try {
+    body = (await response.text()).slice(0, 8_000);
+  } catch {
+    // The status is still worth reporting without a body.
+  }
+  const server = response.headers.get("server");
+  // An HTML page from a CDN means the request never reached the API, so the
+  // credentials have not been checked yet.
+  const blocked =
+    response.headers.has("cf-mitigated") ||
+    (html &&
+      (server?.toLowerCase() === "cloudflare" ||
+        /cloudflare|attention required|just a moment/i.test(body)));
+  const diagnosis = blocked
+    ? "blocked by Cloudflare bot protection before reaching the API (credentials were NOT checked); usually a missing/blocked User-Agent or a blocked server IP"
+    : (STATUS_HINTS[response.status] ??
+      (response.status >= 500
+        ? "source-side error, try again later"
+        : "unexpected response"));
+  const meta = [
+    `server=${server ?? "-"}`,
+    `content-type=${type || "-"}`,
+    response.headers.get("cf-ray") &&
+      `cf-ray=${response.headers.get("cf-ray")}`,
+    response.headers.get("retry-after") &&
+      `retry-after=${response.headers.get("retry-after")}`,
+  ].filter(Boolean);
+  console.warn(
+    `[imports] ${describeUrl(url)} -> ${response.status} ${response.statusText} (${meta.join(", ")}): ${diagnosis}` +
+      (body ? `\n[imports]   body: ${bodySnippet(body, html)}` : ""),
+  );
+  return new Error(
+    `Source request failed (${response.status}). Check the connection credentials and profile visibility; server logs have details.`,
+  );
+}
+
 /** Redirects are rejected so a source cannot forward a saved credential elsewhere. */
 export async function sourceJson(
   url: string | URL,
   init: RequestInit = {},
 ): Promise<{ data: unknown; headers: Headers }> {
-  const response = await fetch(url, {
-    ...init,
-    signal: AbortSignal.timeout(30_000),
-    redirect: "error",
-  });
-  if (!response.ok)
-    throw new Error(
-      `Source request failed (${response.status}). Check the connection credentials and profile visibility.`,
+  const headers = new Headers(init.headers);
+  if (!headers.has("user-agent")) headers.set("user-agent", SOURCE_USER_AGENT);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers,
+      signal: AbortSignal.timeout(30_000),
+      redirect: "error",
+    });
+  } catch (error) {
+    const cause = error instanceof Error ? error.cause : undefined;
+    const reason =
+      error instanceof Error && error.name === "TimeoutError"
+        ? "timed out after 30s"
+        : cause instanceof Error
+          ? `${cause.name}: ${"code" in cause ? `${String(cause.code)} ` : ""}${cause.message}`
+          : error instanceof Error
+            ? error.message
+            : String(error);
+    console.warn(
+      `[imports] ${describeUrl(url)} -> request did not complete: ${reason} (redirects are refused)`,
     );
+    throw new Error(
+      "Source request could not complete. Check the server's network access and the source URL; server logs have details.",
+      { cause: error },
+    );
+  }
+  if (!response.ok) throw await sourceError(url, response);
   const reader = response.body?.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
