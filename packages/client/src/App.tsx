@@ -32,13 +32,18 @@ const GUEST_SETTINGS: OwnerSettings = {
   username: "Visitor",
   libraryTheme: "classic",
   showProgressBars: false,
+  separateWishlist: false,
 };
 const SETTINGS_CACHE_KEY = "shelfie.cachedSettings";
 
 function cachedSettings(): OwnerSettings | null {
   try {
     const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
-    return cached ? (JSON.parse(cached) as OwnerSettings) : null;
+    // Spread over the defaults so a cache written before a preference
+    // existed still yields a complete settings object.
+    return cached
+      ? { ...GUEST_SETTINGS, ...(JSON.parse(cached) as Partial<OwnerSettings>) }
+      : null;
   } catch {
     return null;
   }

@@ -147,6 +147,34 @@ describe("unreleased shelf", () => {
     ).toBe("planned");
   });
 
+  it("splits released wishlisted titles into Wishlist when asked", () => {
+    const released = movie("movie:1", today);
+    expect(
+      shelfSection(
+        item("movie:1", { status: "wishlisted" }),
+        released,
+        today,
+        true,
+      ),
+    ).toBe("wishlist");
+    expect(
+      shelfSection(
+        item("movie:1", { status: "wishlisted" }),
+        movie("movie:1", "2026-12-25"),
+        today,
+        true,
+      ),
+    ).toBe("unreleased");
+    expect(
+      shelfSection(
+        item("movie:1", { status: "backlogged" }),
+        released,
+        today,
+        true,
+      ),
+    ).toBe("planned");
+  });
+
   it("orders by soonest release, with TBA titles last", () => {
     const later = item("movie:1", { status: "wishlisted" });
     const sooner = item("movie:2", { status: "wishlisted" });

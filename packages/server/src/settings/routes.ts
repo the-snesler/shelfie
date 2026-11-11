@@ -24,7 +24,11 @@ export function registerSettingsRoutes(
     const body = await c.req.json<Record<string, unknown>>().catch(() => null);
     if (!body) return c.json({ error: "invalid JSON body" }, 400);
 
-    const updates: { library_theme?: string; show_progress_bars?: number } = {};
+    const updates: {
+      library_theme?: string;
+      show_progress_bars?: number;
+      separate_wishlist?: number;
+    } = {};
     if ("libraryTheme" in body) {
       if (!isLibraryTheme(body.libraryTheme)) {
         return c.json({ error: "invalid libraryTheme" }, 400);
@@ -36,6 +40,12 @@ export function registerSettingsRoutes(
         return c.json({ error: "showProgressBars must be a boolean" }, 400);
       }
       updates.show_progress_bars = body.showProgressBars ? 1 : 0;
+    }
+    if ("separateWishlist" in body) {
+      if (typeof body.separateWishlist !== "boolean") {
+        return c.json({ error: "separateWishlist must be a boolean" }, 400);
+      }
+      updates.separate_wishlist = body.separateWishlist ? 1 : 0;
     }
     if (Object.keys(updates).length === 0) {
       return c.json({ error: "no settings to update" }, 400);
@@ -57,7 +67,12 @@ async function getOwnerSettings(
 ): Promise<OwnerSettings | null> {
   const row = await database
     .selectFrom("auth_owner")
-    .select(["username", "library_theme", "show_progress_bars"])
+    .select([
+      "username",
+      "library_theme",
+      "show_progress_bars",
+      "separate_wishlist",
+    ])
     .where("id", "=", OWNER_ID)
     .executeTakeFirst();
   return row
@@ -65,6 +80,7 @@ async function getOwnerSettings(
         username: row.username,
         libraryTheme: row.library_theme as LibraryTheme,
         showProgressBars: row.show_progress_bars === 1,
+        separateWishlist: row.separate_wishlist === 1,
       }
     : null;
 }

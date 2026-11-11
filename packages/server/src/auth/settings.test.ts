@@ -78,12 +78,18 @@ describe("owner account and settings", () => {
     expect(
       await database
         .selectFrom("auth_owner")
-        .select(["username", "library_theme", "show_progress_bars"])
+        .select([
+          "username",
+          "library_theme",
+          "show_progress_bars",
+          "separate_wishlist",
+        ])
         .executeTakeFirstOrThrow(),
     ).toEqual({
       username: "Sam",
       library_theme: "classic",
       show_progress_bars: 0,
+      separate_wishlist: 0,
     });
   });
 
@@ -95,7 +101,11 @@ describe("owner account and settings", () => {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ libraryTheme: "walnut", showProgressBars: true }),
+      body: JSON.stringify({
+        libraryTheme: "walnut",
+        showProgressBars: true,
+        separateWishlist: true,
+      }),
     });
     const invalid = await app.request("/api/settings", {
       method: "PATCH",
@@ -111,6 +121,7 @@ describe("owner account and settings", () => {
       username: "Sam",
       libraryTheme: "walnut",
       showProgressBars: true,
+      separateWishlist: true,
     });
     expect(invalid.status).toBe(400);
   });
@@ -214,12 +225,18 @@ describe("owner settings migration", () => {
     expect(
       await database
         .selectFrom("auth_owner")
-        .select(["username", "library_theme", "show_progress_bars"])
+        .select([
+          "username",
+          "library_theme",
+          "show_progress_bars",
+          "separate_wishlist",
+        ])
         .executeTakeFirstOrThrow(),
     ).toEqual({
       username: "owner",
       library_theme: "classic",
       show_progress_bars: 0,
+      separate_wishlist: 0,
     });
   });
 });

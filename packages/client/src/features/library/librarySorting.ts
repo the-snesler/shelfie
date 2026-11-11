@@ -151,13 +151,16 @@ export function normalizeManualOrder(
 }
 
 /** A Library section: a meta-status bucket, plus "unreleased" — planned
- *  titles that can't be watched/played/read yet, split out of Planned. */
-export type ShelfSection = MetaStatus | "unreleased";
+ *  titles that can't be watched/played/read yet, split out of Planned — and
+ *  "wishlist", released wishlisted titles when the owner opts to keep them
+ *  apart from the rest of Planned. */
+export type ShelfSection = MetaStatus | "wishlist" | "unreleased";
 
 /** Display order, top to bottom. */
 export const SHELF_SECTIONS: readonly ShelfSection[] = [
   "in-progress",
   "planned",
+  "wishlist",
   "unreleased",
   "finished",
 ];
@@ -166,7 +169,11 @@ export function shelfSection(
   item: LibraryItem,
   meta: CardMeta | undefined,
   today: string,
+  separateWishlist = false,
 ): ShelfSection {
+  if (item.status === "wishlisted" && separateWishlist) {
+    return "wishlist";
+  }
   if (
     STATUS_META_GROUP[item.status] === "planned" &&
     releaseState(item, meta, today).kind !== "released"

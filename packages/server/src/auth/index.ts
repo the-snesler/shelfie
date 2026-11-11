@@ -262,6 +262,7 @@ async function createOwner(
       password_hash: await hashPassword(password),
       library_theme: "classic",
       show_progress_bars: 0,
+      separate_wishlist: 0,
       created_at: now,
       updated_at: now,
     })
