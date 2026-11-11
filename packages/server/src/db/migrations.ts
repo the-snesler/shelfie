@@ -528,6 +528,29 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 21,
+    name: "tv-progress",
+    async up(db) {
+      await db.schema
+        .alterTable("tv_metadata")
+        .addColumn("last_episode", "text")
+        .execute();
+      await db.schema
+        .alterTable("tv_metadata")
+        .addColumn("aired_episodes", "integer")
+        .execute();
+      // NULL in the new columns means "never fetched", not "nothing aired":
+      // expire cached cards so they refetch. Detail columns stay put.
+      await db.updateTable("tv_metadata").set({ fetched_at: 0 }).execute();
+      await db.schema
+        .createTable("tv_progress")
+        .addColumn("item_id", "text", (c) => c.primaryKey())
+        .addColumn("state_key", "text", (c) => c.notNull())
+        .addColumn("evaluated_at", "integer", (c) => c.notNull())
+        .execute();
+    },
+  },
 ];
 
 /**

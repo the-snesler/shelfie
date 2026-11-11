@@ -1,4 +1,4 @@
-import type { TvAiring, TvMetadata } from "@shelfie/shared";
+import type { TvAiring, TvLastAiring, TvMetadata } from "@shelfie/shared";
 import type { RxJsonSchema } from "rxdb";
 import type { ShelfieDatabase } from "./database";
 import { upsertOwnedCards } from "./cardCache";
@@ -20,11 +20,13 @@ export interface TvCardDoc {
   numberOfSeasons: number;
   numberOfEpisodes: number;
   nextEpisodeToAir: TvAiring | null;
+  lastEpisodeToAir: TvLastAiring | null;
+  airedEpisodes: number | null;
 }
 
 export const tvCardSchema: RxJsonSchema<TvCardDoc> = {
   title: "tv card cache schema",
-  version: 2,
+  version: 3,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -68,6 +70,23 @@ export const tvCardSchema: RxJsonSchema<TvCardDoc> = {
         stillPath: { type: ["string", "null"] },
       },
     },
+    lastEpisodeToAir: {
+      type: ["object", "null"],
+      properties: {
+        seasonNumber: { type: "number" },
+        episodeNumber: { type: "number" },
+        name: { type: "string" },
+        airDate: { type: "string", maxLength: 10 },
+        stillPath: { type: ["string", "null"] },
+        episodeType: { type: ["string", "null"], maxLength: 32 },
+      },
+    },
+    airedEpisodes: {
+      type: ["number", "null"],
+      minimum: 0,
+      maximum: 9007199254740991,
+      multipleOf: 1,
+    },
   },
   required: [
     "id",
@@ -93,6 +112,8 @@ export function cardToDoc(card: TvMetadata): TvCardDoc {
     numberOfSeasons: card.numberOfSeasons,
     numberOfEpisodes: card.numberOfEpisodes,
     nextEpisodeToAir: card.nextEpisodeToAir ?? null,
+    lastEpisodeToAir: card.lastEpisodeToAir ?? null,
+    airedEpisodes: card.airedEpisodes ?? null,
   };
 }
 

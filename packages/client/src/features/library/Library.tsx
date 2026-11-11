@@ -8,6 +8,7 @@ import IconChevronRight from "~icons/tabler/chevron-right";
 import type { AppOutletContext } from "../../App";
 import { groupListId } from "../lists/automaticLists";
 import { listHref } from "../lists/listHref";
+import { isCaughtUp } from "../media/caughtUp";
 import { MEDIA_LIBRARY_COVER_WIDTH } from "../media/MediaCover";
 import { releaseState } from "../media/release";
 import { META_STATUS_LABELS } from "../media/status";
@@ -236,13 +237,33 @@ export default function Library() {
         ) : (
           SHELF_SECTIONS.filter((g) => grouped.get(g)?.length).map((g) => {
             const sectionItems = grouped.get(g)!;
-            // Paused titles stay counted in In Progress but collapse into one
-            // tile at the end; "See all" (or the tile) lists them in full.
+            // Paused titles and caught-up shows stay counted in In Progress
+            // but collapse into tiles at the end; the tiles list them in full.
+            const isPaused = (item: LibraryItem) => item.status === "paused";
+            const caughtUp = (item: LibraryItem) =>
+              isCaughtUp(item, cards.get(item.id), today);
             const shownItems =
               g === "in-progress"
-                ? sectionItems.filter((item) => item.status !== "paused")
+                ? sectionItems.filter(
+                    (item) => !isPaused(item) && !caughtUp(item),
+                  )
                 : sectionItems;
-            const pausedCount = sectionItems.length - shownItems.length;
+            const collapsed =
+              g === "in-progress"
+                ? [
+                    {
+                      listId: "paused",
+                      count: sectionItems.filter(isPaused).length,
+                      label: (n: number) =>
+                        `paused ${n === 1 ? "item" : "items"}`,
+                    },
+                    {
+                      listId: "caught-up",
+                      count: sectionItems.filter(caughtUp).length,
+                      label: () => "caught up",
+                    },
+                  ].filter((tile) => tile.count > 0)
+                : [];
             const manualDrag =
               (g === "planned" || g === "wishlist") && plannedSort === "manual";
             return (
@@ -339,9 +360,9 @@ export default function Library() {
                       />
                     </motion.div>
                   ))}
-                  {pausedCount > 0 && (
+                  {collapsed.map((tile) => (
                     <motion.div
-                      key="paused"
+                      key={tile.listId}
                       layout="position"
                       transition={{
                         type: "spring",
@@ -352,7 +373,7 @@ export default function Library() {
                       style={{ height: "var(--shelf-cover-h)" }}
                     >
                       <Link
-                        to={listHref("paused", activeType)}
+                        to={listHref(tile.listId, activeType)}
                         className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-faint/60 text-muted transition-colors hover:border-accent hover:text-accent"
                         style={{
                           width: `${MEDIA_LIBRARY_COVER_WIDTH}px`,
@@ -360,14 +381,14 @@ export default function Library() {
                         }}
                       >
                         <span className="font-display text-4xl font-semibold">
-                          +{pausedCount}
+                          +{tile.count}
                         </span>
                         <span className="text-xs">
-                          paused {pausedCount === 1 ? "item" : "items"}
+                          {tile.label(tile.count)}
                         </span>
                       </Link>
                     </motion.div>
-                  )}
+                  ))}
                 </div>
               </section>
             );

@@ -123,8 +123,37 @@ Movies and shows map through TMDB IDs. The adapter reads paginated watchlist,
 ratings, and history, maps movie watch dates to completion dates, and records
 episode watch dates on TV items. Episode and season ratings are skipped because
 Shelfie stores one show rating. Unsupported entries or missing TMDB IDs are
-reported as skipped. Partial show history imports as active; no full-series
-completion is inferred.
+reported as skipped, with separate warnings for each. Trakt's "date unknown"
+watches (reported as 1970-01-01) import without a date. Show history imports
+as watching; right after the import, the TV progress check below marks shows
+whose season is over as watched.
+
+### TV progress
+
+Whether a show is finished is decided from TMDB's episode data, never its
+series status (which stays "Returning Series" across years-long gaps). The
+rule lives in `shared/src/tvProgress.ts` and is shared by episode toggles in
+the app, the caught-up tile, and the server:
+
+- an aired regular episode is unwatched → watching;
+- every aired episode watched and the latest is a `finale`, or a
+  `mid_season` episode with nothing scheduled → watched (season over);
+- every aired episode watched and the next one scheduled → watching, shown
+  as "caught up" (Home collapses these into a "+N caught up" tile linking to
+  the Caught up list);
+- every aired episode watched, untagged, nothing scheduled → caught up, then
+  watched after a 30-day grace period.
+
+The server's hourly worker (`metadata/releaseWorker.ts`) runs
+`tv/progress.ts` after the release refresh: it refreshes up to 50 stale TV
+cards of watching/watched shows, finishes shows whose season ended (dated by
+when the final episode was watched), and reopens watched shows that are
+caught up mid-season or have an episode that aired after your last known
+watch or completion date. The pass is edge-triggered: `tv_progress` stores
+the state it last saw per item, and a status only changes when that state
+changes, so a status you set by hand sticks until the show moves on. Paused,
+dropped, and planned shows are never touched. Changes are logged as
+`[tv-progress] <show> (tv:<id>): <from> -> <to> (<state>)`.
 
 ### BookOrbit
 

@@ -205,10 +205,9 @@ export function LibraryItemCard({
   async function markNextWatched() {
     if (!airedNext) return;
     const key = episodeKey(airedNext.season, airedNext.episode);
-    const total = tvMeta?.numberOfEpisodes ?? 0;
     await item.incrementalModify((docData) => ({
       ...docData,
-      ...deriveEpisodeWatch(docData, total, (current) =>
+      ...deriveEpisodeWatch(docData, tvMeta, (current) =>
         key in current ? current : { ...current, [key]: todayLocalIsoDate() },
       ),
       updatedAt: Date.now(),

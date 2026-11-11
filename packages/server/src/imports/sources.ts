@@ -277,16 +277,12 @@ async function fetchTrakt(
   };
   if (config.accessToken)
     headers.Authorization = `Bearer ${config.accessToken}`;
-  async function* pages(
-    path: string,
-    params: Record<string, string> = {},
-  ): AsyncGenerator<unknown[]> {
+  async function* pages(path: string): AsyncGenerator<unknown[]> {
     for (let page = 1; page <= 100; page++) {
       const url = new URL(
         `https://api.trakt.tv/users/${encodeURIComponent(config.account)}/${path}`,
       );
       url.search = new URLSearchParams({
-        ...params,
         page: String(page),
         limit: "100",
       }).toString();
@@ -305,7 +301,8 @@ async function fetchTrakt(
     }
   }
   const items = new Map<string, ImportedItem>();
-  let skipped = 0;
+  let missingIds = 0;
+  let partRatings = 0;
   // History wins over watchlist state. Ratings add missing items as planned.
   for (const kind of ["watchlist", "ratings", "history"] as const) {
     for await (const data of pages(kind)) {
@@ -316,7 +313,8 @@ async function fetchTrakt(
           entry.type !== "movie" &&
           entry.type !== "show"
         ) {
-          skipped++;
+          // Episode/season ratings: Shelfie rates whole titles only.
+          partRatings++;
           continue;
         }
         const mediaType =
@@ -326,7 +324,7 @@ async function fetchTrakt(
         );
         const id = numericId(object(catalog.ids).tmdb);
         if (!id) {
-          skipped++;
+          missingIds++;
           continue;
         }
         const key = `${mediaType}:${id}`;
@@ -352,6 +350,8 @@ async function fetchTrakt(
               .sort()
               .slice(-100);
           } else {
+            // Whether the show is finished is decided against TMDB's episode
+            // data by the TV progress pass the import service runs next.
             item.status = "active";
             const ep = object(entry.episode);
             if (
@@ -374,40 +374,19 @@ async function fetchTrakt(
       }
     }
   }
-  // History alone can't tell "watching" from "watched everything", so compare
-  // against Trakt's aired count — the same rule the client applies when the
-  // last episode is checked off (`deriveEpisodeWatch`), specials excluded.
-  if ([...items.values()].some((item) => item.watchedEpisodes))
-    for await (const data of pages("watched/shows", {
-      extended: "full,noseasons",
-    }))
-      for (const raw of data) {
-        const show = object(object(raw).show);
-        const id = numericId(object(show.ids).tmdb);
-        const item = id ? items.get(`tv:${id}`) : undefined;
-        const aired = show.aired_episodes;
-        if (!item?.watchedEpisodes || typeof aired !== "number" || aired <= 0)
-          continue;
-        const watched = Object.entries(item.watchedEpisodes).filter(
-          ([key]) => !key.startsWith("s0e"),
-        );
-        if (watched.length < aired) continue;
-        item.status = "finished";
-        const last = watched
-          .map(([, date]) => date)
-          .filter(Boolean)
-          .sort()
-          .at(-1);
-        if (last) item.completedDates = [last];
-      }
+  const warnings: string[] = [];
+  if (missingIds)
+    warnings.push(
+      `${missingIds} Trakt entries without a TMDB identifier were skipped.`,
+    );
+  if (partRatings)
+    warnings.push(
+      `${partRatings} episode or season ratings were skipped; Shelfie rates whole titles.`,
+    );
   return {
     items: [...items.values()],
-    skipped,
-    warnings: skipped
-      ? [
-          `${skipped} Trakt entries without a supported TMDB identifier were skipped.`,
-        ]
-      : [],
+    skipped: missingIds + partRatings,
+    warnings,
   };
 }
 

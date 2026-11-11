@@ -15,6 +15,7 @@ import type { Database, ImportConnectionsTable } from "../db/types.js";
 import { nextRev } from "../db/sequence.js";
 import { libraryItemDocToRow, libraryItemRowToDoc } from "../sync/row.js";
 import { emitChange } from "../sync/stream.js";
+import { runTvProgressPass } from "../tv/progress.js";
 import { withCollectionWriteLock } from "../sync/writeQueue.js";
 import { parseCron } from "./cron.js";
 import {
@@ -31,6 +32,21 @@ export type SourceLoader = (
   source: ImportSource,
   config: SourceConfig,
 ) => Promise<SourceData>;
+
+/** Runs after a successful import with the imported TV item ids. */
+export type TvProgressHook = (
+  database: Kysely<Database>,
+  itemIds: string[],
+) => Promise<unknown>;
+
+/** A large import may bring hundreds of shows with no cached card yet. */
+const IMPORT_TV_REFRESH_LIMIT = 300;
+
+const defaultTvProgress: TvProgressHook = (database, itemIds) =>
+  runTvProgressPass(database, {
+    itemIds,
+    refreshLimit: IMPORT_TV_REFRESH_LIMIT,
+  });
 
 /** KOReader sends md5(password) as its key; BookOrbit accepts either form. */
 function koreaderKey(value: string): string {
@@ -96,6 +112,7 @@ export class ImportService {
   constructor(
     private readonly database: Kysely<Database>,
     loadSource?: SourceLoader,
+    private readonly tvProgress: TvProgressHook = defaultTvProgress,
   ) {
     this.loadSource =
       loadSource ??
@@ -309,6 +326,19 @@ export class ImportService {
             checkpoint: { seq: latestSeq },
           });
       });
+      // Imported episode history only says "watching"; finish shows whose
+      // season is over now rather than at the next hourly pass. Best effort:
+      // the import itself already succeeded.
+      const tvIds = data.items
+        .filter((item) => item.mediaType === "tv")
+        .map((item) => `tv:${item.sourceId}`);
+      if (tvIds.length)
+        await this.tvProgress(this.database, tvIds).catch((error: unknown) =>
+          console.error(
+            `[imports] ${source} TV progress check failed:`,
+            error instanceof Error ? error.message : error,
+          ),
+        );
       await this.database
         .updateTable("import_connections")
         .set({

@@ -93,7 +93,7 @@ interface Section {
 function ListPage({ list }: { list: AutoList }) {
   const { db, settings } = useOutletContext<AppOutletContext>();
   const { items, cards } = useLibraryData(db);
-  const ctx = useListContext();
+  const ctx = useListContext(cards);
   const [searchParams, setSearchParams] = useSearchParams();
   const type = parseMediaType(searchParams.get("type"));
   const [stored] = useState(() => readStoredViewState(list));

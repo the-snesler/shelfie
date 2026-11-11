@@ -50,6 +50,13 @@ export const collections = {
       }),
       // The full date arrives with the next card refresh.
       2: (doc: RxDocumentData<TvCardDoc>) => ({ ...doc, firstAirDate: null }),
+      // Episode-progress fields arrive with the next card refresh; until
+      // then the show's caught-up state is simply unknown.
+      3: (doc: RxDocumentData<TvCardDoc>) => ({
+        ...doc,
+        lastEpisodeToAir: null,
+        airedEpisodes: null,
+      }),
     },
   },
   book_metadata: {

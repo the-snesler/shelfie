@@ -69,28 +69,39 @@ export function watchMedium<TCard, TDetail extends TCard, TKey>(
         .sort((a, b) => a.fetchedAt - b.fetchedAt || a.id - b.id)
         .slice(0, MAX_REFRESH_PER_MEDIUM)
         .map((entry) => entry.id);
-      if (batch.length === 0) return 0;
-      try {
-        return (await collection.fetchMissingCards(database, batch)).length;
-      } catch (batchError) {
-        // One bad id (e.g. removed upstream) must not block the others:
-        // retry individually and skip whatever still fails. If every id
-        // fails, the medium itself is unreachable — report that.
-        let refreshed = 0;
-        let failures = 0;
-        for (const id of batch) {
-          try {
-            refreshed += (await collection.fetchMissingCards(database, [id]))
-              .length;
-          } catch {
-            failures += 1; // Retried on a later pass.
-          }
-        }
-        if (failures === batch.length) throw batchError;
-        return refreshed;
-      }
+      return refreshCards(database, collection, batch);
     },
   };
+}
+
+/**
+ * Refetches `ids` through the collection's normal cache-fill path. One bad
+ * id (e.g. removed upstream) must not block the others: on a batch failure,
+ * retry individually and skip whatever still fails (a later pass retries).
+ * Throws only when every id fails, i.e. the medium itself is unreachable.
+ */
+export async function refreshCards<TCard, TDetail extends TCard, TKey>(
+  database: Kysely<Database>,
+  collection: MetadataCollection<TCard, TDetail, TKey>,
+  ids: number[],
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  try {
+    return (await collection.fetchMissingCards(database, ids)).length;
+  } catch (batchError) {
+    let refreshed = 0;
+    let failures = 0;
+    for (const id of ids) {
+      try {
+        refreshed += (await collection.fetchMissingCards(database, [id]))
+          .length;
+      } catch {
+        failures += 1;
+      }
+    }
+    if (failures === ids.length) throw batchError;
+    return refreshed;
+  }
 }
 
 /** One bounded pass over every medium. Returns the media that failed

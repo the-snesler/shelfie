@@ -1,5 +1,10 @@
-import type { ItemStatus, LibraryItem, MediaType } from "@shelfie/shared";
-import { defaultLogFormat } from "@shelfie/shared";
+import type {
+  ItemStatus,
+  LibraryItem,
+  MediaType,
+  TvProgressCard,
+} from "@shelfie/shared";
+import { defaultLogFormat, tvWatchState } from "@shelfie/shared";
 
 /** Everything a log/status action needs to know about the thing being
  *  logged, independent of media type — replaces the game-only `LogGame`. */
@@ -67,21 +72,28 @@ export function todayLocalIsoDate(): string {
   return localIsoDate(new Date());
 }
 
+/** The TV card fields episode toggles read: the shared progress rule's
+ *  inputs, plus the listed-episode count as a fallback for cards cached
+ *  before those fields existed. */
+export type EpisodeWatchCard = TvProgressCard & { numberOfEpisodes: number };
+
 /** Derives the next `watchedEpisodes`/`status`/`completedDates` for a TV
  *  item from an episode-map updater — the single source of truth every
  *  episode-toggle call site (TvDetail's checkboxes, the library grid's
  *  "next episode" quick-check) must share so status derivation never
- *  drifts between them. Watching every known episode (`total`, from show
- *  metadata) marks the item "finished" and appends today's date (deduped);
- *  dropping back below 100% reverts a "finished" item to "active".
- *  `completedDates` are only ever appended here, never removed. */
+ *  drifts between them. Follows the shared `tvWatchState` rule (which the
+ *  server's hourly TV progress pass also applies): finishing the season
+ *  marks the item "finished" and appends today's date (deduped); being
+ *  caught up on a show that is still airing, or falling behind, reverts a
+ *  "finished" item to "active". `completedDates` are only ever appended
+ *  here, never removed. */
 export function deriveEpisodeWatch(
   current: {
     watchedEpisodes: Record<string, string>;
     status: ItemStatus;
     completedDates: string[];
   },
-  total: number,
+  card: EpisodeWatchCard | null | undefined,
   updater: (current: Record<string, string>) => Record<string, string>,
 ): {
   watchedEpisodes: Record<string, string>;
@@ -89,18 +101,26 @@ export function deriveEpisodeWatch(
   completedDates: string[];
 } {
   const watchedEpisodes = updater(current.watchedEpisodes);
-  const watchedNonSpecial = Object.keys(watchedEpisodes).filter(
-    (k) => !k.startsWith("s0e"),
-  ).length;
-  const allWatched = total > 0 && watchedNonSpecial === total;
+  const today = todayLocalIsoDate();
+  const state = tvWatchState(watchedEpisodes, card, today);
+  let seasonOver: boolean;
+  if (state) {
+    seasonOver = state === "season-over";
+  } else {
+    // Card predates the progress fields: every listed episode watched.
+    const total = card?.numberOfEpisodes ?? 0;
+    const watchedRegular = Object.keys(watchedEpisodes).filter(
+      (k) => !k.startsWith("s0e"),
+    ).length;
+    seasonOver = total > 0 && watchedRegular === total;
+  }
   let status = current.status;
   let completedDates = current.completedDates;
-  if (allWatched && status !== "finished" && status !== "completed") {
+  if (seasonOver && status !== "finished" && status !== "completed") {
     status = "finished";
-    const today = todayLocalIsoDate();
     if (!completedDates.includes(today))
       completedDates = [...completedDates, today];
-  } else if (!allWatched && status === "finished") {
+  } else if (!seasonOver && status === "finished") {
     status = "active";
   }
   return { watchedEpisodes, status, completedDates };

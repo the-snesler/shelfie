@@ -6,6 +6,7 @@ import type {
   MovieSearchResult,
   TvDetail,
   TvAiring,
+  TvLastAiring,
   TvMetadata,
   TvSearchResult,
   TvSeason,
@@ -156,6 +157,9 @@ interface TmdbMovie {
 
 interface TmdbSeasonSummary {
   season_number: number;
+  /** Listed episodes, including announced-but-unaired ones. */
+  episode_count?: number;
+  air_date?: string | null;
 }
 
 interface TmdbNamed {
@@ -195,6 +199,7 @@ interface TmdbTv {
   vote_count: number | null;
   in_production: boolean;
   next_episode_to_air?: TmdbEpisode | null;
+  last_episode_to_air?: TmdbEpisode | null;
   seasons: TmdbSeasonSummary[];
   aggregate_credits?: TmdbAggregateCredits;
   videos?: TmdbVideos;
@@ -217,6 +222,8 @@ interface TmdbEpisode {
   air_date: string | null;
   runtime: number | null;
   still_path: string | null;
+  /** "standard" | "mid_season" | "finale"; absent on older payloads. */
+  episode_type?: string | null;
 }
 
 interface TmdbSeason {
@@ -314,7 +321,40 @@ function tvToMetadata(tv: TmdbTv): TvMetadata {
     createdBy: (tv.created_by ?? []).map((creator) => creator.name),
     summary: tv.overview || null,
     nextEpisodeToAir: tvNextAiring(tv.next_episode_to_air),
+    lastEpisodeToAir: tvLastAiring(tv.last_episode_to_air),
+    airedEpisodes: tvAiredEpisodes(tv),
   };
+}
+
+function tvLastAiring(
+  episode: TmdbEpisode | null | undefined,
+): TvLastAiring | null {
+  const airing = tvNextAiring(episode);
+  return airing
+    ? { ...airing, episodeType: episode?.episode_type || null }
+    : null;
+}
+
+/**
+ * Regular episodes aired through TMDB's last aired one: every earlier
+ * season in full, plus that season up to its episode. Seasons air in order,
+ * so this needs no per-season fetch. When the last airing was a special,
+ * count the regular seasons that had premiered by then.
+ */
+function tvAiredEpisodes(tv: TmdbTv): number | null {
+  const last = tv.last_episode_to_air;
+  if (!last?.air_date) return null;
+  const regular = (tv.seasons ?? []).filter((s) => s.season_number > 0);
+  if (last.season_number > 0)
+    return (
+      regular
+        .filter((s) => s.season_number < last.season_number)
+        .reduce((sum, s) => sum + (s.episode_count ?? 0), 0) +
+      last.episode_number
+    );
+  return regular
+    .filter((s) => s.air_date && s.air_date <= last.air_date!)
+    .reduce((sum, s) => sum + (s.episode_count ?? 0), 0);
 }
 
 /** TMDB's next scheduled episode, or null when there is none or it has no

@@ -4,6 +4,7 @@ import { db as defaultDb } from "../db/index.js";
 import type { Database } from "../db/types.js";
 import { gamesMetadataCollection } from "../games/routes.js";
 import { moviesMetadataCollection } from "../movies/routes.js";
+import { runTvProgressPass } from "../tv/progress.js";
 import { tvMetadataCollection } from "../tv/routes.js";
 import { runReleaseRefreshCycle, watchMedium } from "./releaseRefresh.js";
 
@@ -19,9 +20,11 @@ const WATCHED_MEDIA = [
 ];
 
 /**
- * Hourly background refresh of release dates for planned titles, so the
+ * Hourly background work: refresh release dates for planned titles, so the
  * Unreleased shelf, the iCal feed, and release reminders see moved dates
- * without the app being open. Single-process, like the other workers.
+ * without the app being open; then the TV progress pass (`tv/progress.ts`),
+ * which finishes shows whose season ended and reopens ones with new
+ * episodes. Single-process, like the other workers.
  */
 export function startReleaseRefreshWorker(
   database: Kysely<Database> = defaultDb,
@@ -29,27 +32,38 @@ export function startReleaseRefreshWorker(
   let stopped = false;
   let activePass: Promise<void> | null = null;
 
+  async function pass() {
+    try {
+      const failed = await runReleaseRefreshCycle(
+        database,
+        WATCHED_MEDIA,
+        Date.now(),
+        () => stopped,
+      );
+      if (failed.length > 0) {
+        console.error(
+          `Shelfie release refresh could not reach: ${failed.join(", ")}`,
+        );
+      }
+    } catch {
+      console.error("Shelfie release refresh could not complete its pass");
+    }
+    if (stopped) return;
+    try {
+      await runTvProgressPass(database, { shouldStop: () => stopped });
+    } catch (error) {
+      console.error(
+        "[tv-progress] pass failed:",
+        error instanceof Error ? (error.stack ?? error.message) : error,
+      );
+    }
+  }
+
   const startPass = () => {
     if (activePass || stopped) return;
-    activePass = runReleaseRefreshCycle(
-      database,
-      WATCHED_MEDIA,
-      Date.now(),
-      () => stopped,
-    )
-      .then((failed) => {
-        if (failed.length > 0) {
-          console.error(
-            `Shelfie release refresh could not reach: ${failed.join(", ")}`,
-          );
-        }
-      })
-      .catch(() => {
-        console.error("Shelfie release refresh could not complete its pass");
-      })
-      .finally(() => {
-        activePass = null;
-      });
+    activePass = pass().finally(() => {
+      activePass = null;
+    });
   };
 
   const first = setTimeout(startPass, FIRST_PASS_DELAY_MS);

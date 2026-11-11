@@ -54,8 +54,15 @@ export type {
   TvSeason,
   TvEpisode,
   TvAiring,
+  TvLastAiring,
   TvScheduledEpisode,
 } from "./tv.js";
+export {
+  TV_SEASON_GRACE_DAYS,
+  tvFinishedDay,
+  tvWatchState,
+} from "./tvProgress.js";
+export type { TvProgressCard, TvWatchState } from "./tvProgress.js";
 export type {
   BookSearchResult,
   BookMetadata,

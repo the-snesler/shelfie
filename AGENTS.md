@@ -161,6 +161,18 @@ Because the Library only refreshes cards when open, the server's
 (or missing/dateless) hourly, so the iCal feed and reminders stay current
 too.
 
+**TV progress.** The TV card also carries TMDB's `lastEpisodeToAir` (with
+`episodeType`: standard/mid_season/finale) and `airedEpisodes` (regular
+episodes aired so far, unlike `numberOfEpisodes`, which counts announced
+ones). `shared/src/tvProgress.ts` `tvWatchState()` turns those plus
+`watchedEpisodes` into `behind | caught-up | season-over`, ignoring TMDB's
+series status. Client episode toggles (`deriveEpisodeWatch`), Home's
+"+N caught up" tile / the Caught up list (`media/caughtUp.ts`), and the
+server's hourly `tv/progress.ts` pass (run by the release worker and after
+imports) all use it. The server pass is edge-triggered through the
+server-only `tv_progress` table, so it never fights a manual status. See
+`docs/integrations.md`.
+
 Images: IGDB covers go through the server proxy (`/api/images/...`,
 `images.ts` `gameImageUrl()`); TMDB posters/backdrops/stills load directly
 from `image.tmdb.org` via `tmdbImageUrl(path, size)`; Goodreads covers are

@@ -37,6 +37,19 @@ export interface TvMetadata {
   /** TMDB's `next_episode_to_air`; null when nothing is scheduled (or the
    *  show has ended). Card-tier so the library can say "airs Fri" offline. */
   nextEpisodeToAir: TvAiring | null;
+  /** TMDB's `last_episode_to_air`; null when nothing has aired. Its
+   *  `episodeType` tells a season finale apart (see `tvWatchState`). */
+  lastEpisodeToAir: TvLastAiring | null;
+  /** Regular (non-special) episodes aired through `lastEpisodeToAir`.
+   *  Unlike `numberOfEpisodes`, excludes announced-but-unaired episodes, so
+   *  it is what "caught up" is measured against. Null when unknown. */
+  airedEpisodes: number | null;
+}
+
+/** The latest aired episode, with TMDB's `episode_type`. */
+export interface TvLastAiring extends TvAiring {
+  /** "standard" | "mid_season" | "finale"; null when TMDB doesn't say. */
+  episodeType: string | null;
 }
 
 /** One dated, upcoming-or-recent episode airing. */

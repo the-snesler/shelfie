@@ -284,62 +284,44 @@ describe("source adapters", () => {
       ]),
     );
   });
-  it("finishes Trakt shows once every aired non-special episode is watched", async () => {
-    const episode = (
-      show: number,
-      season: number,
-      number: number,
-      day: string,
-    ) => ({
-      type: "episode",
-      show: { ids: { tmdb: show } },
-      episode: { season, number },
-      watched_at: `${day}T12:00:00Z`,
-    });
+  it("imports show history as watching, with unknown dates left blank, and explains skips", async () => {
     const request: SourceDependencies["request"] = vi.fn(async (url) => {
-      const { pathname, searchParams } = new URL(url);
+      const { pathname } = new URL(url);
+      if (pathname.endsWith("ratings"))
+        return response([
+          { type: "episode", show: { ids: { tmdb: 2 } }, rating: 8 },
+          { type: "season", show: { ids: { tmdb: 2 } }, rating: 8 },
+          { type: "movie", movie: { ids: { imdb: "tt1" } }, rating: 8 },
+        ]);
       if (pathname.endsWith("history"))
         return response([
-          episode(2, 1, 1, "2026-01-01"),
-          episode(2, 1, 2, "2026-01-03"),
-          episode(2, 0, 1, "2026-02-01"),
-          episode(3, 1, 1, "2026-01-01"),
-          episode(3, 0, 1, "2026-01-02"),
-          // Trakt's "date unknown" marker.
-          episode(4, 1, 1, "1970-01-01"),
+          {
+            type: "episode",
+            show: { ids: { tmdb: 4 } },
+            episode: { season: 1, number: 1 },
+            // Trakt's "date unknown" marker.
+            watched_at: "1970-01-01T00:00:00.000Z",
+          },
         ]);
-      if (pathname.endsWith("watched/shows")) {
-        expect(searchParams.get("extended")).toContain("full");
-        return response([
-          { show: { ids: { tmdb: 2 }, aired_episodes: 2 } },
-          { show: { ids: { tmdb: 3 }, aired_episodes: 2 } },
-          { show: { ids: { tmdb: 4 }, aired_episodes: 1 } },
-        ]);
-      }
       return response([]);
     });
-    const { items } = await fetchSource("trakt", config, {
+    const { items, skipped, warnings } = await fetchSource("trakt", config, {
       request,
       steamId: vi.fn(),
     });
-    expect(items.find((i) => i.sourceId === "2")).toMatchObject({
-      status: "finished",
-      // The last regular episode, not the later special.
-      completedDates: ["2026-01-03"],
-    });
-    // A watched special doesn't stand in for a missing regular episode.
-    expect(items.find((i) => i.sourceId === "3")).toMatchObject({
-      status: "active",
-    });
-    expect(
-      items.find((i) => i.sourceId === "3")?.completedDates,
-    ).toBeUndefined();
-    const unknown = items.find((i) => i.sourceId === "4");
-    expect(unknown).toMatchObject({
-      status: "finished",
-      watchedEpisodes: { s1e1: "" },
-    });
-    expect(unknown?.completedDates).toBeUndefined();
+    expect(items).toEqual([
+      {
+        mediaType: "tv",
+        sourceId: "4",
+        status: "active",
+        watchedEpisodes: { s1e1: "" },
+      },
+    ]);
+    expect(skipped).toBe(3);
+    expect(warnings).toEqual([
+      "1 Trakt entries without a TMDB identifier were skipped.",
+      "2 episode or season ratings were skipped; Shelfie rates whole titles.",
+    ]);
   });
   it("plans Trakt watchlist items as backlogged and repairs earlier wishlisted ones", async () => {
     const request: SourceDependencies["request"] = vi.fn(async (url) =>
@@ -442,6 +424,36 @@ describe("persisted import jobs", () => {
     ).toMatchObject({ added: 0, updated: 0, skipped: 2 });
     await service.disconnect("trakt");
     expect((await service.list())[0].hasApiKey).toBe(false);
+  });
+  it("checks imported shows' progress right after the import", async () => {
+    const db = await database();
+    const tvProgress = vi.fn(async () => {});
+    const service = new ImportService(
+      db,
+      async () => ({
+        items: [
+          item,
+          {
+            mediaType: "tv" as const,
+            sourceId: "9",
+            status: "active" as const,
+            watchedEpisodes: { s1e1: "2026-10-01" },
+          },
+        ],
+        skipped: 0,
+        warnings: [],
+      }),
+      tvProgress,
+    );
+    await service.save("trakt", {
+      enabled: false,
+      schedule: "",
+      account: "reader",
+      baseUrl: "",
+      apiKey: "secret",
+    });
+    await service.run("trakt");
+    expect(tvProgress).toHaveBeenCalledWith(db, ["tv:9"]);
   });
   it("rolls back malformed source data and resets interrupted jobs after restart", async () => {
     const db = await database();

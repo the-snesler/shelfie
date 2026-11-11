@@ -69,6 +69,8 @@ function card(
       networks: [],
       createdBy: [],
       nextEpisodeToAir: null,
+      lastEpisodeToAir: null,
+      airedEpisodes: null,
     };
   return {
     goodreadsId: Number(id),

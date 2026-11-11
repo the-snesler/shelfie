@@ -9,6 +9,7 @@ import type { FunctionComponent, SVGProps } from "react";
 import IconBolt from "~icons/tabler/bolt";
 import IconCalendarCheck from "~icons/tabler/calendar-check";
 import IconCircleCheck from "~icons/tabler/circle-check";
+import IconClockPause from "~icons/tabler/clock-pause";
 import IconDeviceGamepad2 from "~icons/tabler/device-gamepad-2";
 import IconHourglassLow from "~icons/tabler/hourglass-low";
 import IconPlayerPlay from "~icons/tabler/player-play";
@@ -16,8 +17,10 @@ import IconRepeat from "~icons/tabler/repeat";
 import IconStack2 from "~icons/tabler/stack-2";
 import IconStar from "~icons/tabler/star";
 import IconStarFilled from "~icons/tabler/star-filled";
+import type { CardMeta } from "../../db/cardCache";
 import type { LibrarySort, SortDirection } from "../library/librarySorting";
 import { lastCompletedDate } from "../library/librarySorting";
+import { isCaughtUp } from "../media/caughtUp";
 import { STATUS_ICONS, STATUSES_BY_MEDIA, statusLabel } from "../media/status";
 
 type IconComponent = FunctionComponent<SVGProps<SVGSVGElement>>;
@@ -41,6 +44,9 @@ export interface ListContext {
   now: number;
   /** Viewer's local ISO day (see `useToday`). */
   today: string;
+  /** Card metadata by item id, for rules that depend on the catalog (e.g.
+   *  "Caught up"). Without it those lists are empty. */
+  cards?: ReadonlyMap<string, CardMeta>;
 }
 
 /**
@@ -236,6 +242,19 @@ const REVISITED: Record<MediaType, string> = {
 export const UP_NEXT_MIN_EXCITEMENT = 3;
 
 const SMART_LISTS: readonly AutoList[] = [
+  {
+    id: "caught-up",
+    section: "smart",
+    icon: IconClockPause,
+    mediaTypes: ["tv"],
+    label: () => "Caught up",
+    description: () =>
+      "Shows you're watching with every aired episode seen, waiting on the next one.",
+    matches: (item, { cards, today }) =>
+      isCaughtUp(item, cards?.get(item.id), today),
+    defaultSort: "recent",
+    defaultGrouping: "none",
+  },
   {
     id: "up-next",
     section: "smart",

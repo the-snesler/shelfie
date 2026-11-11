@@ -33,7 +33,7 @@ interface ListSummary {
 export default function Lists() {
   const { db, settings } = useOutletContext<AppOutletContext>();
   const { items, cards } = useLibraryData(db);
-  const ctx = useListContext();
+  const ctx = useListContext(cards);
   const [searchParams] = useSearchParams();
   const type = parseMediaType(searchParams.get("type"));
 

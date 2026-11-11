@@ -72,18 +72,18 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       return;
     }
     if (metaState.status !== "loaded") return;
-    const total = metaState.meta.numberOfEpisodes;
+    const card = metaState.meta;
     if (item) {
       await item.incrementalModify((docData) => ({
         ...docData,
-        ...deriveEpisodeWatch(docData, total, updater),
+        ...deriveEpisodeWatch(docData, card, updater),
         updatedAt: Date.now(),
       }));
     } else {
       const meta = metaState.meta;
       const derived = deriveEpisodeWatch(
         { watchedEpisodes: {}, status: "active", completedDates: [] },
-        total,
+        card,
         updater,
       );
       const base = newLibraryItem(

@@ -3,6 +3,7 @@ import type {
   MediaVideo,
   TvAiring,
   TvDetail,
+  TvLastAiring,
   TvMetadata,
   TvScheduledEpisode,
   TvSeason,
@@ -33,6 +34,10 @@ function metadataRowToDto(row: TvMetadataTable): TvMetadata {
     nextEpisodeToAir: row.next_episode
       ? (JSON.parse(row.next_episode) as TvAiring)
       : null,
+    lastEpisodeToAir: row.last_episode
+      ? (JSON.parse(row.last_episode) as TvLastAiring)
+      : null,
+    airedEpisodes: row.aired_episodes,
   };
 }
 
@@ -53,6 +58,10 @@ function metadataToRow(metadata: TvMetadata): TvMetadataTable {
     next_episode: metadata.nextEpisodeToAir
       ? JSON.stringify(metadata.nextEpisodeToAir)
       : null,
+    last_episode: metadata.lastEpisodeToAir
+      ? JSON.stringify(metadata.lastEpisodeToAir)
+      : null,
+    aired_episodes: metadata.airedEpisodes,
     backdrop_path: null,
     tagline: null,
     certification: null,
@@ -127,6 +136,8 @@ async function upsertMetadata(
         created_by: row.created_by,
         summary: row.summary,
         next_episode: row.next_episode,
+        last_episode: row.last_episode,
+        aired_episodes: row.aired_episodes,
         fetched_at: row.fetched_at,
       }),
     )
@@ -157,6 +168,8 @@ async function upsertDetail(
         created_by: row.created_by,
         summary: row.summary,
         next_episode: row.next_episode,
+        last_episode: row.last_episode,
+        aired_episodes: row.aired_episodes,
         fetched_at: row.fetched_at,
         backdrop_path: row.backdrop_path,
         tagline: row.tagline,

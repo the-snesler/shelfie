@@ -140,6 +140,10 @@ export interface TvMetadataTable {
   summary: string | null;
   /** JSON-encoded TvAiring | null (TMDB next_episode_to_air); card tier */
   next_episode: string | null;
+  /** JSON-encoded TvLastAiring | null (TMDB last_episode_to_air); card tier */
+  last_episode: string | null;
+  /** Regular episodes aired through last_episode; card tier */
+  aired_episodes: number | null;
   backdrop_path: string | null;
   tagline: string | null;
   /** US content rating, e.g. "TV-MA" */
@@ -265,6 +269,20 @@ export interface Database {
   calendar_subscription: CalendarSubscriptionTable;
   notification_settings: NotificationSettingsTable;
   notification_deliveries: NotificationDeliveriesTable;
+  tv_progress: TvProgressTable;
+}
+
+/**
+ * Server-only memory of the TV progress pass (`tv/progress.ts`): the watch
+ * state it last saw per library item, so it changes a status only when the
+ * show's state changes, never repeatedly undoing a manual choice.
+ */
+export interface TvProgressTable {
+  /** library_items.id, e.g. "tv:1396" */
+  item_id: string;
+  /** `${TvWatchState}@${episodeKey}` of the latest aired episode */
+  state_key: string;
+  evaluated_at: number;
 }
 
 export interface ImportConnectionsTable {
