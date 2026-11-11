@@ -71,6 +71,7 @@ async function seed(count = 1) {
             progressFormat: "hours",
             progressValue: null,
             rating: null,
+            excitement: null,
             notes: "",
             completedDates: ["2026-10-17"],
             watchedEpisodes: {},

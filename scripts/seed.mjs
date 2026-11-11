@@ -32,7 +32,9 @@ const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
 const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 
 // mediaType+query: what to search for. status/progressFormat/progressValue:
-// seeded library item state. watchedEpisodes: TV-only episode key -> YYYY-MM-DD watch date.
+// seeded library item state. excitement: planned-item level 1–4 (unset when
+// omitted), so the "Up next" list has members. watchedEpisodes: TV-only
+// episode key -> YYYY-MM-DD watch date.
 const SEEDS = [
   {
     mediaType: "game",
@@ -54,6 +56,7 @@ const SEEDS = [
     status: "backlogged",
     progressFormat: "hours",
     progressValue: null,
+    excitement: 4,
   },
   {
     mediaType: "game",
@@ -61,6 +64,7 @@ const SEEDS = [
     status: "wishlisted",
     progressFormat: "hours",
     progressValue: null,
+    excitement: 3,
   },
   {
     mediaType: "game",
@@ -89,6 +93,7 @@ const SEEDS = [
     status: "backlogged",
     progressFormat: "hours",
     progressValue: null,
+    excitement: 1,
   },
   {
     mediaType: "game",
@@ -110,6 +115,7 @@ const SEEDS = [
     status: "backlogged",
     progressFormat: "percent",
     progressValue: null,
+    excitement: 3,
   },
   {
     mediaType: "tv",
@@ -130,6 +136,7 @@ const SEEDS = [
     status: "backlogged",
     progressFormat: "percent",
     progressValue: null,
+    excitement: 2,
   },
   {
     mediaType: "book",
@@ -183,6 +190,7 @@ async function main() {
       progressValue: seed.progressValue,
       platforms: [],
       rating: null,
+      excitement: seed.excitement ?? null,
       completedDates: [],
       notes: "",
       watchedEpisodes: seed.watchedEpisodes ?? {},

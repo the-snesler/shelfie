@@ -12,7 +12,7 @@ export function LogCompletedDates({
   if (!item || item.completedDates.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-1 text-sm font-medium text-muted">
+    <div className="flex flex-col gap-1 px-2 text-sm font-medium text-muted">
       Completed
       <div className="flex flex-wrap gap-2">
         {[...item.completedDates]

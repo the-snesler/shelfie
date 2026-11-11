@@ -505,6 +505,17 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 19,
+    name: "item-excitement",
+    async up(db) {
+      // Nullable: every existing item starts with excitement unset.
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("excitement", "integer")
+        .execute();
+    },
+  },
 ];
 
 /**

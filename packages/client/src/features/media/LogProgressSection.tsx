@@ -52,7 +52,7 @@ export function LogProgressSection({
   const shown = parseProgressDraft(value, item.progressFormat) ?? 0;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 px-2">
       {formats.length > 1 && (
         <div className="flex gap-2">
           {formats.map((format) => (

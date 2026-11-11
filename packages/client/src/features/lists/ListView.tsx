@@ -4,7 +4,7 @@ import type {
   MediaType,
   OwnerSettings,
 } from "@shelfie/shared";
-import { ITEM_STATUSES, MEDIA_TYPES } from "@shelfie/shared";
+import { ITEM_STATUSES, MEDIA_TYPES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -29,7 +29,7 @@ import {
   NATURAL_DIRECTION,
   type LibrarySort,
 } from "../library/librarySorting";
-import { statusLabel } from "../media/status";
+import { excitementLabel, statusLabel } from "../media/status";
 import type { CardMeta } from "../media/useLibraryData";
 import { useLibraryData } from "../media/useLibraryData";
 import {
@@ -456,6 +456,10 @@ function shelfCaption(
     const last = lastCompletedDate(item);
     if (last) return shortIsoDate(last);
   }
+  if (sort === "excitement") {
+    const label = excitementLabel(item.excitement);
+    if (label) return label;
+  }
   if (sort === "added") {
     return `Added ${new Date(item.addedAt).toLocaleDateString(undefined, {
       year: "numeric",
@@ -539,7 +543,11 @@ function ListBody({
             </div>
           ) : (
             <div className="flex flex-col rounded-lg border border-divider bg-panel/85 py-2">
-              <ListHeaderRow />
+              <ListHeaderRow
+                planned={section.shown.every(
+                  (item) => STATUS_META_GROUP[item.status] === "planned",
+                )}
+              />
               {section.shown.map((item) => (
                 <ListRow
                   key={item.id}

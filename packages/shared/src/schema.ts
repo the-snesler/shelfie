@@ -13,7 +13,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 7,
+  version: 8,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -33,6 +33,11 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       minimum: 0.5,
       maximum: 5,
       multipleOf: 0.5,
+    },
+    excitement: {
+      type: ["integer", "null"],
+      minimum: 1,
+      maximum: 4,
     },
     completedDates: {
       type: "array",
@@ -117,6 +122,7 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "progressValue",
     "platforms",
     "rating",
+    "excitement",
     "completedDates",
     "notes",
     "addedAt",
@@ -147,6 +153,7 @@ const LEGACY_STATUS_MAP: Record<string, string> = {
  * change, so the migration is the identity function. Version 6 converts
  * `watchedEpisodes` from a key array to a key→date map (existing keys get
  * empty-string dates). Version 7 adds timestamped activity history.
+ * Version 8 adds `excitement` (unset for every existing document).
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
@@ -175,4 +182,5 @@ export const libraryItemMigrationStrategies: MigrationStrategies = {
     ),
   }),
   7: (oldDoc) => ({ ...oldDoc, activity: [] }),
+  8: (oldDoc) => ({ ...oldDoc, excitement: null }),
 };

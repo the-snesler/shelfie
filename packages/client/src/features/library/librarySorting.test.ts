@@ -5,8 +5,10 @@ import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import {
+  compareLibraryItems,
   comparePlannedItems,
   compareUnreleasedItems,
+  NATURAL_DIRECTION,
   normalizeManualOrder,
   shelfSection,
 } from "./librarySorting";
@@ -29,6 +31,7 @@ function item(
     progressValue: null,
     platforms: [],
     rating: null,
+    excitement: null,
     completedDates: [],
     notes: "",
     watchedEpisodes: {},
@@ -74,6 +77,35 @@ describe("library sorting", () => {
     expect(comparePlannedItems(game, movie, "release", cards)).toBeGreaterThan(
       0,
     );
+  });
+
+  it("sorts by excitement highest first, unset last either way", () => {
+    const items = [
+      item("game:1"),
+      item("game:2", { excitement: 2 }),
+      item("game:3", { excitement: 4 }),
+      item("game:4", { excitement: 2 }),
+    ];
+    const cards = new Map<string, CardMeta>([
+      ["game:2", { id: "game:2", name: "Beta" } as GameCardDoc],
+      ["game:4", { id: "game:4", name: "Alpha" } as GameCardDoc],
+    ]);
+    const order = (direction?: "asc" | "desc") =>
+      [...items]
+        .sort((a, b) =>
+          compareLibraryItems(a, b, "excitement", cards, direction),
+        )
+        .map((i) => i.id);
+
+    expect(NATURAL_DIRECTION.excitement).toBe("desc");
+    // Ties on excitement fall back to A–Z (Alpha before Beta).
+    expect(order()).toEqual(["game:3", "game:4", "game:2", "game:1"]);
+    expect(order("asc")).toEqual(["game:4", "game:2", "game:3", "game:1"]);
+    expect(
+      [...items]
+        .sort((a, b) => comparePlannedItems(a, b, "excitement", cards))
+        .map((i) => i.id),
+    ).toEqual(order());
   });
 
   it("preserves manual positions, removes stale ids, and appends new items", () => {

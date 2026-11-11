@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { ITEM_STATUSES, LOG_FORMATS, MEDIA_TYPES } from "./types.js";
+import {
+  EXCITEMENT_MAX,
+  EXCITEMENT_MIN,
+  ITEM_STATUSES,
+  LOG_FORMATS,
+  MEDIA_TYPES,
+} from "./types.js";
 import type { ReplicatedLibraryItem } from "./types.js";
 
 /**
@@ -82,5 +88,14 @@ export const libraryItemDocSchema: z.ZodType<
         .strict(),
     )
     .default([]),
+  // Defaults to unset so a client built before the field existed can still
+  // push (mirrors `activity`'s default).
+  excitement: z
+    .number()
+    .int()
+    .min(EXCITEMENT_MIN)
+    .max(EXCITEMENT_MAX)
+    .nullable()
+    .default(null),
   _deleted: z.boolean(),
 });

@@ -9,7 +9,8 @@ import { itemReleaseDate, releaseState } from "../media/release";
 import { libraryProgressPercent } from "./libraryProgress";
 import type { CardMeta } from "./useLibraryData";
 
-export type PlannedSort = "manual" | "recent" | "release" | "title" | "type";
+export type PlannedSort =
+  "manual" | "recent" | "release" | "excitement" | "title" | "type";
 
 /** Every sort a list view offers. Home's Planned shelf uses a subset (plus
  *  its own "manual" order, which only makes sense for a hand-kept shelf). */
@@ -20,6 +21,7 @@ export type LibrarySort =
   | "release"
   | "type"
   | "rating"
+  | "excitement"
   | "completed"
   | "progress";
 
@@ -34,6 +36,7 @@ export const NATURAL_DIRECTION: Record<LibrarySort, SortDirection> = {
   release: "desc",
   type: "asc",
   rating: "desc",
+  excitement: "desc",
   completed: "desc",
   progress: "desc",
 };
@@ -87,6 +90,8 @@ function sortKey(
       return TYPE_ORDER[item.mediaType];
     case "rating":
       return item.rating;
+    case "excitement":
+      return item.excitement;
     case "completed":
       return lastCompletedDate(item);
     case "progress":
@@ -95,7 +100,7 @@ function sortKey(
 }
 
 /** Sorts by `sort` in `direction`. Items with no value for the key (unrated,
- *  never finished, undated) always sink to the end whichever way the list
+ *  no excitement set, never finished, undated) always sink to the end whichever way the list
  *  runs; ties fall back to A–Z, then id, so the order is total. */
 export function compareLibraryItems(
   a: RxDocument<LibraryItem>,

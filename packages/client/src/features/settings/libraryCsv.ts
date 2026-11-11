@@ -18,7 +18,12 @@ const HEADERS = [
   "watchedEpisodes",
   "addedAt",
   "activity",
+  "excitement",
 ] as const;
+
+/** Older exports are a prefix of HEADERS: before `excitement`, and before
+ *  `activity` too. Missing trailing columns import as their empty value. */
+const MIN_HEADER_COUNT = HEADERS.length - 2;
 
 export interface PreparedImport {
   documents: LibraryItem[];
@@ -43,6 +48,7 @@ export function exportLibraryCsv(items: readonly LibraryItem[]): string {
       JSON.stringify(item.watchedEpisodes),
       String(item.addedAt),
       JSON.stringify(item.activity),
+      item.excitement == null ? "" : String(item.excitement),
     ]);
   return [HEADERS, ...rows]
     .map((row) => row.map(escapeCell).join(","))
@@ -53,10 +59,10 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
   const rows = parseCsv(csv.replace(/^\uFEFF/, ""));
   if (rows.length === 0) throw new Error("The CSV file is empty.");
   const headers = rows[0];
-  const legacy = headers?.length === HEADERS.length - 1;
   if (
     !headers ||
-    (!legacy && headers.length !== HEADERS.length) ||
+    headers.length < MIN_HEADER_COUNT ||
+    headers.length > HEADERS.length ||
     headers.some((cell, index) => cell !== HEADERS[index])
   ) {
     throw new Error(`Expected header: ${HEADERS.join(",")}`);
@@ -83,6 +89,7 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
       watchedEpisodes,
       addedAt,
       activity,
+      excitement,
     ] = row as [string, ...string[]];
     if (seen.has(id)) throw new Error(`Row ${rowNumber}: duplicate id ${id}.`);
     seen.add(id);
@@ -102,6 +109,7 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
         progressValue: nullableNumber(progressValue),
         platforms: JSON.parse(platforms),
         rating: nullableNumber(rating),
+        excitement: nullableNumber(excitement ?? ""),
         completedDates: JSON.parse(completedDates),
         notes,
         watchedEpisodes: JSON.parse(watchedEpisodes),

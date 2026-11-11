@@ -20,6 +20,8 @@ export interface LibraryItemsTable {
   platforms: string;
   /** Half-star rating 0.5–5; NULL when unrated. */
   rating: number | null;
+  /** Integer excitement level 1–4; NULL when unset. */
+  excitement: number | null;
   /** JSON-encoded string[] of ISO YYYY-MM-DD completion dates. */
   completed_dates: string;
   /** Free-text notes; empty string when none. */

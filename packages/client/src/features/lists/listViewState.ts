@@ -18,6 +18,7 @@ export const SORT_OPTIONS: readonly [LibrarySort, string][] = [
   ["added", "Date added"],
   ["completed", "Last finished"],
   ["rating", "Rating"],
+  ["excitement", "Excitement"],
   ["release", "Release date"],
   ["progress", "Progress"],
   ["title", "A–Z"],

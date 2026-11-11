@@ -14,6 +14,7 @@ function libraryItem(overrides: Partial<LibraryItem>): LibraryItem {
     progressValue: null,
     platforms: [],
     rating: null,
+    excitement: null,
     completedDates: [],
     notes: "",
     watchedEpisodes: {},

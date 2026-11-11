@@ -11,6 +11,7 @@ const base: LibraryItem = {
   progressValue: null,
   platforms: [],
   rating: null,
+  excitement: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
@@ -42,6 +43,16 @@ describe("recordItemActivity", () => {
       changes: { status: "finished", completedDates: ["2020-01-01"] },
     });
     expect(base.activity).toEqual([]);
+  });
+  it("never records excitement changes in the logbook activity", () => {
+    const next = { ...base, excitement: 4 };
+    recordItemActivity(next, base, 100, "excitement");
+    expect(next.activity).toEqual([]);
+    const both = { ...next, excitement: 2, rating: 3 };
+    recordItemActivity(both, next, 200, "both");
+    expect(both.activity).toEqual([
+      { id: "both", at: 200, changes: { rating: 3 } },
+    ]);
   });
   it("records only changed episode keys, including unwatches", () => {
     const previous = {

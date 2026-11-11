@@ -75,6 +75,7 @@ async function own(
           progressFormat: "percent",
           progressValue: null,
           rating: null,
+          excitement: null,
           notes: "",
           completedDates: [],
           watchedEpisodes: {},

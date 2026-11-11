@@ -46,6 +46,7 @@ export function mergeImportedItem(
       progressValue: incoming.progressValue ?? null,
       platforms: incoming.platforms ?? [],
       rating: incoming.rating ?? null,
+      excitement: null,
       completedDates: withFallbackDate(
         incoming.completedDates ?? [],
         incoming.status,

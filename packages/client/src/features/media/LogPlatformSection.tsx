@@ -1,3 +1,8 @@
+import IconDeviceGamepad2 from "~icons/tabler/device-gamepad-2";
+import { LogDisclosureRow } from "./LogRows";
+
+/** Games only: a summary row naming the owned platforms that expands into
+ *  the platform chips. */
 export function LogPlatformSection({
   mediaType,
   platforms,
@@ -14,13 +19,23 @@ export function LogPlatformSection({
   }
 
   return (
-    <fieldset className="flex flex-col gap-1 text-sm font-medium text-muted">
-      <legend>Platform</legend>
-      <div className="flex flex-wrap gap-2">
+    <LogDisclosureRow
+      icon={IconDeviceGamepad2}
+      label="Platform"
+      summary={
+        selectedPlatforms.length > 0 ? (
+          selectedPlatforms.join(", ")
+        ) : (
+          <span className="text-faint">None</span>
+        )
+      }
+    >
+      <div role="group" aria-label="Platforms" className="flex flex-wrap gap-2">
         {platforms.map((platform) => (
           <button
             key={platform}
             type="button"
+            aria-pressed={selectedPlatforms.includes(platform)}
             onClick={() => onTogglePlatform(platform)}
             className={
               selectedPlatforms.includes(platform)
@@ -32,6 +47,6 @@ export function LogPlatformSection({
           </button>
         ))}
       </div>
-    </fieldset>
+    </LogDisclosureRow>
   );
 }

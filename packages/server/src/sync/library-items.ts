@@ -50,6 +50,7 @@ export const libraryItemsSync: SyncCollection<ReplicatedLibraryItem> = {
           updated_at: row.updated_at,
           platforms: row.platforms,
           rating: row.rating,
+          excitement: row.excitement,
           completed_dates: row.completed_dates,
           notes: row.notes,
           watched_episodes: row.watched_episodes,

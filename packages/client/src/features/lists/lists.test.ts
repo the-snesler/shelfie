@@ -35,6 +35,7 @@ function item(
     progressValue: null,
     platforms: [],
     rating: null,
+    excitement: null,
     completedDates: [],
     notes: "",
     watchedEpisodes: {},
@@ -104,6 +105,30 @@ describe("automatic lists", () => {
     expect(ids(listMembers(list("dusty"), library, null, CTX))).toEqual([
       "tv:5",
     ]);
+  });
+
+  it("puts keen planned titles on Up next, sorted by excitement", () => {
+    const upNext = list("up-next");
+    const items = [
+      item("game:1", { status: "wishlisted", excitement: 4 }),
+      item("game:2", { status: "backlogged", excitement: 3 }),
+      item("game:3", { status: "backlogged", excitement: 2 }),
+      item("game:4", { status: "backlogged" }),
+      // Kept but hidden once a title leaves the planned group.
+      item("book:5", { status: "active", excitement: 4 }),
+      item("movie:6", { status: "finished", excitement: 4 }),
+      item("movie:7", { status: "backlogged", excitement: 3 }),
+    ];
+    expect(upNext.section).toBe("smart");
+    expect(upNext.defaultSort).toBe("excitement");
+    expect(ids(listMembers(upNext, items, null, CTX))).toEqual([
+      "game:1",
+      "game:2",
+      "movie:7",
+    ]);
+    expect(ids(listMembers(upNext, items, "movie", CTX))).toEqual(["movie:7"]);
+    const state = resolveListViewState(new URLSearchParams(), null, upNext);
+    expect(state).toMatchObject({ sort: "excitement", dir: "desc" });
   });
 
   it("builds one game-only list per platform in use", () => {

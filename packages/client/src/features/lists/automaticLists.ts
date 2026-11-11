@@ -6,6 +6,7 @@ import type {
 } from "@shelfie/shared";
 import { ITEM_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
 import type { FunctionComponent, SVGProps } from "react";
+import IconBolt from "~icons/tabler/bolt";
 import IconCalendarCheck from "~icons/tabler/calendar-check";
 import IconCircleCheck from "~icons/tabler/circle-check";
 import IconDeviceGamepad2 from "~icons/tabler/device-gamepad-2";
@@ -231,7 +232,24 @@ const REVISITED: Record<MediaType, string> = {
   book: "Reread",
 };
 
+/** Lowest excitement level that puts a planned title on "Up next". */
+export const UP_NEXT_MIN_EXCITEMENT = 3;
+
 const SMART_LISTS: readonly AutoList[] = [
+  {
+    id: "up-next",
+    section: "smart",
+    icon: IconBolt,
+    label: () => "Up next",
+    description: (type) =>
+      `${noun(type)} on your wishlist or backlog you're keen to get to soon.`,
+    matches: (item) =>
+      STATUS_META_GROUP[item.status] === "planned" &&
+      item.excitement != null &&
+      item.excitement >= UP_NEXT_MIN_EXCITEMENT,
+    defaultSort: "excitement",
+    defaultGrouping: "none",
+  },
   {
     id: "recently-finished",
     section: "smart",

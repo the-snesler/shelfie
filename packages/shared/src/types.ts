@@ -47,6 +47,10 @@ export const STATUS_META_GROUP: Record<ItemStatus, MetaStatus> = {
 export const NON_FINISHED_STATUSES: readonly ItemStatus[] =
   ITEM_STATUSES.filter((s) => STATUS_META_GROUP[s] !== "finished");
 
+/** Excitement levels a planned item can carry (see LibraryItem.excitement). */
+export const EXCITEMENT_MIN = 1;
+export const EXCITEMENT_MAX = 4;
+
 /** The kinds of media a library item can track. */
 export const MEDIA_TYPES = ["game", "movie", "tv", "book"] as const;
 export type MediaType = (typeof MEDIA_TYPES)[number];
@@ -108,6 +112,11 @@ export interface LibraryItem {
   platforms: string[];
   /** Half-star rating, 0.5–5 in 0.5 steps; null when unrated. */
   rating: number | null;
+  /** How keen the owner is to get to a planned item: integer 1 (no urgency)
+   *  – 4 (can't wait); null when unset. The "before" counterpart of
+   *  `rating`. Kept (just hidden) when the item leaves the planned group.
+   *  Deliberately not recorded in `activity`. */
+  excitement: number | null;
   /** Calendar days (ISO "YYYY-MM-DD") the user marked this finished.
    *  Empty until the first completion. Display order is a UI concern. */
   completedDates: string[];

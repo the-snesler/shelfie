@@ -53,6 +53,7 @@ async function seed() {
           progressFormat: "hours",
           progressValue: null,
           rating: null,
+          excitement: null,
           notes: "PRIVATE NOTES",
           completedDates: ["2025-01-01"],
           watchedEpisodes: {},

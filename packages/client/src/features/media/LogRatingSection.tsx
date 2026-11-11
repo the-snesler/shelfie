@@ -1,6 +1,7 @@
 import type { LibraryItem } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { StarRating } from "../detail/StarRating";
+import { LogFieldRow } from "./LogRows";
 
 export function LogRatingSection({
   item,
@@ -12,9 +13,8 @@ export function LogRatingSection({
   if (!item) return null;
 
   return (
-    <div className="flex flex-col gap-1 text-sm font-medium text-muted">
-      Rating
+    <LogFieldRow label="Rating">
       <StarRating value={item.rating} onChange={onChange} />
-    </div>
+    </LogFieldRow>
   );
 }

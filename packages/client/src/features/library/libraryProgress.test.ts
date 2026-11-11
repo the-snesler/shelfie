@@ -11,6 +11,7 @@ const item: LibraryItem = {
   progressValue: 40,
   platforms: [],
   rating: null,
+  excitement: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: {},

@@ -43,6 +43,7 @@ const PLANNED_SORT_OPTIONS: readonly [PlannedSort, string][] = [
   ["manual", "Manual"],
   ["recent", "Last interaction"],
   ["release", "Release date"],
+  ["excitement", "Excitement"],
   ["title", "A–Z"],
   ["type", "Type"],
 ];

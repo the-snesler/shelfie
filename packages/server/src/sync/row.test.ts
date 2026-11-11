@@ -13,6 +13,7 @@ const base: ReplicatedLibraryItem = {
   updatedAt: 10,
   platforms: [],
   rating: null,
+  excitement: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
@@ -26,6 +27,7 @@ describe("libraryItemDocToRow / libraryItemRowToDoc", () => {
       ...base,
       platforms: ["PC", "Switch"],
       rating: 4.5,
+      excitement: 3,
       completedDates: ["2024-01-01", "2025-06-30"],
       notes: "great",
       activity: [

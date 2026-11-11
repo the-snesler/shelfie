@@ -13,6 +13,7 @@ const base: ReplicatedLibraryItem = {
   updatedAt: 2,
   platforms: [],
   rating: null,
+  excitement: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
@@ -158,6 +159,31 @@ describe("libraryItemDocSchema timestamps", () => {
     expect(
       libraryItemDocSchema.safeParse({ ...base, updatedAt: -1 }).success,
     ).toBe(false);
+  });
+});
+
+describe("libraryItemDocSchema excitement", () => {
+  it("accepts integer levels 1–4 and null", () => {
+    for (const excitement of [1, 2, 3, 4, null]) {
+      expect(
+        libraryItemDocSchema.safeParse({ ...base, excitement }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects out-of-range or fractional levels", () => {
+    for (const excitement of [0, 5, 2.5, -1, "3"]) {
+      expect(
+        libraryItemDocSchema.safeParse({ ...base, excitement }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("defaults a missing excitement to null (pushes from older clients)", () => {
+    const { excitement: _omit, ...rest } = base;
+    void _omit;
+    const parsed = libraryItemDocSchema.parse(rest);
+    expect(parsed.excitement).toBeNull();
   });
 });
 

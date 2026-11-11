@@ -19,6 +19,7 @@ const sample: ReplicatedLibraryItem = {
   _deleted: false,
   platforms: ["PlayStation 5"],
   rating: 4.5,
+  excitement: null,
   completedDates: ["2024-01-02"],
   notes: "great",
   watchedEpisodes: {},
@@ -34,6 +35,7 @@ const wishlistedSample: ReplicatedLibraryItem = {
   progressValue: null,
   platforms: [],
   rating: null,
+  excitement: 3,
   completedDates: [],
   notes: "",
 };
@@ -80,8 +82,8 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 7 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity migrations", () => {
-    expect(libraryItemSchema.version).toBe(7);
+  it("is at schema version 8 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity/excitement migrations", () => {
+    expect(libraryItemSchema.version).toBe(8);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
@@ -91,6 +93,12 @@ describe("library item contract", () => {
     expect(
       libraryItemMigrationStrategies[7]({ id: "game:1" }, null as never),
     ).toEqual({ id: "game:1", activity: [] });
+    expect(
+      libraryItemMigrationStrategies[8](
+        { id: "game:1", rating: 4 },
+        null as never,
+      ),
+    ).toEqual({ id: "game:1", rating: 4, excitement: null });
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
@@ -148,6 +156,15 @@ describe("library item contract", () => {
     expect(
       migrate6({ id: "tv:1", watchedEpisodes: ["s1e1", "s1e2"] }),
     ).toMatchObject({ watchedEpisodes: { s1e1: "", s1e2: "" } });
+  });
+
+  it("keeps excitement a required nullable 1–4 integer in both schemas", () => {
+    expect(libraryItemSchema.required).toContain("excitement");
+    expect(libraryItemSchema.properties.excitement).toMatchObject({
+      type: ["integer", "null"],
+      minimum: 1,
+      maximum: 4,
+    });
   });
 
   it("indexes status for the Library grid's finished-exclusion query", () => {

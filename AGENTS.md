@@ -21,7 +21,7 @@ packages/
 ├── shared/  @shelfie/shared   the client↔server contract (tsup: esm+cjs+dts)
 │   └── src/
 │       ├── types.ts        LibraryItem / Checkpoint / ItemStatus / MediaType / LOG_FORMATS / episodeKey()
-│       ├── schema.ts       RxDB JSON schema (libraryItemSchema, v4) + migration strategies — the *only* synced schema
+│       ├── schema.ts       RxDB JSON schema (libraryItemSchema, v8) + migration strategies — the *only* synced schema
 │       ├── validation.ts   zod libraryItemDocSchema — server push-boundary guard
 │       ├── conflict.ts     createLwwConflictHandler<TDoc>() + libraryItemConflictHandler
 │       ├── metadata.ts     game DTOs: SearchResult / GameMetadata (card) / GameDetail (detail) + GameVideo/StoreLink/TimeToBeat — HTTP-only, never synced
@@ -171,8 +171,11 @@ full gr-assets URLs loaded directly.
 `LibraryItem`: `id` (`${mediaType}:${sourceId}`), `mediaType` (`game | movie
 | tv | book`), `sourceId` (IGDB / TMDB / Goodreads-legacy numeric id,
 stringified), `status`, `progressFormat`/`progressValue`, `platforms`
-(games only, else `[]`), `rating` (half-stars 0.5–5), `completedDates`,
-`notes`, `watchedEpisodes`, `addedAt`/`updatedAt` (ms epoch).
+(games only, else `[]`), `rating` (half-stars 0.5–5), `excitement`
+(int 1–4 or null: the planned-item "before" counterpart of rating, labelled
+in `media/status.ts`, kept but hidden outside the planned group, never
+written to `activity`), `completedDates`, `notes`, `watchedEpisodes`,
+`addedAt`/`updatedAt` (ms epoch).
 
 - **Statuses are media-neutral canonical terms**: `wishlisted | backlogged |
 active | paused | dropped | finished | completed`. Per-media display
@@ -197,8 +200,9 @@ active | paused | dropped | finished | completed`. Per-media display
 **Automatic lists.** `features/lists/automaticLists.ts` defines every list
 as a predicate over `LibraryItem` (plus a `now`/`today` clock): one per
 status, one per meta-status group (the finished bucket is titled "Done"
-since it also holds `dropped`), smart lists (recently finished, needs a
-rating, top rated, gathering dust, revisited) and one game-only list per
+since it also holds `dropped`), smart lists (up next — planned items with
+excitement ≥ 3, sorted by excitement — recently finished, needs a rating,
+top rated, gathering dust, revisited) and one game-only list per
 logged platform. Membership is computed client-side from the whole library
 (`media/useLibraryData`), so lists need no schema, sync, or server work.
 View state lives in the URL, falling back to a per-list `localStorage`

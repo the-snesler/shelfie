@@ -1,8 +1,10 @@
 import type { LibraryItem, MediaType } from "@shelfie/shared";
+import { STATUS_META_GROUP } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect } from "react";
 import { Link } from "react-router";
 import IconChevronDown from "~icons/tabler/chevron-down";
+import { StaticBolts } from "../../components/StaticBolts";
 import { StaticStars } from "../../components/StaticStars";
 import { TruncatedText } from "../../components/Tooltip";
 import type { ShelfieDatabase } from "../../db/database";
@@ -43,7 +45,9 @@ function epochDate(ms: number): string {
 const COLUMNS =
   "grid grid-cols-[40px_minmax(0,1fr)_128px] items-center gap-x-3 sm:grid-cols-[40px_minmax(0,1fr)_128px_88px] md:grid-cols-[40px_minmax(0,1fr)_128px_88px_48px] lg:grid-cols-[40px_minmax(0,1fr)_128px_88px_48px_104px_104px]";
 
-export function ListHeaderRow() {
+/** `planned`: every row below is planned, so the rating column only shows
+ *  excitement and is titled for it. */
+export function ListHeaderRow({ planned }: { planned: boolean }) {
   return (
     <div
       className={`${COLUMNS} border-b border-divider px-3 pb-2 text-[11px] font-medium tracking-wide text-faint uppercase`}
@@ -52,7 +56,9 @@ export function ListHeaderRow() {
       <span />
       <span>Title</span>
       <span>Status</span>
-      <span className="hidden sm:block">Rating</span>
+      <span className="hidden sm:block">
+        {planned ? "Excitement" : "Rating"}
+      </span>
       <span className="hidden text-right md:block">Progress</span>
       <span className="hidden text-right lg:block">Last finished</span>
       <span className="hidden text-right lg:block">Added</span>
@@ -136,8 +142,16 @@ export function ListRow({
         {STATUS_LABELS[item.mediaType][item.status]}
         <IconChevronDown className="size-3 text-faint" />
       </button>
+      {/* One slot, as in the log popup: planned titles show their
+          excitement here, everything else its rating. */}
       <div className="hidden sm:block">
-        {item.rating != null ? (
+        {STATUS_META_GROUP[item.status] === "planned" ? (
+          item.excitement != null ? (
+            <StaticBolts value={item.excitement} />
+          ) : (
+            <span className="text-xs text-faint">—</span>
+          )
+        ) : item.rating != null ? (
           <StaticStars value={item.rating} />
         ) : (
           <span className="text-xs text-faint">—</span>

@@ -76,6 +76,25 @@ export function statusLabel(
     : NEUTRAL_STATUS_LABELS[status];
 }
 
+/** Excitement levels (`LibraryItem.excitement`), lowest first — the planned
+ *  counterpart of a rating, so the wording is media-neutral. */
+export const EXCITEMENT_LEVELS = [1, 2, 3, 4] as const;
+export type ExcitementLevel = (typeof EXCITEMENT_LEVELS)[number];
+
+export const EXCITEMENT_LABELS: Record<ExcitementLevel, string> = {
+  4: "Can't wait",
+  3: "Very interested",
+  2: "Mildly interested",
+  1: "No urgency",
+};
+
+/** Label for a stored excitement value; null when unset or out of range. */
+export function excitementLabel(value: number | null): string | null {
+  return value == null
+    ? null
+    : (EXCITEMENT_LABELS[value as ExcitementLevel] ?? null);
+}
+
 export const META_STATUS_LABELS: Record<MetaStatus, string> = {
   planned: "Planned",
   "in-progress": "In Progress",

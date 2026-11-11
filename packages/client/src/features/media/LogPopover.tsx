@@ -48,7 +48,7 @@ export function LogPopover({
           >
             <div
               style={transitionStyles}
-              className="w-80 rounded border border-divider bg-panel relative"
+              className="w-84 rounded border border-divider bg-panel relative"
             >
               <LogModal
                 db={db}

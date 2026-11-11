@@ -29,6 +29,7 @@ export function newLibraryItem(
     progressValue: null,
     platforms: [],
     rating: null,
+    excitement: null,
     completedDates: [],
     notes: "",
     watchedEpisodes: {},

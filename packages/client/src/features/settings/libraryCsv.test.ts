@@ -15,6 +15,7 @@ const item: LibraryItem = {
   progressValue: 12,
   platforms: [],
   rating: 4.5,
+  excitement: 2,
   completedDates: ["2026-01-02"],
   notes: 'A note, with "quotes"\nand a newline.',
   watchedEpisodes: {},
@@ -31,19 +32,40 @@ const item: LibraryItem = {
 
 describe("library CSV", () => {
   it("round-trips quoted cells, JSON fields, and nullable numbers", () => {
-    const withoutNumbers = { ...item, progressValue: null, rating: null };
+    const withoutNumbers = {
+      ...item,
+      progressValue: null,
+      rating: null,
+      excitement: null,
+    };
     const [parsed] = importLibraryCsv(exportLibraryCsv([withoutNumbers]));
 
     expect(parsed).toEqual({ ...withoutNumbers, updatedAt: 1 });
+    expect(importLibraryCsv(exportLibraryCsv([item]))[0]).toEqual({
+      ...item,
+      updatedAt: 1,
+    });
+  });
+
+  it("accepts exports from before the excitement column", () => {
+    const csv = exportLibraryCsv([item])
+      .replace(",excitement", "")
+      .replace(/,2$/, "");
+    expect(importLibraryCsv(csv)[0]).toEqual({
+      ...item,
+      excitement: null,
+      updatedAt: 1,
+    });
   });
 
   it("accepts old exports without the activity column", () => {
     const { activity: _, ...legacy } = item;
     const csv = exportLibraryCsv([{ ...legacy, activity: [] }])
-      .replace(",activity", "")
-      .replace(/,\[\]$/, "");
+      .replace(",activity,excitement", "")
+      .replace(/,\[\],2$/, "");
     expect(importLibraryCsv(csv)[0]).toEqual({
       ...legacy,
+      excitement: null,
       activity: [],
       updatedAt: 1,
     });

@@ -1,55 +1,48 @@
 import clsx from "clsx";
-import {
-  COMPLETION_STATUSES,
-  META_STATUS_LABELS,
-  STATUS_ICONS,
-} from "./status";
-import type { ItemStatus, MetaStatus } from "@shelfie/shared";
-import { Fragment } from "react/jsx-runtime";
+import { COMPLETION_STATUSES, STATUS_ICONS } from "./status";
+import type { ItemStatus } from "@shelfie/shared";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
+/** Flat status menu: one light icon row per status, the selected one in
+ *  the accent highlight. Completion statuses carry a chevron because
+ *  picking one opens the "when did you finish it?" prompt. */
 export function LogStatusSection({
   statuses,
   labels,
   activeStatus,
   onSelectStatus,
 }: {
-  statuses: readonly [MetaStatus, ItemStatus[]][];
+  statuses: readonly ItemStatus[];
   labels: Record<ItemStatus, string>;
   activeStatus: ItemStatus | null;
   onSelectStatus: (status: ItemStatus) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      {statuses.map((group) => {
+    <div className="flex flex-col gap-0.5">
+      {statuses.map((status) => {
+        const Icon = STATUS_ICONS[status];
+        const active = activeStatus === status;
         return (
-          <Fragment key={group.join(",")}>
-            <h3 className="text-xs mt-1 font-medium text-muted">
-              {META_STATUS_LABELS[group[0]]}
-            </h3>
-            {group[1].map((status) => {
-              const Icon = STATUS_ICONS[status];
-              const active = activeStatus === status;
-              const shouldShowCaret = COMPLETION_STATUSES[status];
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => onSelectStatus(status)}
-                  className={clsx(
-                    "flex items-center gap-2 rounded px-3 py-2 text-sm font-medium grow",
-                    active
-                      ? "bg-accent text-accent-ink"
-                      : "bg-bg text-ink ring-1 ring-divider",
-                  )}
-                >
-                  <Icon />
-                  {labels[status]}
-                  {shouldShowCaret && <IconChevronRight className="ml-auto" />}
-                </button>
-              );
-            })}
-          </Fragment>
+          <button
+            key={status}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onSelectStatus(status)}
+            className={clsx(
+              "flex items-center gap-2 rounded px-2 py-1.5 text-sm",
+              active
+                ? "bg-accent font-medium text-accent-ink"
+                : "text-ink hover:bg-bg",
+            )}
+          >
+            <Icon className={active ? undefined : "text-muted"} />
+            {labels[status]}
+            {COMPLETION_STATUSES[status] && (
+              <IconChevronRight
+                className={clsx("ml-auto", !active && "text-faint")}
+              />
+            )}
+          </button>
         );
       })}
     </div>
