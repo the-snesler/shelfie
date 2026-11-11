@@ -16,7 +16,7 @@ export function LogFieldRow({
 }) {
   return (
     <div className="flex min-h-8 items-center gap-2 px-2 text-sm">
-      <span className="w-20 shrink-0 font-medium text-muted">{label}</span>
+      <span className="max-w-20 shrink-0 font-medium text-muted">{label}</span>
       {children}
     </div>
   );

@@ -78,20 +78,19 @@ export function statusLabel(
 
 /** Excitement levels (`LibraryItem.excitement`), lowest first — the planned
  *  counterpart of a rating, so the wording is media-neutral. */
-export const EXCITEMENT_LEVELS = [1, 2, 3, 4] as const;
+export const EXCITEMENT_LEVELS = [1, 2, 3] as const;
 export type ExcitementLevel = (typeof EXCITEMENT_LEVELS)[number];
 
 export const EXCITEMENT_LABELS: Record<ExcitementLevel, string> = {
-  4: "Can't wait",
-  3: "Very interested",
-  2: "Mildly interested",
-  1: "No urgency",
+  3: "Can't wait",
+  2: "Very interested",
+  1: "Mildly interested",
 };
 
 /** Label for a stored excitement value; null when unset or out of range. */
 export function excitementLabel(value: number | null): string | null {
   return value == null
-    ? null
+    ? "No urgency"
     : (EXCITEMENT_LABELS[value as ExcitementLevel] ?? null);
 }
 
@@ -108,7 +107,7 @@ export const STATUSES_BY_MEDIA: Record<MediaType, readonly ItemStatus[]> = {
   game: ITEM_STATUSES,
   movie: ["backlogged", "active", "dropped", "finished"],
   tv: ["backlogged", "active", "paused", "dropped", "finished"],
-  book: ["backlogged", "active", "paused", "dropped", "finished"],
+  book: ["wishlisted", "backlogged", "active", "paused", "dropped", "finished"],
 };
 
 export const STATUS_ICONS: Record<ItemStatus, IconComponent> = {

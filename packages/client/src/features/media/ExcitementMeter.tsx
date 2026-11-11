@@ -48,8 +48,8 @@ export function ExcitementMeter({
         title={label ?? undefined}
         className={
           hover != null
-            ? "truncate text-xs text-muted"
-            : "truncate text-xs text-ink"
+            ? "truncate text-xs text-ink"
+            : "truncate text-xs text-muted"
         }
       >
         {label ?? <span className="text-faint">Not set</span>}

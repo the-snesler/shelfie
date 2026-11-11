@@ -150,7 +150,7 @@ export function normalizeManualOrder(
   return [...kept, ...added];
 }
 
-/** A Library section: a meta-status bucket, plus "unreleased" — wishlisted
+/** A Library section: a meta-status bucket, plus "unreleased" — planned
  *  titles that can't be watched/played/read yet, split out of Planned. */
 export type ShelfSection = MetaStatus | "unreleased";
 
@@ -168,7 +168,7 @@ export function shelfSection(
   today: string,
 ): ShelfSection {
   if (
-    item.status === "wishlisted" &&
+    STATUS_META_GROUP[item.status] === "planned" &&
     releaseState(item, meta, today).kind !== "released"
   ) {
     return "unreleased";
