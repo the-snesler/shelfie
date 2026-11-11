@@ -7,7 +7,10 @@ import type { AppOutletContext } from "../../App";
 import { StaticStars } from "../../components/StaticStars";
 import { TruncatedText } from "../../components/Tooltip";
 import { useContainerVirtualizer } from "../../components/virtualList";
+import type { GameCardDoc } from "../../db/gameCards";
 import { refreshCardCaches } from "../../db/refreshCards";
+import { GameCover } from "../games/GameCover";
+import { selectPlatform } from "../games/platforms";
 import { emptyTypeCounts } from "../lists/listStats";
 import { parseMediaType } from "../lists/listViewState";
 import { MediaFilter } from "../lists/MediaFilter";
@@ -41,6 +44,50 @@ const EMPTY_NOUN: Record<MediaType, string> = {
 };
 
 type LibraryDoc = RxDocument<LibraryItem>;
+
+/** px width of the cover slot on completion rows; game cases vary in width
+ *  by platform, so covers are centred in a fixed slot to keep names aligned. */
+const COVER_SLOT_WIDTH = 50;
+/** px width of a movie/TV/book cover on completion rows. */
+const MEDIA_COVER_WIDTH = 44;
+/** px per mm of case height for game covers — sized so the widest case
+ *  (DS/3DS) fits the slot and tall cases stay close to a poster's height. */
+const GAME_COVER_SCALE = 0.32;
+
+function LogbookCover({
+  item,
+  card,
+  name,
+}: {
+  item: LibraryItem;
+  card: CardMeta | undefined;
+  name: string;
+}) {
+  const coverUrl = cardCover(item.mediaType, card);
+  if (item.mediaType === "game") {
+    const game = card as GameCardDoc | undefined;
+    return (
+      <GameCover
+        coverUrl={coverUrl}
+        platform={selectPlatform(
+          item.platforms,
+          game?.platforms ?? [],
+          game?.platformReleaseDates ?? [],
+        )}
+        name={name}
+        scale={GAME_COVER_SCALE}
+      />
+    );
+  }
+  return (
+    <MediaCover
+      coverUrl={coverUrl}
+      name={name}
+      width={MEDIA_COVER_WIDTH}
+      mediaType={item.mediaType}
+    />
+  );
+}
 
 // `toLocaleDateString` builds a fresh Intl formatter on every call, which
 // dominated row rendering for large logbooks; format with shared ones.
@@ -95,12 +142,12 @@ const LogbookRow = memo(function LogbookRow({
   const row =
     entry.kind === "completion" ? (
       <>
-        <MediaCover
-          coverUrl={cardCover(item.mediaType, card)}
-          name={name}
-          width={44}
-          mediaType={item.mediaType}
-        />
+        <div
+          className="flex shrink-0 justify-center"
+          style={{ width: COVER_SLOT_WIDTH }}
+        >
+          <LogbookCover item={item} card={card} name={name} />
+        </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs text-faint">{entryDateLabel(date)}</p>
           <TruncatedText as="p" className="text-sm font-medium text-ink">
