@@ -516,6 +516,18 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 20,
+    name: "owner-separate-wishlist",
+    async up(db) {
+      await db.schema
+        .alterTable("auth_owner")
+        .addColumn("separate_wishlist", "integer", (c) =>
+          c.notNull().defaultTo(0),
+        )
+        .execute();
+    },
+  },
 ];
 
 /**

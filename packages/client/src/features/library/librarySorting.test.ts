@@ -127,23 +127,31 @@ describe("unreleased shelf", () => {
   const movie = (id: string, releaseDate: string | null) =>
     ({ id, name: id, releaseDate }) as MovieCardDoc;
 
-  it("splits out only wishlisted titles that haven't released", () => {
-    const future = movie("movie:1", "2026-12-25");
-    expect(
-      shelfSection(item("movie:1", { status: "wishlisted" }), future, today),
-    ).toBe("unreleased");
-    expect(
-      shelfSection(item("movie:1", { status: "backlogged" }), future, today),
-    ).toBe("planned");
+  it("splits released wishlisted titles into Wishlist when asked", () => {
+    const released = movie("movie:1", today);
     expect(
       shelfSection(
         item("movie:1", { status: "wishlisted" }),
-        movie("movie:1", today),
+        released,
         today,
+        true,
       ),
-    ).toBe("planned");
+    ).toBe("wishlist");
     expect(
-      shelfSection(item("movie:1", { status: "wishlisted" }), undefined, today),
+      shelfSection(
+        item("movie:1", { status: "wishlisted" }),
+        movie("movie:1", "2026-12-25"),
+        today,
+        true,
+      ),
+    ).toBe("unreleased");
+    expect(
+      shelfSection(
+        item("movie:1", { status: "backlogged" }),
+        released,
+        today,
+        true,
+      ),
     ).toBe("planned");
   });
 

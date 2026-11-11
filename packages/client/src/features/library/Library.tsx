@@ -34,6 +34,7 @@ const MEDIA_LABELS: Record<MediaType, string> = {
 
 const SECTION_LABELS: Record<ShelfSection, string> = {
   ...META_STATUS_LABELS,
+  wishlist: "Wishlist",
   unreleased: "Unreleased",
 };
 
@@ -139,7 +140,12 @@ export default function Library() {
   const grouped = useMemo(() => {
     const map = new Map<ShelfSection, RxDocument<LibraryItem>[]>();
     for (const item of filtered) {
-      const g = shelfSection(item, cards.get(item.id), today);
+      const g = shelfSection(
+        item,
+        cards.get(item.id),
+        today,
+        settings.separateWishlist,
+      );
       const arr = map.get(g);
       if (arr) arr.push(item);
       else map.set(g, [item]);
@@ -155,19 +161,30 @@ export default function Library() {
           (stableInProgressRank.get(b.id) ?? Number.MAX_SAFE_INTEGER),
       );
     const manualRank = new Map(manualOrder.map((id, index) => [id, index]));
-    map
-      .get("planned")
-      ?.sort((a, b) =>
-        plannedSort === "manual"
-          ? (manualRank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-            (manualRank.get(b.id) ?? Number.MAX_SAFE_INTEGER)
-          : comparePlannedItems(a, b, plannedSort, cards),
-      );
+    // The Wishlist section is a slice of the planned bucket, so it follows
+    // Planned's sort (and shares its manual order).
+    for (const section of ["planned", "wishlist"] as const) {
+      map
+        .get(section)
+        ?.sort((a, b) =>
+          plannedSort === "manual"
+            ? (manualRank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+              (manualRank.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+            : comparePlannedItems(a, b, plannedSort, cards),
+        );
+    }
     map
       .get("unreleased")
       ?.sort((a, b) => compareUnreleasedItems(a, b, cards, today));
     return map;
-  }, [filtered, cards, manualOrder, plannedSort, today]);
+  }, [
+    filtered,
+    cards,
+    manualOrder,
+    plannedSort,
+    today,
+    settings.separateWishlist,
+  ]);
 
   function moveManualItem(overId: string) {
     const fromId = draggedId.current;
@@ -226,6 +243,8 @@ export default function Library() {
                 ? sectionItems.filter((item) => item.status !== "paused")
                 : sectionItems;
             const pausedCount = sectionItems.length - shownItems.length;
+            const manualDrag =
+              (g === "planned" || g === "wishlist") && plannedSort === "manual";
             return (
               <section key={g} className="flex flex-col">
                 <div className="flex items-center justify-between gap-4">
@@ -258,7 +277,10 @@ export default function Library() {
                     )}
                     {g !== "unreleased" && (
                       <Link
-                        to={listHref(groupListId(g), activeType)}
+                        to={listHref(
+                          g === "wishlist" ? "wishlisted" : groupListId(g),
+                          activeType,
+                        )}
                         className="inline-flex items-center gap-0.5 text-sm text-muted hover:text-accent"
                       >
                         See all
@@ -277,7 +299,7 @@ export default function Library() {
                         stiffness: 420,
                         damping: 38,
                       }}
-                      draggable={g === "planned" && plannedSort === "manual"}
+                      draggable={manualDrag}
                       onDragStart={() => {
                         draggedId.current = item.id;
                       }}
@@ -285,13 +307,13 @@ export default function Library() {
                         draggedId.current = null;
                       }}
                       onDragOver={(event) => {
-                        if (g === "planned" && plannedSort === "manual") {
+                        if (manualDrag) {
                           event.preventDefault();
                         }
                       }}
                       onDrop={() => moveManualItem(item.id)}
                       className={
-                        g === "planned" && plannedSort === "manual"
+                        manualDrag
                           ? "cursor-grab active:cursor-grabbing"
                           : undefined
                       }

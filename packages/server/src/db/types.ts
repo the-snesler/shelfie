@@ -197,6 +197,8 @@ export interface AuthOwnerTable {
   library_theme: string;
   /** 0 | 1 — SQLite has no native boolean */
   show_progress_bars: number;
+  /** 0 | 1 */
+  separate_wishlist: number;
   created_at: number;
   updated_at: number;
 }

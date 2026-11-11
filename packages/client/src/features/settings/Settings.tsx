@@ -179,6 +179,29 @@ export default function Settings() {
             className="size-5 shrink-0 accent-[var(--color-accent)]"
           />
         </label>
+
+        <label className="mt-6 flex items-center justify-between gap-4">
+          <span>
+            <span className="block text-sm font-medium text-ink">
+              Separate wishlist shelf
+            </span>
+            <span className="mt-0.5 block text-xs text-muted">
+              Show wishlisted titles in their own section below Planned instead
+              of mixing them in with your backlog.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.separateWishlist}
+            disabled={savingPreference}
+            onChange={(event) =>
+              void savePreferences({
+                separateWishlist: event.currentTarget.checked,
+              })
+            }
+            className="size-5 shrink-0 accent-[var(--color-accent)]"
+          />
+        </label>
         {preferenceError && (
           <p className="mt-3 text-sm text-danger">{preferenceError}</p>
         )}
