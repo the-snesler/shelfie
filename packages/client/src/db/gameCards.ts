@@ -25,12 +25,15 @@ export interface GameCardDoc {
   developer: string | null;
   firstReleaseDate: number | null;
   timeToBeat: TimeToBeat | null;
+  /** Base64 ThumbHash painted while the cover loads; null until the
+   *  server has hashed it. */
+  coverHash: string | null;
   cachedAt: number;
 }
 
 export const gameCardSchema: RxJsonSchema<GameCardDoc> = {
   title: "game card cache schema",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -80,6 +83,7 @@ export const gameCardSchema: RxJsonSchema<GameCardDoc> = {
       maximum: 9007199254740991,
       multipleOf: 1,
     },
+    coverHash: { type: ["string", "null"], maxLength: 256 },
   },
   required: [
     "id",
@@ -107,6 +111,7 @@ export function cardToDoc(card: GameMetadata): GameCardDoc {
     developer: card.developer,
     firstReleaseDate: card.firstReleaseDate,
     timeToBeat: card.timeToBeat ?? null,
+    coverHash: card.coverHash ?? null,
     cachedAt: Date.now(),
   };
 }

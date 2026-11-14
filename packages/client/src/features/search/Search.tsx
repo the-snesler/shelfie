@@ -161,12 +161,18 @@ function SearchResultRow({
       <Link
         to={href}
         viewTransition
-        state={{ coverUrl: result.coverUrl, platform, name: result.name }}
+        state={{
+          coverUrl: result.coverUrl,
+          coverHash: result.coverHash,
+          platform,
+          name: result.name,
+        }}
         className="flex min-w-0 flex-1 items-center gap-4 text-left"
       >
         <div className="shrink-0">
           <GameCover
             coverUrl={result.coverUrl}
+            coverHash={result.coverHash}
             platform={platform}
             name={result.name}
             scale={SEARCH_COVER_SCALE}
@@ -199,6 +205,7 @@ function MediaSearchResultRow({
   mediaType,
   href,
   coverUrl,
+  coverHash,
   name,
   meta,
   sourceId,
@@ -209,6 +216,7 @@ function MediaSearchResultRow({
   mediaType: Exclude<MediaType, "game">;
   href: string;
   coverUrl: string | null;
+  coverHash: string | null | undefined;
   name: string;
   meta: string | null;
   sourceId: string;
@@ -224,12 +232,13 @@ function MediaSearchResultRow({
       <Link
         to={href}
         viewTransition
-        state={{ coverUrl, name }}
+        state={{ coverUrl, coverHash, name }}
         className="flex min-w-0 flex-1 items-center gap-4 text-left"
       >
         <div className="shrink-0">
           <MediaCover
             coverUrl={coverUrl}
+            coverHash={coverHash}
             name={name}
             width={MEDIA_SEARCH_COVER_WIDTH}
             mediaType={mediaType}
@@ -385,6 +394,7 @@ export default function Search() {
             coverUrl={
               result.posterPath ? tmdbImageUrl(result.posterPath, "w342") : null
             }
+            coverHash={result.coverHash}
             name={result.name}
             meta={result.year != null ? String(result.year) : null}
             typeLabel={typeLabel}
@@ -404,6 +414,7 @@ export default function Search() {
             coverUrl={
               result.posterPath ? tmdbImageUrl(result.posterPath, "w342") : null
             }
+            coverHash={result.coverHash}
             name={result.name}
             meta={result.year != null ? String(result.year) : null}
             typeLabel={typeLabel}
@@ -421,6 +432,7 @@ export default function Search() {
             mediaType="book"
             href={`/books/${result.goodreadsId}`}
             coverUrl={result.coverUrl}
+            coverHash={result.coverHash}
             name={result.name}
             meta={
               [result.authors.join(", "), result.year]

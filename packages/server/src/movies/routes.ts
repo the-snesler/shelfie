@@ -3,6 +3,7 @@ import type {
   MediaVideo,
   MovieDetail,
   MovieMetadata,
+  MovieSearchResult,
 } from "@shelfie/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
@@ -13,6 +14,7 @@ import {
   fetchMovieDetail,
   searchMovies,
 } from "../tmdb/client.js";
+import { tmdbCoverKey } from "../covers/coverKeys.js";
 import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
 import { registerMetadataRoutes } from "../metadata/routes.js";
 
@@ -142,13 +144,19 @@ async function upsertDetail(
 
 export const moviesMetadataCollection: MetadataCollection<
   MovieMetadata,
-  MovieDetail
+  MovieDetail,
+  number,
+  MovieSearchResult
 > = {
   basePath: "/api/movies",
 
   search: searchMovies,
 
   cardId: (card) => card.tmdbId,
+
+  coverKey: (card) => tmdbCoverKey(card.posterPath),
+
+  searchCoverKey: (result) => tmdbCoverKey(result.posterPath),
 
   releaseDays: (card) => (card.releaseDate ? [card.releaseDate] : []),
 

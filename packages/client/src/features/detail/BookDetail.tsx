@@ -41,6 +41,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
   if (metaState.status === "loading") {
     const linkState = location.state as {
       coverUrl?: string | null;
+      coverHash?: string | null;
       name?: string;
     } | null;
     return (
@@ -50,6 +51,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
           cover={
             <MediaCover
               coverUrl={linkState?.coverUrl ?? null}
+              coverHash={linkState?.coverHash}
               name={linkState?.name ?? "Loading…"}
               width={MEDIA_DETAIL_COVER_WIDTH}
               mediaType="book"
@@ -100,6 +102,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
         cover={
           <MediaCover
             coverUrl={meta.coverUrl}
+            coverHash={meta.coverHash}
             name={meta.name}
             width={MEDIA_DETAIL_COVER_WIDTH}
             mediaType="book"

@@ -40,6 +40,7 @@ export type {
   StoreName,
   TimeToBeat,
 } from "./metadata.js";
+export type { CoverHashed } from "./covers.js";
 export type {
   MovieSearchResult,
   MovieMetadata,

@@ -1,4 +1,5 @@
 import type { MediaType } from "@shelfie/shared";
+import { coverPlaceholderStyle } from "../../images";
 
 /** px width of a media (movie/tv/book) cover in the library grid. */
 export const MEDIA_LIBRARY_COVER_WIDTH = 120;
@@ -25,12 +26,15 @@ export function mediaCoverTransitionName(
  *  centered name fallback when there is no cover image. */
 export function MediaCover({
   coverUrl,
+  coverHash,
   name,
   width,
   mediaType,
   viewTransitionName,
 }: {
   coverUrl: string | null;
+  /** The card's base64 ThumbHash (`coverHash`), painted until the image loads. */
+  coverHash?: string | null;
   name: string;
   /** px; height derives from the fixed 2:3 poster aspect ratio. */
   width: number;
@@ -60,6 +64,7 @@ export function MediaCover({
           src={coverUrl}
           alt={name}
           className="h-full w-full object-cover"
+          style={coverPlaceholderStyle(coverHash)}
           loading="lazy"
         />
       ) : (

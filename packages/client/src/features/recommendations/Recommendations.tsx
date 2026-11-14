@@ -48,6 +48,7 @@ function RecommendationCard({
   const cover = (
     <MediaCover
       coverUrl={cardCover(item.mediaType, card)}
+      coverHash={card.coverHash}
       name={card.name}
       width={72}
       mediaType={item.mediaType}

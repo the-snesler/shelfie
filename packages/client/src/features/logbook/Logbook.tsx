@@ -69,6 +69,7 @@ function LogbookCover({
     return (
       <GameCover
         coverUrl={coverUrl}
+        coverHash={card?.coverHash}
         platform={selectPlatform(
           item.platforms,
           game?.platforms ?? [],
@@ -82,6 +83,7 @@ function LogbookCover({
   return (
     <MediaCover
       coverUrl={coverUrl}
+      coverHash={card?.coverHash}
       name={name}
       width={MEDIA_COVER_WIDTH}
       mediaType={item.mediaType}

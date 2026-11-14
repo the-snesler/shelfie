@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
+import { coverPlaceholderStyle } from "../../images";
 import { DEFAULT_TEMPLATE, platformTemplates } from "./platforms";
 
 export function GameCover({
   coverUrl,
+  coverHash,
   platform,
   name,
   scale,
@@ -10,6 +12,8 @@ export function GameCover({
   children,
 }: {
   coverUrl: string | null;
+  /** The card's base64 ThumbHash (`coverHash`), painted until the image loads. */
+  coverHash?: string | null;
   platform: string | null;
   name: string;
   scale: number; // px per mm of case height
@@ -44,7 +48,12 @@ export function GameCover({
         <img
           src={coverUrl}
           alt={name}
-          style={{ "--scale": scale } as React.CSSProperties}
+          style={
+            {
+              "--scale": scale,
+              ...coverPlaceholderStyle(coverHash),
+            } as React.CSSProperties
+          }
           className="h-full w-full object-cover pt-[calc(var(--scale)*var(--art-padding-top))] pr-[calc(var(--scale)*var(--art-padding-right))] pl-[calc(var(--scale)*var(--art-padding-left))]"
           loading="lazy"
         />

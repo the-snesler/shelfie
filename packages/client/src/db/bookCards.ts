@@ -17,11 +17,14 @@ export interface BookCardDoc {
   /** ISO YYYY-MM-DD */
   publicationDate: string | null;
   pageCount: number | null;
+  /** Base64 ThumbHash painted while the cover loads; null until the
+   *  server has hashed it. */
+  coverHash: string | null;
 }
 
 export const bookCardSchema: RxJsonSchema<BookCardDoc> = {
   title: "book card cache schema",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -42,6 +45,7 @@ export const bookCardSchema: RxJsonSchema<BookCardDoc> = {
       maximum: 9007199254740991,
       multipleOf: 1,
     },
+    coverHash: { type: ["string", "null"], maxLength: 256 },
   },
   required: ["id", "goodreadsId", "name", "authors"],
 } as const;
@@ -56,6 +60,7 @@ export function cardToDoc(card: BookMetadata): BookCardDoc {
     authors: card.authors,
     publicationDate: card.publicationDate,
     pageCount: card.pageCount,
+    coverHash: card.coverHash ?? null,
   };
 }
 

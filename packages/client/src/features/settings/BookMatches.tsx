@@ -333,6 +333,7 @@ function BookPicker({
             <li key={result.goodreadsId} className="flex items-center gap-3">
               <MediaCover
                 coverUrl={result.coverUrl}
+                coverHash={result.coverHash}
                 name={result.name}
                 width={36}
                 mediaType="book"

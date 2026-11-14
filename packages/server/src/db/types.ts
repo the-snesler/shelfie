@@ -270,6 +270,20 @@ export interface Database {
   notification_settings: NotificationSettingsTable;
   notification_deliveries: NotificationDeliveriesTable;
   tv_progress: TvProgressTable;
+  cover_hashes: CoverHashesTable;
+}
+
+/**
+ * Server-only ThumbHash cache for cover art, shared by every medium and keyed
+ * by `covers/coverKeys.ts` keys (e.g. "igdb:co4hni", "tmdb:/abc.jpg"), so
+ * refetching a card never discards its hash.
+ */
+export interface CoverHashesTable {
+  cover_key: string;
+  /** Base64 ThumbHash; NULL when the last attempt failed. */
+  hash: string | null;
+  /** epoch ms of the last attempt; failures retry a day later. */
+  checked_at: number;
 }
 
 /**

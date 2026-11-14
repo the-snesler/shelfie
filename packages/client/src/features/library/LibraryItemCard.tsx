@@ -154,6 +154,7 @@ export function LibraryItemCard({
     item.mediaType === "game" ? (
       <GameCover
         coverUrl={cover}
+        coverHash={meta?.coverHash}
         platform={platform}
         name={name}
         scale={LIBRARY_COVER_SCALE}
@@ -166,6 +167,7 @@ export function LibraryItemCard({
     ) : (
       <MediaCover
         coverUrl={cover}
+        coverHash={meta?.coverHash}
         name={name}
         width={MEDIA_LIBRARY_COVER_WIDTH}
         mediaType={item.mediaType}
@@ -232,7 +234,12 @@ export function LibraryItemCard({
           <Link
             to={href}
             viewTransition
-            state={{ coverUrl: cover, platform, name }}
+            state={{
+              coverUrl: cover,
+              coverHash: meta?.coverHash,
+              platform,
+              name,
+            }}
             className="rounded text-left"
           >
             {coverBox}
@@ -246,7 +253,12 @@ export function LibraryItemCard({
           <Link
             to={href}
             viewTransition
-            state={{ coverUrl: cover, platform, name }}
+            state={{
+              coverUrl: cover,
+              coverHash: meta?.coverHash,
+              platform,
+              name,
+            }}
             className="relative overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
             style={{ height: `${TV_STILL_HEIGHT}px`, aspectRatio: "16 / 9" }}
           >

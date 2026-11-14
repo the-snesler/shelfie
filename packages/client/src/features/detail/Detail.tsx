@@ -45,6 +45,7 @@ const STORE_LABELS: Record<StoreName, string> = {
  *  element is actually present in the DOM when each snapshot is taken. */
 interface DetailLinkState {
   coverUrl: string | null;
+  coverHash?: string | null;
   platform: string | null;
   name: string;
 }
@@ -79,6 +80,7 @@ export default function Detail({ params }: Route.ComponentProps) {
           cover={
             <GameCover
               coverUrl={linkState?.coverUrl ?? null}
+              coverHash={linkState?.coverHash}
               platform={linkState?.platform ?? null}
               name={linkState?.name ?? "Loading…"}
               scale={DETAIL_COVER_SCALE}
@@ -151,6 +153,7 @@ export default function Detail({ params }: Route.ComponentProps) {
         cover={
           <GameCover
             coverUrl={cover}
+            coverHash={meta.coverHash}
             platform={detailPlatform}
             name={meta.name}
             scale={DETAIL_COVER_SCALE}

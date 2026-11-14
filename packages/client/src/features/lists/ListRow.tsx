@@ -99,6 +99,7 @@ export function ListRow({
   const cover = (
     <MediaCover
       coverUrl={cardCover(item.mediaType, meta)}
+      coverHash={meta?.coverHash}
       name={name}
       width={40}
       mediaType={item.mediaType}
