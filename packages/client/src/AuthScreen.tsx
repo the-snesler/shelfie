@@ -127,7 +127,7 @@ export function AuthScreen({
             onClick={onCancel}
             className="mt-4 w-full text-sm text-muted hover:text-ink"
           >
-            Browse the catalog
+            Continue as a guest
           </button>
         )}
       </form>

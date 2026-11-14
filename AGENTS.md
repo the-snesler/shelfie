@@ -31,7 +31,7 @@ packages/
 ├── client/  @shelfie/client  Vite + React 18 + RxDB (Dexie storage) + Tailwind v4
 │   └── src/
 │       ├── db/
-│       │   ├── database.ts     singleton RxDatabase 'shelfiedb'; collections: library_items (synced) + game_metadata/movie_metadata/tv_metadata/book_metadata (local-only card caches)
+│       │   ├── database.ts     getDatabase(scope): 'shelfiedb' (owner, replicated) or 'shelfiedb-guest' (logged-out visitors, never replicated); collections: library_items (synced) + game_metadata/movie_metadata/tv_metadata/book_metadata (local-only card caches)
 │       │   ├── collections.ts  library_items (schema+migrationStrategies+conflictHandler) + the four card caches (schema only — never replicated, so no conflictHandler)
 │       │   ├── gameCards.ts / movieCards.ts / tvCards.ts / bookCards.ts   per-medium card-cache docs + upsert helpers
 │       │   └── replication.ts  startReplication() → /api/sync/<name>/{pull,push,stream}; called only for library_items — card caches are deliberately never passed in
@@ -39,6 +39,7 @@ packages/
 │       │   ├── library/Library.tsx   grid of owned items across all media, reads card metadata reactively from the four local caches (renders offline), refreshed over HTTP on mount
 │       │   ├── search/Search.tsx     tabbed search (Games/Movies/TV/Books) against the per-medium /api/*/search endpoints
 │       │   ├── detail/Detail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens + status/progress editor; each warms its card cache on load. TvDetail owns the episode watched-checklist.
+│       │   ├── demo/           guest-only demo shelf: DEMO_ITEMS plan + bundled demoCards.json fixture (scripts/demo-fixture.mjs), GuestEmptyShelf/GuestShelfNotice
 │       │   ├── lists/          automatic lists (/lists index + /lists/:id shelf/list view): predicate-defined, never stored or synced
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
 │       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
@@ -173,6 +174,17 @@ imports) all use it. The server pass is edge-triggered through the
 server-only `tv_progress` table, so it never fights a manual status. See
 `docs/integrations.md`.
 
+**Guest shelf.** Logged-out visitors use every screen except Settings
+against a separate local-only database (`getDatabase("guest")`), so signing
+out never exposes the owner's library and guest items never sync.
+`useLibraryData` snapshots are scoped per database for the same reason. An
+empty guest Home offers a demo shelf (`features/demo/demoShelf.ts`) whose
+card metadata is a bundled fixture, because anonymous catalog reads share a
+10-unit-per-minute quota; for guests `refreshCardCaches` only fetches
+missing or week-old cards, at most ten per pass. Regenerate the fixture
+with `node scripts/demo-fixture.mjs` against a running, signed-in dev
+server; `demoShelf.test.ts` keeps it aligned with `DEMO_ITEMS`.
+
 Images: IGDB covers go through the server proxy (`/api/images/...`,
 `images.ts` `gameImageUrl()`); TMDB posters/backdrops/stills load directly
 from `image.tmdb.org` via `tmdbImageUrl(path, size)`; Goodreads covers are
@@ -231,7 +243,7 @@ headers link to the matching group list ("See all").
 - `packages/server/src/{igdb,tmdb,goodreads}` — external API clients (throttling, retries, card/detail field handling per source).
 - `packages/server/src/{games,movies,tv,books}` — cache-first metadata endpoints per medium; row↔DTO mappers and upsert helpers live in each `routes.ts`.
 - `packages/server/src/auth` — single-user password/session auth.
-- `scripts/` — dev-only Node scripts (`seed.mjs`, `screenshot.mjs`) that drive a _running_ dev instance; not part of the build.
+- `scripts/` — dev-only Node scripts (`seed.mjs`, `screenshot.mjs`, `demo-fixture.mjs`) that drive a _running_ dev instance; not part of the build.
 
 ## Development Commands
 

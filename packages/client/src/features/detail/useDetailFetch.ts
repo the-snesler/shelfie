@@ -11,7 +11,6 @@ export type DetailFetchState<TMeta> =
 
 export interface UseDetailFetchOptions<TMeta> {
   db: ShelfieDatabase;
-  authenticated: boolean;
   /** Full request path, e.g. `/api/movies/by-id/42`. Re-fetches whenever
    *  this string changes. */
   url: string;
@@ -35,7 +34,6 @@ export interface UseDetailFetchResult<TMeta> {
  *  every terminal failure as its own "<Thing> not found". */
 export function useDetailFetch<TMeta>({
   db,
-  authenticated,
   url,
   libraryItemId,
   upsertCards,
@@ -64,7 +62,7 @@ export function useDetailFetch<TMeta>({
         if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
         const meta = (await res.json()) as TMeta;
         setMetaState({ status: "loaded", meta });
-        if (authenticated) void upsertCards(db, [meta]);
+        void upsertCards(db, [meta]);
       })
       .catch(() => {
         if (active) setMetaState({ status: "error" });
@@ -72,15 +70,11 @@ export function useDetailFetch<TMeta>({
     return () => {
       active = false;
     };
-  }, [db, url, authenticated, upsertCards]);
+  }, [db, url, upsertCards]);
 
   const itemId =
     metaState.status === "loaded" ? libraryItemId(metaState.meta) : null;
   useEffect(() => {
-    if (!authenticated) {
-      setItem(null);
-      return;
-    }
     if (itemId === null) {
       setItem(undefined);
       return;
@@ -89,7 +83,7 @@ export function useDetailFetch<TMeta>({
       setItem(doc ?? null);
     });
     return () => sub.unsubscribe();
-  }, [db, itemId, authenticated]);
+  }, [db, itemId]);
 
-  return { metaState, item: authenticated ? item : null };
+  return { metaState, item };
 }

@@ -57,13 +57,12 @@ function formatHltb(seconds: number): string {
 }
 
 export default function Detail({ params }: Route.ComponentProps) {
-  const { db, authenticated } = useOutletContext<AppOutletContext>();
+  const { db } = useOutletContext<AppOutletContext>();
   const slug = params.slug;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<GameDetail>({
     db,
-    authenticated,
     url: `/api/games/by-slug/${encodeURIComponent(slug)}`,
     libraryItemId: (meta) => `game:${meta.igdbId}`,
     upsertCards,
@@ -186,7 +185,7 @@ export default function Detail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      {authenticated && <MyActivity item={item} />}
+      <MyActivity item={item} />
       {(meta.summary || meta.storyline) && (
         <div className="flex flex-col gap-2">
           {meta.summary && <Description>{meta.summary}</Description>}

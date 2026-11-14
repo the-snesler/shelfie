@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";
 import IconChevronRight from "~icons/tabler/chevron-right";
 import type { AppOutletContext } from "../../App";
+import { GuestEmptyShelf, GuestShelfNotice } from "../demo/GuestShelf";
 import { groupListId } from "../lists/automaticLists";
 import { listHref } from "../lists/listHref";
 import { isCaughtUp } from "../media/caughtUp";
@@ -72,7 +73,7 @@ function storedManualOrder(): string[] {
 }
 
 export default function Library() {
-  const { db, settings } = useOutletContext<AppOutletContext>();
+  const { db, settings, authenticated } = useOutletContext<AppOutletContext>();
   const { items, cards, tvCatalogs } = useLibraryData(db);
   const today = useToday();
   const [plannedSort, setPlannedSort] = useState(storedPlannedSort);
@@ -217,8 +218,11 @@ export default function Library() {
               {filtered.length} on the shelf
             </span>
           </div>
+          {!authenticated && items.length > 0 && <GuestShelfNotice db={db} />}
         </header>
-        {items.length === 0 ? (
+        {items.length === 0 && !authenticated ? (
+          <GuestEmptyShelf db={db} />
+        ) : items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-16 text-center text-muted">
             <p className="font-display text-2xl text-ink">
               Your shelf is empty

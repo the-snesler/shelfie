@@ -9,10 +9,15 @@ reads and the Settings page; they are plaintext in SQLite, so protect backups.
 ## Browser access and deployment
 
 Search, card lookups, and media detail pages are public. Library documents,
-TV schedules for your collection, sync, recommendations, and settings require
-login. Guests see a sign-in prompt when saving a title. Logging out hides the
-local library and stops replication; its data stays on the device for offline
-use after signing in again.
+TV schedules for your collection, sync, and settings require login. Guests get
+their own shelf in a separate, never-replicated browser database
+(`shelfiedb-guest`): they can log titles and use Home, lists, the logbook,
+the calendar (release dates only), and recommendations, or load a demo shelf
+whose card metadata ships with the client (`features/demo/`), so it costs no
+catalog quota. Guest card refreshes only fetch missing or week-old cards, ten
+at most per pass. Logging out hides the owner's library and stops
+replication; its data stays on the device for offline use after signing in
+again. Guest items never reach the server.
 
 Login, setup, and credential-change attempts are limited to five per minute
 per client address. Anonymous catalog reads share a ten-unit quota per minute:

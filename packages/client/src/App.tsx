@@ -158,7 +158,7 @@ function BrowsingApp({
   useEffect(() => {
     let active = true;
     async function load() {
-      const database = await getDatabase();
+      const database = await getDatabase(authenticated ? "owner" : "guest");
       let ownerSettings = GUEST_SETTINGS;
       if (authenticated) {
         try {
@@ -211,11 +211,10 @@ function BrowsingApp({
     );
   }
 
-  const publicPage =
-    /^\/(search|games\/[^/]+|movies\/[^/]+|tv\/[^/]+|books\/[^/]+)\/?$/.test(
-      location.pathname,
-    );
-  if (!authenticated && !publicPage) return <Navigate to="/search" replace />;
+  // Guests get every screen against their local-only shelf, except the
+  // owner's server-side settings and integrations.
+  if (!authenticated && /^\/settings\/?$/.test(location.pathname))
+    return <Navigate to="/" replace />;
 
   return (
     <div className="flex h-full flex-col md:flex-row">

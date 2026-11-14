@@ -37,6 +37,16 @@ function replacePrefix(
  *  `library/useLibraryData.ts`, which only holds unfinished items. */
 let cachedItems: RxDocument<LibraryItem>[] = [];
 let cachedCards: Map<string, CardMeta> = new Map();
+/** The database the snapshot came from. Owner and guest shelves live in
+ *  separate databases, so a sign-out must never paint the owner's items. */
+let cachedDb: ShelfieDatabase | null = null;
+
+function resetSnapshotFor(db: ShelfieDatabase): void {
+  if (cachedDb === db) return;
+  cachedDb = db;
+  cachedItems = [];
+  cachedCards = new Map();
+}
 
 /** Subscribes to every `library_items` doc plus the four local-only card
  *  caches and exposes a merged, reactive view. Screens that need the whole
@@ -46,6 +56,7 @@ export function useLibraryData(db: ShelfieDatabase): {
   items: RxDocument<LibraryItem>[];
   cards: Map<string, CardMeta>;
 } {
+  resetSnapshotFor(db);
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>(cachedItems);
   const [cards, setCards] = useState<Map<string, CardMeta>>(cachedCards);
 

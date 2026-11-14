@@ -43,14 +43,12 @@ function orderedSeasons(seasons: TvSeason[]): TvSeason[] {
 }
 
 export default function TvDetail({ params }: Route.ComponentProps) {
-  const { db, authenticated, requestLogin } =
-    useOutletContext<AppOutletContext>();
+  const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<TvDetailDto>({
     db,
-    authenticated,
     url: `/api/tv/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `tv:${meta.tmdbId}`,
     upsertCards: upsertTvCards,
@@ -67,10 +65,6 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   async function applyWatched(
     updater: (current: Record<string, string>) => Record<string, string>,
   ) {
-    if (!authenticated) {
-      requestLogin();
-      return;
-    }
     if (metaState.status !== "loaded") return;
     const card = metaState.meta;
     if (item) {
@@ -228,7 +222,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      {authenticated && <MyActivity item={item} />}
+      <MyActivity item={item} />
       {meta.summary && <Description>{meta.summary}</Description>}
       <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (

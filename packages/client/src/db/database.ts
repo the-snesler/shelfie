@@ -41,21 +41,38 @@ export interface ShelfieCollections {
 }
 export type ShelfieDatabase = RxDatabase<ShelfieCollections>;
 
-let dbPromise: Promise<ShelfieDatabase> | null = null;
+/** `owner` is the signed-in library, replicated to the server. `guest` is a
+ * visitor's local-only shelf: never replicated, and kept in its own
+ * IndexedDB database so signing out never exposes the owner's library and
+ * guest items never reach the server. */
+export type DatabaseScope = "owner" | "guest";
+
+const DATABASE_NAMES: Record<DatabaseScope, string> = {
+  owner: "shelfiedb",
+  guest: "shelfiedb-guest",
+};
+
+const dbPromises = new Map<DatabaseScope, Promise<ShelfieDatabase>>();
 
 /**
- * Memoized singleton. RxDB throws if a database of the same name is created
- * twice, so we build it once at module scope rather than inside a React
+ * Memoized per scope. RxDB throws if a database of the same name is created
+ * twice, so each is built once at module scope rather than inside a React
  * effect (which may run twice in dev under certain conditions).
  */
-export function getDatabase(): Promise<ShelfieDatabase> {
-  if (!dbPromise) dbPromise = createDatabase();
-  return dbPromise;
+export function getDatabase(
+  scope: DatabaseScope = "owner",
+): Promise<ShelfieDatabase> {
+  let promise = dbPromises.get(scope);
+  if (!promise) {
+    promise = createDatabase(DATABASE_NAMES[scope]);
+    dbPromises.set(scope, promise);
+  }
+  return promise;
 }
 
-async function createDatabase(): Promise<ShelfieDatabase> {
+async function createDatabase(name: string): Promise<ShelfieDatabase> {
   const db = await createRxDatabase<ShelfieCollections>({
-    name: "shelfiedb",
+    name,
     storage,
     multiInstance: true,
     eventReduce: true,

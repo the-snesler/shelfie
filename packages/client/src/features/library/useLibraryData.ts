@@ -31,6 +31,17 @@ export interface LibraryData {
 let cachedItems: RxDocument<LibraryItem>[] = [];
 let cachedCards: Map<string, CardMeta> = new Map();
 let cachedTvCatalogs: Map<string, TvSeason[]> = new Map();
+/** The database the snapshot came from. Owner and guest shelves live in
+ *  separate databases, so a sign-out must never paint the owner's items. */
+let cachedDb: ShelfieDatabase | null = null;
+
+function resetSnapshotFor(db: ShelfieDatabase): void {
+  if (cachedDb === db) return;
+  cachedDb = db;
+  cachedItems = [];
+  cachedCards = new Map();
+  cachedTvCatalogs = new Map();
+}
 
 /** Replaces every entry under `prefix` (a media type's `"<type>:"` id
  *  namespace) with a fresh snapshot from that type's collection, leaving
@@ -55,6 +66,7 @@ function mergeCards(
  *  each piece of state so a remount reuses the last snapshot instead of
  *  flashing empty (see `cachedItems` above). */
 export function useLibraryData(db: ShelfieDatabase): LibraryData {
+  resetSnapshotFor(db);
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>(cachedItems);
   const [cards, setCards] = useState<Map<string, CardMeta>>(cachedCards);
   const [tvCatalogs, setTvCatalogs] =

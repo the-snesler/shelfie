@@ -94,7 +94,6 @@ function SearchLogButton({
   target: LogTarget;
   item: RxDocument<LibraryItem> | null;
 }) {
-  const { authenticated, requestLogin } = useOutletContext<AppOutletContext>();
   const popover = useLogPopover();
 
   return (
@@ -117,9 +116,7 @@ function SearchLogButton({
           <button
             type="button"
             aria-label="Add to library"
-            onClick={() =>
-              authenticated ? popover.setOpen(true) : requestLogin()
-            }
+            onClick={() => popover.setOpen(true)}
             className="rounded-full bg-accent p-1.5 text-accent-ink hover:brightness-110"
           >
             <IconPlus />
@@ -269,7 +266,7 @@ let cachedDebounced = "";
 let cachedBuckets: ResultBuckets = EMPTY_BUCKETS;
 
 export default function Search() {
-  const { db, authenticated } = useOutletContext<AppOutletContext>();
+  const { db } = useOutletContext<AppOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") ?? "";
   const [filter, setFilter] = useState<Filter>(cachedFilter);
@@ -287,10 +284,6 @@ export default function Search() {
   const [rateLimited, setRateLimited] = useState(false);
 
   useEffect(() => {
-    if (!authenticated) {
-      setLibraryItems(new Map());
-      return;
-    }
     const sub = db.library_items.find().$.subscribe((found) => {
       setLibraryItems(
         new Map(
@@ -299,7 +292,7 @@ export default function Search() {
       );
     });
     return () => sub.unsubscribe();
-  }, [db, authenticated]);
+  }, [db]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 300);

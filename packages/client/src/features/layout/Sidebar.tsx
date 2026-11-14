@@ -56,84 +56,68 @@ export function Sidebar({
         }`}
       >
         <div className="flex justify-start px-5 pt-5 pb-1">
-          <Link to={authenticated ? "/" : "/search"} onClick={onClose}>
+          <Link to="/" onClick={onClose}>
             <img src="/logo.svg" alt="Shelfie" className="h-11 w-auto" />
           </Link>
         </div>
 
         <SidebarSearch />
 
-        {authenticated ? (
-          <nav className="mt-1 flex flex-col gap-0.5 px-3">
+        <nav className="mt-1 flex flex-col gap-0.5 px-3">
+          <SidebarLink
+            to="/"
+            icon={IconHome}
+            label="Home"
+            active={location.pathname === "/" && !activeType}
+            onClose={onClose}
+          />
+          {MEDIA_NAV.map(({ type, label, icon }) => (
             <SidebarLink
-              to="/"
-              icon={IconHome}
-              label="Home"
-              active={location.pathname === "/" && !activeType}
+              key={type}
+              to={`/?type=${type}`}
+              icon={icon}
+              label={label}
+              active={activeType === type}
               onClose={onClose}
             />
-            {MEDIA_NAV.map(({ type, label, icon }) => (
-              <SidebarLink
-                key={type}
-                to={`/?type=${type}`}
-                icon={icon}
-                label={label}
-                active={activeType === type}
-                onClose={onClose}
-              />
-            ))}
-          </nav>
-        ) : (
-          <nav className="mt-1 px-3">
-            <SidebarLink
-              to="/search"
-              icon={IconSearch}
-              label="Browse catalog"
-              active={location.pathname === "/search"}
-              onClose={onClose}
-            />
-          </nav>
-        )}
+          ))}
+        </nav>
 
-        {authenticated && (
-          <>
-            <div className="mx-4 my-3 border-t border-divider" />
+        <div className="mx-4 my-3 border-t border-divider" />
 
-            <nav className="flex flex-col gap-0.5 px-3">
-              <SidebarLink
-                to="/recommendations"
-                icon={IconSparkles}
-                label="Recommendations"
-                active={location.pathname === "/recommendations"}
-                onClose={onClose}
-              />
-              <SidebarLink
-                to="/logbook"
-                icon={IconNotebook}
-                label="Logbook"
-                active={location.pathname === "/logbook"}
-                onClose={onClose}
-              />
-              <SidebarLink
-                to="/calendar"
-                icon={IconCalendar}
-                label="Calendar"
-                active={location.pathname === "/calendar"}
-                onClose={onClose}
-              />
-              <SidebarLink
-                to="/lists"
-                icon={IconListDetails}
-                label="Lists"
-                active={
-                  location.pathname === "/lists" ||
-                  location.pathname.startsWith("/lists/")
-                }
-                onClose={onClose}
-              />
-            </nav>
-          </>
-        )}
+        <nav className="flex flex-col gap-0.5 px-3">
+          <SidebarLink
+            to="/recommendations"
+            icon={IconSparkles}
+            label="Recommendations"
+            active={location.pathname === "/recommendations"}
+            onClose={onClose}
+          />
+          <SidebarLink
+            to="/logbook"
+            icon={IconNotebook}
+            label="Logbook"
+            active={location.pathname === "/logbook"}
+            onClose={onClose}
+          />
+          <SidebarLink
+            to="/calendar"
+            icon={IconCalendar}
+            label="Calendar"
+            active={location.pathname === "/calendar"}
+            onClose={onClose}
+          />
+          <SidebarLink
+            to="/lists"
+            icon={IconListDetails}
+            label="Lists"
+            active={
+              location.pathname === "/lists" ||
+              location.pathname.startsWith("/lists/")
+            }
+            onClose={onClose}
+          />
+        </nav>
 
         <div className="flex-1" />
 
@@ -178,8 +162,8 @@ export function Sidebar({
           ) : (
             <div className="space-y-3 px-2 py-1.5">
               <p className="text-sm text-muted">
-                Explore games, movies, TV and books. Sign in to manage your
-                collection.
+                You're browsing as a guest. Your shelf is saved in this browser
+                only.
               </p>
               <button
                 type="button"

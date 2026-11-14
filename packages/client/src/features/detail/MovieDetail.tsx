@@ -28,13 +28,12 @@ import {
 } from "./DetailChrome";
 
 export default function MovieDetail({ params }: Route.ComponentProps) {
-  const { db, authenticated } = useOutletContext<AppOutletContext>();
+  const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<MovieDetailDto>({
     db,
-    authenticated,
     url: `/api/movies/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `movie:${meta.tmdbId}`,
     upsertCards: upsertMovieCards,
@@ -130,7 +129,7 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      {authenticated && <MyActivity item={item} />}
+      <MyActivity item={item} />
       {meta.summary && <Description>{meta.summary}</Description>}
       <TrailerChips videos={meta.videos} />
       {meta.cast.length > 0 && (
