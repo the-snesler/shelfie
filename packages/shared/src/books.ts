@@ -7,8 +7,10 @@
  * loaded directly by the client — no image proxy.
  */
 
+import type { CoverHashed } from "./covers.js";
+
 /** A single row from `GET /api/books/search?q=`. */
-export interface BookSearchResult {
+export interface BookSearchResult extends CoverHashed {
   goodreadsId: number;
   name: string;
   authors: string[];
@@ -18,7 +20,7 @@ export interface BookSearchResult {
 }
 
 /** Card tier: `GET /api/books?ids=`, backed by the server's `book_metadata` table. */
-export interface BookMetadata {
+export interface BookMetadata extends CoverHashed {
   goodreadsId: number;
   name: string;
   coverUrl: string | null;

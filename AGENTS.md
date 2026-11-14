@@ -44,7 +44,7 @@ packages/
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
 │       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
 │       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /logbook, /calendar, /lists, /lists/:listId, /recommendations, /settings, catch-all
-│       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly
+│       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly; coverPlaceholderStyle() decodes card ThumbHashes
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
 │       ├── App.tsx, main.tsx, AuthScreen.tsx, index.css (Tailwind v4 theme tokens)
 └── server/  @shelfie/server  Hono on @hono/node-server
@@ -65,6 +65,7 @@ packages/
         ├── igdb/           IGDB v4 API client (Twitch OAuth2, self-throttle, 401-retry-once); CARD_FIELDS/DETAIL_FIELDS query splitting, best-effort time-to-beat
         ├── tmdb/           TMDB v3 client (static Bearer TMDB_TOKEN, ~100ms self-throttle, 429-retry-once); movie/tv search + card/detail fetches, per-season episode fetches
         ├── goodreads/      Goodreads client (autocomplete search JSON + internal AppSync GraphQL getBookPageData; ~1s+jitter throttle; GOODREADS_APPSYNC_KEY env override)
+        ├── covers/         ThumbHash cover placeholders: size-independent cover keys + background hashing queue → cover_hashes
         └── games/ movies/ tv/ books/   cache-first metadata endpoints per medium — search / batch-by-ids card / detail (by-slug for games, by-id elsewhere); row↔DTO mappers and upserts live directly in each routes.ts
 ```
 
@@ -189,6 +190,21 @@ Images: IGDB covers go through the server proxy (`/api/images/...`,
 `images.ts` `gameImageUrl()`); TMDB posters/backdrops/stills load directly
 from `image.tmdb.org` via `tmdbImageUrl(path, size)`; Goodreads covers are
 full gr-assets URLs loaded directly.
+
+**Cover placeholders.** Every card and search-result DTO carries an
+optional `coverHash` (base64 ThumbHash, `shared/src/covers.ts`) that the
+client paints behind the cover `<img>` until it loads
+(`images.ts` `coverPlaceholderStyle()`, used by `GameCover`/`MediaCover`).
+The server keeps hashes in the shared `cover_hashes` table, keyed by a
+size-independent cover key (`covers/coverKeys.ts`, e.g. `igdb:co4hni`,
+`tmdb:/abc.jpg`), so refetching a card never discards its hash.
+`registerMetadataRoutes` attaches known hashes to every card, detail and
+search response; card and detail responses also queue unhashed covers on
+`covers/coverHashes.ts`'s background queue (fetching the smallest upstream
+variant, then `sharp` + `thumbhash`). Search never queues, and no response
+waits on hashing, so a new cover's hash reaches the client on its next card
+refresh. The queue is inert until `index.ts` starts it, so tests never fetch
+images. Failed covers retry after a day.
 
 ### Domain model
 

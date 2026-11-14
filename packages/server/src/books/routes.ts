@@ -1,9 +1,15 @@
-import type { BookDetail, BookMetadata, BookSeries } from "@shelfie/shared";
+import type {
+  BookDetail,
+  BookMetadata,
+  BookSearchResult,
+  BookSeries,
+} from "@shelfie/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import type { BookMetadataTable, Database } from "../db/types.js";
 import { fetchBookByLegacyId, searchBooks } from "../goodreads/client.js";
+import { goodreadsCoverKey } from "../covers/coverKeys.js";
 import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
 import { registerMetadataRoutes } from "../metadata/routes.js";
 
@@ -108,13 +114,19 @@ async function upsertDetail(
 
 export const booksMetadataCollection: MetadataCollection<
   BookMetadata,
-  BookDetail
+  BookDetail,
+  number,
+  BookSearchResult
 > = {
   basePath: "/api/books",
 
   search: searchBooks,
 
   cardId: (card) => card.goodreadsId,
+
+  coverKey: (card) => goodreadsCoverKey(card.coverUrl),
+
+  searchCoverKey: (result) => goodreadsCoverKey(result.coverUrl),
 
   releaseDays: (card) => (card.publicationDate ? [card.publicationDate] : []),
 

@@ -129,6 +129,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   if (metaState.status === "loading") {
     const linkState = location.state as {
       coverUrl?: string | null;
+      coverHash?: string | null;
       name?: string;
     } | null;
     return (
@@ -140,6 +141,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           cover={
             <MediaCover
               coverUrl={linkState?.coverUrl ?? null}
+              coverHash={linkState?.coverHash}
               name={linkState?.name ?? "Loading…"}
               width={MEDIA_DETAIL_COVER_WIDTH}
               viewTransitionName={mediaCoverTransitionName("tv", id)}
@@ -193,6 +195,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
         cover={
           <MediaCover
             coverUrl={poster}
+            coverHash={meta.coverHash}
             name={meta.name}
             width={MEDIA_DETAIL_COVER_WIDTH}
             viewTransitionName={mediaCoverTransitionName("tv", id)}

@@ -28,6 +28,8 @@ function fakeCollection(
     basePath: "/api/fake",
     search: async () => [],
     cardId: (card) => card.id,
+    coverKey: () => null,
+    searchCoverKey: () => null,
     releaseDays: (card) => (card.day ? [card.day] : []),
     fetchCachedCards: async (_db, ids) =>
       new Map([...cached].filter(([id]) => ids.includes(id))),

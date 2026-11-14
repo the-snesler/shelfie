@@ -442,6 +442,7 @@ function EventRow({ event }: { event: Event }) {
     <>
       <MediaCover
         coverUrl={cardCover(item.mediaType, card)}
+        coverHash={card?.coverHash}
         name={name}
         width={36}
         mediaType={item.mediaType}

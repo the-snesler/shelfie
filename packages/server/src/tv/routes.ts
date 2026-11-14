@@ -6,6 +6,7 @@ import type {
   TvLastAiring,
   TvMetadata,
   TvScheduledEpisode,
+  TvSearchResult,
   TvSeason,
 } from "@shelfie/shared";
 import type { Hono } from "hono";
@@ -13,6 +14,7 @@ import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import type { Database, TvMetadataTable } from "../db/types.js";
 import { fetchTvCard, fetchTvDetail, searchTv } from "../tmdb/client.js";
+import { tmdbCoverKey } from "../covers/coverKeys.js";
 import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
 import { parseIds, registerMetadataRoutes } from "../metadata/routes.js";
 import { isIsoDay, nextEpisodeExpired, scheduleForShow } from "./schedule.js";
@@ -189,12 +191,21 @@ async function upsertDetail(
   return row;
 }
 
-export const tvMetadataCollection: MetadataCollection<TvMetadata, TvDetail> = {
+export const tvMetadataCollection: MetadataCollection<
+  TvMetadata,
+  TvDetail,
+  number,
+  TvSearchResult
+> = {
   basePath: "/api/tv",
 
   search: searchTv,
 
   cardId: (card) => card.tmdbId,
+
+  coverKey: (card) => tmdbCoverKey(card.posterPath),
+
+  searchCoverKey: (result) => tmdbCoverKey(result.posterPath),
 
   isExpired: (card, fetchedAt, now) =>
     nextEpisodeExpired(card.nextEpisodeToAir, fetchedAt, now),

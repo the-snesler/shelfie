@@ -5,8 +5,10 @@
  * HTTP (`GET /api/games/search`, `GET /api/games`).
  */
 
+import type { CoverHashed } from "./covers.js";
+
 /** A single row from `GET /api/games/search?q=`. */
-export interface SearchResult {
+export interface SearchResult extends CoverHashed {
   igdbId: number;
   /** IGDB's unique URL slug, e.g. "hades--1"; drives the client's /games/<slug> route. */
   slug: string;
@@ -24,7 +26,7 @@ export interface PlatformRelease {
 }
 
 /** A single row from `GET /api/games?ids=`, backed by the server's `game_metadata` cache table. */
-export interface GameMetadata {
+export interface GameMetadata extends CoverHashed {
   igdbId: number;
   /** IGDB's unique URL slug, e.g. "hades--1"; drives the client's /games/<slug> route. */
   slug: string;

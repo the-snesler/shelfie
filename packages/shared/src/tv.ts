@@ -5,10 +5,11 @@
  * synced LibraryItem (`watchedEpisodes`), NOT here — this is the server-owned
  * catalog of what episodes exist.
  */
+import type { CoverHashed } from "./covers.js";
 import type { CastMember, MediaVideo } from "./movies.js";
 
 /** A single row from `GET /api/tv/search?q=`. */
-export interface TvSearchResult {
+export interface TvSearchResult extends CoverHashed {
   tmdbId: number;
   name: string;
   year: number | null;
@@ -16,7 +17,7 @@ export interface TvSearchResult {
 }
 
 /** Card tier: `GET /api/tv?ids=`, backed by the server's `tv_metadata` table. */
-export interface TvMetadata {
+export interface TvMetadata extends CoverHashed {
   tmdbId: number;
   name: string;
   posterPath: string | null;

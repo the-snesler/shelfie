@@ -2,6 +2,7 @@ import type {
   GameDetail,
   GameMetadata,
   PlatformRelease,
+  SearchResult,
   TimeToBeat,
 } from "@shelfie/shared";
 import type { Hono } from "hono";
@@ -14,6 +15,7 @@ import {
   fetchGamesByIds,
   searchGames,
 } from "../igdb/client.js";
+import { igdbCoverKey, igdbCoverKeyFromProxyUrl } from "../covers/coverKeys.js";
 import type { CachedCard, MetadataCollection } from "../metadata/collection.js";
 import { registerMetadataRoutes } from "../metadata/routes.js";
 
@@ -196,13 +198,18 @@ async function upsertDetail(
 export const gamesMetadataCollection: MetadataCollection<
   GameMetadata,
   GameDetail,
-  string
+  string,
+  SearchResult
 > = {
   basePath: "/api/games",
 
   search: searchGames,
 
   cardId: (card) => card.igdbId,
+
+  coverKey: (card) => igdbCoverKey(card.coverImageId),
+
+  searchCoverKey: (result) => igdbCoverKeyFromProxyUrl(result.coverUrl),
 
   releaseDays: (card) =>
     [

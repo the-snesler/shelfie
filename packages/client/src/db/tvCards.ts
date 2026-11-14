@@ -22,11 +22,14 @@ export interface TvCardDoc {
   nextEpisodeToAir: TvAiring | null;
   lastEpisodeToAir: TvLastAiring | null;
   airedEpisodes: number | null;
+  /** Base64 ThumbHash painted while the cover loads; null until the
+   *  server has hashed it. */
+  coverHash: string | null;
 }
 
 export const tvCardSchema: RxJsonSchema<TvCardDoc> = {
   title: "tv card cache schema",
-  version: 3,
+  version: 4,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -87,6 +90,7 @@ export const tvCardSchema: RxJsonSchema<TvCardDoc> = {
       maximum: 9007199254740991,
       multipleOf: 1,
     },
+    coverHash: { type: ["string", "null"], maxLength: 256 },
   },
   required: [
     "id",
@@ -114,6 +118,7 @@ export function cardToDoc(card: TvMetadata): TvCardDoc {
     nextEpisodeToAir: card.nextEpisodeToAir ?? null,
     lastEpisodeToAir: card.lastEpisodeToAir ?? null,
     airedEpisodes: card.airedEpisodes ?? null,
+    coverHash: card.coverHash ?? null,
   };
 }
 

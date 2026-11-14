@@ -28,6 +28,7 @@ const card = (
   status: "Returning Series",
   numberOfSeasons: 1,
   numberOfEpisodes: 8,
+  coverHash: null,
   nextEpisodeToAir: scheduled
     ? {
         seasonNumber: 1,

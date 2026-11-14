@@ -6,8 +6,10 @@
  * "/gDzOcq0.jpg"); the client composes the CDN URL with a size bucket.
  */
 
+import type { CoverHashed } from "./covers.js";
+
 /** A single row from `GET /api/movies/search?q=`. */
-export interface MovieSearchResult {
+export interface MovieSearchResult extends CoverHashed {
   tmdbId: number;
   name: string;
   year: number | null;
@@ -28,7 +30,7 @@ export interface CastMember {
 }
 
 /** Card tier: `GET /api/movies?ids=`, backed by the server's `movie_metadata` table. */
-export interface MovieMetadata {
+export interface MovieMetadata extends CoverHashed {
   tmdbId: number;
   name: string;
   posterPath: string | null;

@@ -18,11 +18,14 @@ export interface MovieCardDoc {
   releaseDate: string | null;
   director: string | null;
   runtime: number | null;
+  /** Base64 ThumbHash painted while the cover loads; null until the
+   *  server has hashed it. */
+  coverHash: string | null;
 }
 
 export const movieCardSchema: RxJsonSchema<MovieCardDoc> = {
   title: "movie card cache schema",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -44,6 +47,7 @@ export const movieCardSchema: RxJsonSchema<MovieCardDoc> = {
       maximum: 9007199254740991,
       multipleOf: 1,
     },
+    coverHash: { type: ["string", "null"], maxLength: 256 },
   },
   required: ["id", "tmdbId", "name", "genres"],
 } as const;
@@ -59,6 +63,7 @@ export function cardToDoc(card: MovieMetadata): MovieCardDoc {
     releaseDate: card.releaseDate,
     director: card.director,
     runtime: card.runtime,
+    coverHash: card.coverHash ?? null,
   };
 }
 

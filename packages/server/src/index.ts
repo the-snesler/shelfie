@@ -6,6 +6,7 @@ import { startNotificationWorker } from "./notifications/worker.js";
 import { ImportService } from "./imports/service.js";
 import { startImportWorker } from "./imports/worker.js";
 import { startReleaseRefreshWorker } from "./metadata/releaseWorker.js";
+import { startCoverHashWorker } from "./covers/coverHashes.js";
 
 // Deviation from aside: aside assumes envs are pre-exported by the shell or
 // Docker tooling. Shelfie's IGDB credentials live in the repo root .env for
@@ -27,6 +28,7 @@ const imports = new ImportService(db);
 const stopImports = await startImportWorker(imports);
 const stopNotifications = startNotificationWorker();
 const stopReleaseRefresh = startReleaseRefreshWorker();
+const stopCoverHashes = startCoverHashWorker();
 const app = createApp(imports);
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
@@ -42,6 +44,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
       stopImports(),
       stopNotifications(),
       stopReleaseRefresh(),
+      stopCoverHashes(),
     ]);
     // SSE connections otherwise keep server.close() waiting indefinitely.
     // Interrupted imports retain their running marker and recover on restart.

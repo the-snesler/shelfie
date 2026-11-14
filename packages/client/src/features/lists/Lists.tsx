@@ -147,6 +147,7 @@ function ListTile({
               <div key={item.id} className="pointer-events-none">
                 <MediaCover
                   coverUrl={cardCover(item.mediaType, cards.get(item.id))}
+                  coverHash={cards.get(item.id)?.coverHash}
                   name={cardName(item, cards.get(item.id))}
                   width={46}
                   mediaType={item.mediaType}

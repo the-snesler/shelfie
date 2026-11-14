@@ -551,6 +551,18 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 22,
+    name: "cover-hashes",
+    async up(db) {
+      await db.schema
+        .createTable("cover_hashes")
+        .addColumn("cover_key", "text", (c) => c.primaryKey())
+        .addColumn("hash", "text")
+        .addColumn("checked_at", "integer", (c) => c.notNull())
+        .execute();
+    },
+  },
 ];
 
 /**

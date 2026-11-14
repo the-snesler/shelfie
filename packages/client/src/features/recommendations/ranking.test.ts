@@ -40,6 +40,7 @@ function movie(
     director: null,
     releaseDate: "2020-01-01",
     runtime: 100,
+    coverHash: null,
     ...overrides,
   };
 }
@@ -53,6 +54,7 @@ function book(id: number, authors: string[]): BookCardDoc {
     authors,
     publicationDate: null,
     pageCount: 250,
+    coverHash: null,
   };
 }
 

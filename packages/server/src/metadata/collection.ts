@@ -27,15 +27,27 @@ export interface MetadataCollection<
   TCard,
   TDetail extends TCard,
   TDetailKey = number,
+  TSearch = unknown,
 > {
   /** Route segment mounted under /api, e.g. "/api/games". */
   readonly basePath: string;
 
   /** Backs `GET :basePath/search?q=...`. */
-  search(query: string): Promise<unknown>;
+  search(query: string): Promise<TSearch[]>;
 
   /** Extracts the numeric id from a card DTO, for keying batch results. */
   cardId(card: TCard): number;
+
+  /**
+   * The `covers/coverKeys.ts` key of a card's (or detail's) cover art, or
+   * null when it has none. The registrar attaches the cached ThumbHash as
+   * `coverHash` and queues unhashed covers in the background.
+   */
+  coverKey(card: TCard): string | null;
+
+  /** Same for a search row. Search only reads hashes that already exist;
+   *  it never queues work for the many results nobody adds. */
+  searchCoverKey(result: TSearch): string | null;
 
   /**
    * Optional content-based expiry on top of the flat TTL: true when a row

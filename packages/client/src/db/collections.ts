@@ -29,6 +29,8 @@ export const collections = {
     schema: gameCardSchema,
     migrationStrategies: {
       1: (doc: RxDocumentData<GameCardDoc>) => ({ ...doc, timeToBeat: null }),
+      // Cover hashes arrive with the next card refresh.
+      2: (doc: RxDocumentData<GameCardDoc>) => ({ ...doc, coverHash: null }),
     },
   },
   movie_metadata: {
@@ -39,6 +41,7 @@ export const collections = {
         ...doc,
         releaseDate: null,
       }),
+      2: (doc: RxDocumentData<MovieCardDoc>) => ({ ...doc, coverHash: null }),
     },
   },
   tv_metadata: {
@@ -57,6 +60,7 @@ export const collections = {
         lastEpisodeToAir: null,
         airedEpisodes: null,
       }),
+      4: (doc: RxDocumentData<TvCardDoc>) => ({ ...doc, coverHash: null }),
     },
   },
   book_metadata: {
@@ -66,6 +70,7 @@ export const collections = {
         ...doc,
         publicationDate: null,
       }),
+      2: (doc: RxDocumentData<BookCardDoc>) => ({ ...doc, coverHash: null }),
     },
   },
 };
