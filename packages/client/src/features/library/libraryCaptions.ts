@@ -184,16 +184,40 @@ export function upcomingEpisode(
   };
 }
 
+/** In-progress (and dropped) books lead with a percentage, coerced from
+ *  pages when the page count is known: "38% · 1080 pages". Hours can't be
+ *  coerced, so they stay as-is. Planned/finished books show the length. */
 function bookCaption(
   item: LibraryItem,
   meta: BookCardDoc | undefined,
 ): string | null {
-  if (item.progressFormat === "pages" && item.progressValue != null) {
-    return meta?.pageCount != null
-      ? `${item.progressValue}/${meta.pageCount} p`
-      : `${item.progressValue} p`;
+  const pageCount =
+    meta?.pageCount != null && meta.pageCount > 0 ? meta.pageCount : null;
+  const length = pageCount != null ? `${pageCount} pages` : null;
+  const value = item.progressValue;
+  const showsProgress =
+    item.status === "active" ||
+    item.status === "paused" ||
+    item.status === "dropped";
+  if (!showsProgress || value == null || value <= 0) return length;
+
+  let progress: string;
+  if (item.progressFormat === "percent") {
+    progress = `${bookPercent(value)}%`;
+  } else if (item.progressFormat === "pages") {
+    progress =
+      pageCount != null
+        ? `${bookPercent((value / pageCount) * 100)}%`
+        : `p. ${value}`;
+  } else {
+    progress = `${value}h`;
   }
-  return meta?.pageCount != null ? `${meta.pageCount} p` : null;
+  return length ? `${progress} · ${length}` : progress;
+}
+
+/** Floors so a nearly-finished book never reads 100%. */
+function bookPercent(pct: number): number {
+  return Math.min(100, Math.max(0, Math.floor(pct)));
 }
 
 /** Left-aligned caption beneath a card. null -> render no text (footer keeps
