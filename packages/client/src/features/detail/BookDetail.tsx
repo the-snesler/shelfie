@@ -26,13 +26,12 @@ import {
 } from "./DetailChrome";
 
 export default function BookDetail({ params }: Route.ComponentProps) {
-  const { db, authenticated } = useOutletContext<AppOutletContext>();
+  const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
   const navigate = useNavigate();
   const location = useLocation();
   const { metaState, item } = useDetailFetch<BookDetailDto>({
     db,
-    authenticated,
     url: `/api/books/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `book:${meta.goodreadsId}`,
     upsertCards: upsertBookCards,
@@ -130,7 +129,7 @@ export default function BookDetail({ params }: Route.ComponentProps) {
           />
         </div>
       </DetailHero>
-      {authenticated && <MyActivity item={item} />}
+      <MyActivity item={item} />
       {meta.description && <Description>{meta.description}</Description>}
       {detailRows.length > 0 && (
         <DetailSection title="Details">

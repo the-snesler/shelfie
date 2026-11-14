@@ -7,12 +7,12 @@ import type {
   TvMetadata,
 } from "@shelfie/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { authFetch } from "../auth";
+import { authFetch, getAuthToken } from "../auth";
 import { upsertOwnedCards } from "./cardCache";
 import type { ShelfieDatabase } from "./database";
 import { refreshCardCaches } from "./refreshCards";
 
-vi.mock("../auth", () => ({ authFetch: vi.fn() }));
+vi.mock("../auth", () => ({ authFetch: vi.fn(), getAuthToken: vi.fn() }));
 vi.mock("./cardCache", () => ({ upsertOwnedCards: vi.fn() }));
 
 const db = {} as ShelfieDatabase;
@@ -85,6 +85,7 @@ function card(
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(upsertOwnedCards).mockResolvedValue(undefined);
+  vi.mocked(getAuthToken).mockReturnValue("owner-token");
 });
 
 describe("warming cards after large source imports", () => {
@@ -166,4 +167,86 @@ describe("warming cards after large source imports", () => {
       }
     },
   );
+});
+
+describe("guest refreshes", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  /** A guest database whose card caches hold `cached` ids, written at the
+   *  given time (RxDB's last-write time). */
+  function guestDb(cached: Record<string, number>): ShelfieDatabase {
+    const collection = {
+      findByIds: (ids: string[]) => ({
+        exec: async () =>
+          new Map(
+            ids
+              .filter((id) => id in cached)
+              .map((id) => [id, { _data: { _meta: { lwt: cached[id] } } }]),
+          ),
+      }),
+    };
+    return {
+      game_metadata: collection,
+      movie_metadata: collection,
+      tv_metadata: collection,
+      book_metadata: collection,
+    } as unknown as ShelfieDatabase;
+  }
+
+  function serveCards() {
+    const batches: { type: MediaType; ids: string[] }[] = [];
+    vi.mocked(authFetch).mockImplementation(async (input) => {
+      const batch = request(input);
+      batches.push(batch);
+      return Response.json(batch.ids.map((id) => card(batch.type, id)));
+    });
+    return batches;
+  }
+
+  it("fetches only missing or week-old cards, missing first, within the anonymous quota", async () => {
+    vi.mocked(getAuthToken).mockReturnValue(null);
+    const now = Date.now();
+    const cached: Record<string, number> = {};
+    const items: OwnedId[] = [];
+    // 20 fresh cards, 5 stale games, 8 missing movies.
+    for (let i = 1; i <= 20; i++) {
+      cached[`book:${i}`] = now - DAY;
+      items.push({ mediaType: "book", sourceId: String(i) });
+    }
+    for (let i = 1; i <= 5; i++) {
+      cached[`game:${i}`] = now - 8 * DAY;
+      items.push({ mediaType: "game", sourceId: String(i) });
+    }
+    for (let i = 1; i <= 8; i++)
+      items.push({ mediaType: "movie", sourceId: String(i) });
+    const batches = serveCards();
+
+    await refreshCardCaches(guestDb(cached), items);
+
+    const fetched = batches.flatMap((batch) =>
+      batch.ids.map((id) => `${batch.type}:${id}`),
+    );
+    expect(fetched).toHaveLength(10);
+    expect(fetched.filter((id) => id.startsWith("movie:"))).toHaveLength(8);
+    expect(fetched.filter((id) => id.startsWith("game:"))).toHaveLength(2);
+    expect(fetched.some((id) => id.startsWith("book:"))).toBe(false);
+    for (const batch of batches)
+      expect(batch.ids.length).toBeLessThanOrEqual(10);
+
+    // The same ids are not requested again on the next mount.
+    batches.length = 0;
+    await refreshCardCaches(guestDb(cached), items);
+    const retried = batches.flatMap((batch) =>
+      batch.ids.map((id) => `${batch.type}:${id}`),
+    );
+    expect(retried).toEqual(["game:3", "game:4", "game:5"]);
+  });
+
+  it("refreshes everything for the owner regardless of cache age", async () => {
+    const batches = serveCards();
+    await refreshCardCaches(guestDb({ "game:1": Date.now() }), [
+      { mediaType: "game", sourceId: "1" },
+    ]);
+    expect(batches).toEqual([{ type: "game", ids: ["1"] }]);
+  });
 });

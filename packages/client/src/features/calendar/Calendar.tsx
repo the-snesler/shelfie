@@ -99,7 +99,7 @@ function groupByDate(events: Event[]): Map<string, Event[]> {
 }
 
 export default function Calendar() {
-  const { db } = useOutletContext<AppOutletContext>();
+  const { db, authenticated } = useOutletContext<AppOutletContext>();
   const { items, cards } = useLibraryData(db);
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<string | null>(null);
@@ -140,7 +140,9 @@ export default function Calendar() {
   const to = lastDay > agendaEnd ? lastDay : agendaEnd;
 
   useEffect(() => {
-    if (!tvIds) {
+    // The episode schedule reads the owner's server-side catalog cache; a
+    // guest calendar shows release dates from local cards only.
+    if (!tvIds || !authenticated) {
       setSchedule([]);
       return;
     }
@@ -161,7 +163,7 @@ export default function Calendar() {
     return () => {
       active = false;
     };
-  }, [tvIds, from, to]);
+  }, [tvIds, from, to, authenticated]);
 
   const events = useMemo(
     () => buildCalendarEvents(items, cards, schedule),

@@ -1,0 +1,636 @@
+{
+  "games": [
+    {
+      "igdbId": 7346,
+      "slug": "the-legend-of-zelda-breath-of-the-wild",
+      "name": "The Legend of Zelda: Breath of the Wild",
+      "coverImageId": "co3p2d",
+      "summary": "The Legend of Zelda: Breath of the Wild is the first 3D open-world game in the Zelda series. Link can travel anywhere and be equipped with weapons and armor found throughout the world to grant him various bonuses. Unlike many games in the series, Breath of the Wild does not impose a specific order in which quests or dungeons must be completed. While the game still has environmental obstacles such as weather effects, inhospitable lands, or powerful enemies, many of them can be overcome using the right method. A lot of critics ranked Breath of the Wild as one of the best video games of all time.",
+      "genres": ["Puzzle", "Adventure"],
+      "platforms": ["Wii U", "Nintendo Switch"],
+      "platformReleaseDates": [
+        {
+          "platform": "Wii U",
+          "date": 1488499200
+        },
+        {
+          "platform": "Nintendo Switch",
+          "date": 1488499200
+        }
+      ],
+      "developer": "Nintendo EPD Production Group No. 3",
+      "firstReleaseDate": 1488499200,
+      "timeToBeat": {
+        "hastily": 135000,
+        "normally": 332160,
+        "completely": 888480,
+        "count": 20
+      }
+    },
+    {
+      "igdbId": 14593,
+      "slug": "hollow-knight",
+      "name": "Hollow Knight",
+      "coverImageId": "cobfzp",
+      "summary": "A 2D metroidvania with an emphasis on close combat and exploration in which the player enters the once-prosperous now-bleak insect kingdom of Hallownest, travels through its various districts, meets friendly inhabitants, fights hostile ones and uncovers the kingdom's history while improving their combat abilities and movement arsenal by fighting bosses and accessing out-of-the-way areas.",
+      "genres": ["Platform", "Adventure", "Indie"],
+      "platforms": [
+        "Xbox Series X|S",
+        "PlayStation 4",
+        "Linux",
+        "Nintendo Switch 2",
+        "PC (Microsoft Windows)",
+        "PlayStation 5",
+        "Mac",
+        "Wii U",
+        "Xbox One",
+        "Nintendo Switch"
+      ],
+      "platformReleaseDates": [
+        {
+          "platform": "Linux",
+          "date": 1487894400
+        },
+        {
+          "platform": "PC (Microsoft Windows)",
+          "date": 1487894400
+        },
+        {
+          "platform": "Mac",
+          "date": 1491868800
+        },
+        {
+          "platform": "Wii U",
+          "date": 1514678400
+        },
+        {
+          "platform": "Nintendo Switch",
+          "date": 1528761600
+        },
+        {
+          "platform": "Xbox One",
+          "date": 1537833600
+        },
+        {
+          "platform": "PlayStation 4",
+          "date": 1537833600
+        },
+        {
+          "platform": "Nintendo Switch 2",
+          "date": 1770249600
+        },
+        {
+          "platform": "PlayStation 5",
+          "date": 1770249600
+        },
+        {
+          "platform": "Xbox Series X|S",
+          "date": 1770249600
+        }
+      ],
+      "developer": "Team Cherry",
+      "firstReleaseDate": 1487894400,
+      "timeToBeat": {
+        "hastily": 56274,
+        "normally": 130340,
+        "completely": 257248,
+        "count": 32
+      }
+    },
+    {
+      "igdbId": 119133,
+      "slug": "elden-ring",
+      "name": "Elden Ring",
+      "coverImageId": "co4jni",
+      "summary": "Elden Ring is an action RPG developed by FromSoftware and published by Bandai Namco Entertainment, released in February 2022. Directed by Hidetaka Miyazaki, with world-building contributions from novelist George R. R. Martin, the game features an expansive open world called the Lands Between. Players assume the role of a customisable character known as the Tarnished, who must explore this world, battle formidable enemies, and seek to restore the Elden Ring to become the Elden Lord.\n\nThe game builds on the challenging gameplay mechanics familiar from the Dark Souls series but introduces a more open-ended structure with vast exploration, dynamic weather, and a day-night cycle. It offers deep lore, complex characters, and an interconnected world filled with secrets, dungeons, and powerful bosses.",
+      "genres": ["Role-playing (RPG)", "Adventure"],
+      "platforms": [
+        "Xbox Series X|S",
+        "PlayStation 4",
+        "Nintendo Switch 2",
+        "PC (Microsoft Windows)",
+        "PlayStation 5",
+        "Xbox One"
+      ],
+      "platformReleaseDates": [
+        {
+          "platform": "PC (Microsoft Windows)",
+          "date": 1645747200
+        },
+        {
+          "platform": "PlayStation 4",
+          "date": 1645747200
+        },
+        {
+          "platform": "PlayStation 5",
+          "date": 1645747200
+        },
+        {
+          "platform": "Xbox One",
+          "date": 1645747200
+        },
+        {
+          "platform": "Xbox Series X|S",
+          "date": 1645747200
+        },
+        {
+          "platform": "Nintendo Switch 2",
+          "date": 1787875200
+        }
+      ],
+      "developer": "FromSoftware",
+      "firstReleaseDate": 1645747200,
+      "timeToBeat": {
+        "hastily": 156960,
+        "normally": 420631,
+        "completely": 623880,
+        "count": 28
+      }
+    },
+    {
+      "igdbId": 26226,
+      "slug": "celeste",
+      "name": "Celeste",
+      "coverImageId": "cob9dh",
+      "summary": "Help Madeline survive her inner demons on her journey to the top of Celeste Mountain, in this super-tight platformer from the creators of TowerFall. Brave hundreds of hand-crafted challenges, uncover devious secrets, and piece together the mystery of the mountain.",
+      "genres": ["Platform", "Adventure", "Indie"],
+      "platforms": [
+        "Google Stadia",
+        "PlayStation 4",
+        "Linux",
+        "PC (Microsoft Windows)",
+        "Mac",
+        "Xbox One",
+        "Nintendo Switch"
+      ],
+      "platformReleaseDates": [
+        {
+          "platform": "Xbox One",
+          "date": 1516838400
+        },
+        {
+          "platform": "Linux",
+          "date": 1516838400
+        },
+        {
+          "platform": "Mac",
+          "date": 1516838400
+        },
+        {
+          "platform": "Nintendo Switch",
+          "date": 1516838400
+        },
+        {
+          "platform": "PC (Microsoft Windows)",
+          "date": 1516838400
+        },
+        {
+          "platform": "PlayStation 4",
+          "date": 1516838400
+        },
+        {
+          "platform": "Google Stadia",
+          "date": 1595894400
+        }
+      ],
+      "developer": "Extremely OK Games",
+      "firstReleaseDate": 1516838400,
+      "timeToBeat": {
+        "hastily": 38296,
+        "normally": 76556,
+        "completely": 195750,
+        "count": 17
+      }
+    },
+    {
+      "igdbId": 17000,
+      "slug": "stardew-valley",
+      "name": "Stardew Valley",
+      "coverImageId": "coa93h",
+      "summary": "Stardew Valley is an open-ended country-life RPG! You’ve inherited your grandfather’s old farm plot in Stardew Valley. Armed with hand-me-down tools and a few coins, you set out to begin your new life. Can you learn to live off the land and turn these overgrown fields into a thriving home? It won’t be easy. Ever since Joja Corporation came to town, the old ways of life have all but disappeared. The community center, once the town’s most vibrant hub of activity, now lies in shambles. But the valley seems full of opportunity. With a little dedication, you might just be the one to restore Stardew Valley to greatness!",
+      "genres": [
+        "Role-playing (RPG)",
+        "Simulator",
+        "Strategy",
+        "Adventure",
+        "Indie"
+      ],
+      "platforms": [
+        "PlayStation 4",
+        "Linux",
+        "Nintendo Switch 2",
+        "Android",
+        "PC (Microsoft Windows)",
+        "iOS",
+        "Mac",
+        "Wii U",
+        "PlayStation Vita",
+        "Xbox One",
+        "Nintendo Switch"
+      ],
+      "platformReleaseDates": [
+        {
+          "platform": "Linux",
+          "date": 1456444800
+        },
+        {
+          "platform": "PC (Microsoft Windows)",
+          "date": 1456444800
+        },
+        {
+          "platform": "Mac",
+          "date": 1469750400
+        },
+        {
+          "platform": "PlayStation 4",
+          "date": 1481587200
+        },
+        {
+          "platform": "Xbox One",
+          "date": 1481673600
+        },
+        {
+          "platform": "Wii U",
+          "date": 1483142400
+        },
+        {
+          "platform": "Nintendo Switch",
+          "date": 1507161600
+        },
+        {
+          "platform": "PlayStation Vita",
+          "date": 1526947200
+        },
+        {
+          "platform": "iOS",
+          "date": 1540339200
+        },
+        {
+          "platform": "Android",
+          "date": 1552435200
+        },
+        {
+          "platform": "Nintendo Switch 2",
+          "date": 1766620800
+        }
+      ],
+      "developer": "ConcernedApe",
+      "firstReleaseDate": 1456444800,
+      "timeToBeat": {
+        "hastily": 180000,
+        "normally": 324000,
+        "completely": 747900,
+        "count": 11
+      }
+    },
+    {
+      "igdbId": 251833,
+      "slug": "balatro",
+      "name": "Balatro",
+      "coverImageId": "co9f4g",
+      "summary": "Balatro is a deck-building roguelite in which players construct poker hands to earn chips and overcome enemy blinds. The game features mechanics for enhancing a deck of playing cards, purchasing Jokers that modify hand effects, and discovering synergies to progress through increasingly challenging encounters.",
+      "genres": [
+        "Strategy",
+        "Turn-based strategy (TBS)",
+        "Indie",
+        "Card & Board Game"
+      ],
+      "platforms": [
+        "Xbox Series X|S",
+        "PlayStation 4",
+        "Nintendo Switch 2",
+        "Android",
+        "PC (Microsoft Windows)",
+        "iOS",
+        "PlayStation 5",
+        "Mac",
+        "Xbox One",
+        "Nintendo Switch"
+      ],
+      "platformReleaseDates": [
+        {
+          "platform": "Xbox One",
+          "date": 1708387200
+        },
+        {
+          "platform": "Xbox Series X|S",
+          "date": 1708387200
+        },
+        {
+          "platform": "PC (Microsoft Windows)",
+          "date": 1708387200
+        },
+        {
+          "platform": "PlayStation 5",
+          "date": 1708387200
+        },
+        {
+          "platform": "Nintendo Switch",
+          "date": 1708387200
+        },
+        {
+          "platform": "PlayStation 4",
+          "date": 1708387200
+        },
+        {
+          "platform": "Mac",
+          "date": 1709251200
+        },
+        {
+          "platform": "iOS",
+          "date": 1727308800
+        },
+        {
+          "platform": "Android",
+          "date": 1727308800
+        },
+        {
+          "platform": "Nintendo Switch 2",
+          "date": 1771977600
+        }
+      ],
+      "developer": "LocalThunk",
+      "firstReleaseDate": 1708387200,
+      "timeToBeat": {
+        "hastily": 16020,
+        "normally": 165330,
+        "completely": 628800,
+        "count": 7
+      }
+    },
+    {
+      "igdbId": 52189,
+      "slug": "grand-theft-auto-vi",
+      "name": "Grand Theft Auto VI",
+      "coverImageId": "cocv1v",
+      "summary": "Grand Theft Auto VI heads to the state of Leonida, home to the neon-soaked streets of Vice City and beyond in the biggest, most immersive evolution of the Grand Theft Auto series yet.",
+      "genres": ["Shooter", "Racing", "Adventure"],
+      "platforms": ["Xbox Series X|S", "PlayStation 5"],
+      "platformReleaseDates": [
+        {
+          "platform": "Xbox Series X|S",
+          "date": 1795046400
+        },
+        {
+          "platform": "PlayStation 5",
+          "date": 1795046400
+        }
+      ],
+      "developer": "Rockstar North",
+      "firstReleaseDate": 1795046400,
+      "timeToBeat": null
+    },
+    {
+      "igdbId": 228525,
+      "slug": "hades-ii",
+      "name": "Hades II",
+      "coverImageId": "coaknx",
+      "summary": "Battle beyond the Underworld using dark sorcery to take on the Titan of Time in this bewitching sequel to the award-winning rogue-like dungeon crawler.",
+      "genres": [
+        "Role-playing (RPG)",
+        "Hack and slash/Beat 'em up",
+        "Adventure",
+        "Indie"
+      ],
+      "platforms": [
+        "Xbox Series X|S",
+        "Nintendo Switch 2",
+        "PC (Microsoft Windows)",
+        "PlayStation 5",
+        "Mac",
+        "Nintendo Switch"
+      ],
+      "platformReleaseDates": [
+        {
+          "platform": "PC (Microsoft Windows)",
+          "date": 1714953600
+        },
+        {
+          "platform": "Mac",
+          "date": 1729036800
+        },
+        {
+          "platform": "Nintendo Switch",
+          "date": 1758758400
+        },
+        {
+          "platform": "Nintendo Switch 2",
+          "date": 1758758400
+        },
+        {
+          "platform": "Xbox Series X|S",
+          "date": 1776124800
+        },
+        {
+          "platform": "PlayStation 5",
+          "date": 1776124800
+        }
+      ],
+      "developer": "Supergiant Games",
+      "firstReleaseDate": 1758758400,
+      "timeToBeat": {
+        "hastily": null,
+        "normally": 154800,
+        "completely": 314400,
+        "count": 5
+      }
+    }
+  ],
+  "movies": [
+    {
+      "tmdbId": 693134,
+      "name": "Dune: Part Two",
+      "posterPath": "/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+      "genres": ["Science Fiction", "Adventure"],
+      "releaseDate": "2024-02-27",
+      "director": "Denis Villeneuve",
+      "runtime": 167,
+      "summary": "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the known universe, Paul endeavors to prevent a terrible future only he can foresee."
+    },
+    {
+      "tmdbId": 335984,
+      "name": "Blade Runner 2049",
+      "posterPath": "/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
+      "genres": ["Science Fiction", "Drama"],
+      "releaseDate": "2017-10-04",
+      "director": "Denis Villeneuve",
+      "runtime": 164,
+      "summary": "Thirty years after the events of the first film, a new blade runner, LAPD Officer K, unearths a long-buried secret that has the potential to plunge what's left of society into chaos. K's discovery leads him on a quest to find Rick Deckard, a former LAPD blade runner who has been missing for 30 years."
+    },
+    {
+      "tmdbId": 666277,
+      "name": "Past Lives",
+      "posterPath": "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
+      "genres": ["Drama", "Romance"],
+      "releaseDate": "2023-06-02",
+      "director": "Celine Song",
+      "runtime": 106,
+      "summary": "After decades apart, childhood friends Nora and Hae Sung are reunited in New York for one fateful weekend as they confront notions of destiny, love, and the choices that make a life."
+    },
+    {
+      "tmdbId": 545611,
+      "name": "Everything Everywhere All at Once",
+      "posterPath": "/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "releaseDate": "2022-03-24",
+      "director": "Daniel Scheinert",
+      "runtime": 140,
+      "summary": "An aging Chinese immigrant is swept up in an insane adventure, where she alone can save what's important to her by connecting with the lives she could have led in other universes."
+    },
+    {
+      "tmdbId": 129,
+      "name": "Spirited Away",
+      "posterPath": "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
+      "genres": ["Animation", "Family", "Fantasy"],
+      "releaseDate": "2001-07-20",
+      "director": "Hayao Miyazaki",
+      "runtime": 125,
+      "summary": "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to free her family."
+    }
+  ],
+  "tv": [
+    {
+      "tmdbId": 95396,
+      "name": "Severance",
+      "posterPath": "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+      "genres": ["Drama", "Mystery", "Sci-Fi & Fantasy"],
+      "firstAirYear": 2022,
+      "firstAirDate": "2022-02-17",
+      "status": "Returning Series",
+      "numberOfSeasons": 3,
+      "numberOfEpisodes": 19,
+      "networks": ["Apple TV"],
+      "createdBy": ["Dan Erickson"],
+      "summary": "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+      "nextEpisodeToAir": null,
+      "lastEpisodeToAir": {
+        "seasonNumber": 2,
+        "episodeNumber": 10,
+        "name": "Cold Harbor",
+        "airDate": "2025-03-20",
+        "stillPath": "/gXUvGwpZxrpqMRouxM7yI28lgNa.jpg",
+        "episodeType": "finale"
+      },
+      "airedEpisodes": 19
+    },
+    {
+      "tmdbId": 136315,
+      "name": "The Bear",
+      "posterPath": "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
+      "genres": ["Drama", "Comedy"],
+      "firstAirYear": 2022,
+      "firstAirDate": "2022-06-23",
+      "status": "Ended",
+      "numberOfSeasons": 5,
+      "numberOfEpisodes": 46,
+      "networks": ["Hulu"],
+      "createdBy": ["Christopher Storer"],
+      "summary": "Carmy, a young fine-dining chef, comes home to Chicago to run his family sandwich shop. As he fights to transform the shop and himself, he works alongside a rough-around-the-edges crew that ultimately reveal themselves as his chosen family.",
+      "nextEpisodeToAir": null,
+      "lastEpisodeToAir": {
+        "seasonNumber": 5,
+        "episodeNumber": 8,
+        "name": "The Original Beef of Chicagoland",
+        "airDate": "2026-06-25",
+        "stillPath": "/sOcD9c7I4vBckT5jaqCvU8ySDW2.jpg",
+        "episodeType": "finale"
+      },
+      "airedEpisodes": 46
+    },
+    {
+      "tmdbId": 126308,
+      "name": "Shōgun",
+      "posterPath": "/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg",
+      "genres": ["Drama", "War & Politics"],
+      "firstAirYear": 2024,
+      "firstAirDate": "2024-02-27",
+      "status": "Returning Series",
+      "numberOfSeasons": 1,
+      "numberOfEpisodes": 10,
+      "networks": ["FX", "Hulu"],
+      "createdBy": ["Rachel Kondo", "Justin Marks"],
+      "summary": "In Japan in the year 1600, at the dawn of a century-defining civil war, Lord Yoshii Toranaga is fighting for his life as his enemies on the Council of Regents unite against him, when a mysterious European ship is found marooned in a nearby fishing village.",
+      "nextEpisodeToAir": null,
+      "lastEpisodeToAir": {
+        "seasonNumber": 1,
+        "episodeNumber": 10,
+        "name": "A Dream of a Dream",
+        "airDate": "2024-04-23",
+        "stillPath": "/dIXtG4MafmmjzNhU7ANJZByGmvr.jpg",
+        "episodeType": "finale"
+      },
+      "airedEpisodes": 10
+    },
+    {
+      "tmdbId": 94605,
+      "name": "Arcane",
+      "posterPath": "/87C0wecB8bHb1PsrKBI4kJiEkgV.jpg",
+      "genres": ["Animation", "Action & Adventure", "Sci-Fi & Fantasy"],
+      "firstAirYear": 2021,
+      "firstAirDate": "2021-11-06",
+      "status": "Ended",
+      "numberOfSeasons": 2,
+      "numberOfEpisodes": 18,
+      "networks": ["Netflix"],
+      "createdBy": ["Christian Linke", "Alex Yee"],
+      "summary": "Amid the stark discord of twin cities Piltover and Zaun, two sisters fight on rival sides of a war between magic technologies and clashing convictions.",
+      "nextEpisodeToAir": null,
+      "lastEpisodeToAir": {
+        "seasonNumber": 2,
+        "episodeNumber": 9,
+        "name": "The Dirt Under Your Nails",
+        "airDate": "2024-11-23",
+        "stillPath": "/7wYoQZAdbB6e3CFDDYvxQY1sM7.jpg",
+        "episodeType": "finale"
+      },
+      "airedEpisodes": 18
+    }
+  ],
+  "books": [
+    {
+      "goodreadsId": 54493401,
+      "name": "Project Hail Mary",
+      "coverUrl": "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1764703833i/54493401.jpg",
+      "authors": ["Andy Weir"],
+      "publicationDate": "2021-05-04",
+      "pageCount": 476
+    },
+    {
+      "goodreadsId": 5907,
+      "name": "The Hobbit, or There and Back Again",
+      "coverUrl": "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1546071216i/5907.jpg",
+      "authors": [
+        "J.R.R. Tolkien",
+        "Douglas A. Anderson",
+        "Michael Hague",
+        "Jemima Catlin"
+      ],
+      "publicationDate": "2002-08-15",
+      "pageCount": 366
+    },
+    {
+      "goodreadsId": 50202953,
+      "name": "Piranesi",
+      "coverUrl": "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1773750050i/50202953.jpg",
+      "authors": ["Susanna Clarke"],
+      "publicationDate": "2020-09-15",
+      "pageCount": 245
+    },
+    {
+      "goodreadsId": 58784475,
+      "name": "Tomorrow, and Tomorrow, and Tomorrow",
+      "coverUrl": "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1636978687i/58784475.jpg",
+      "authors": ["Gabrielle Zevin"],
+      "publicationDate": "2022-07-05",
+      "pageCount": 399
+    },
+    {
+      "goodreadsId": 18423,
+      "name": "The Left Hand of Darkness",
+      "coverUrl": "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1488213612i/18423.jpg",
+      "authors": ["Ursula K. Le Guin"],
+      "publicationDate": "2000-07-01",
+      "pageCount": 304
+    }
+  ]
+}
