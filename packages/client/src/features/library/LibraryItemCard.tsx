@@ -47,8 +47,8 @@ const HREF_SEGMENTS: Record<Exclude<MediaType, "game">, string> = {
 
 /** Poster rendered height (2:3 at MEDIA_LIBRARY_COVER_WIDTH) and the 16:9
  *  still width matched to it — the still stands the same height as the poster. */
-const TV_STILL_HEIGHT = Math.round(MEDIA_LIBRARY_COVER_WIDTH * 0.9); // 180
-const TV_STILL_WIDTH = Math.round((TV_STILL_HEIGHT * 16) / 9); // 320
+const TV_STILL_HEIGHT = Math.round(MEDIA_LIBRARY_COVER_WIDTH * 0.8);
+const TV_STILL_WIDTH = Math.round((TV_STILL_HEIGHT * 16) / 9);
 const TV_STILL_GAP = -56;
 
 /** One library grid cell: cover (linked to detail, view-transitioning) +

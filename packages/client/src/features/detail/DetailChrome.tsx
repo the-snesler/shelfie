@@ -1,6 +1,8 @@
 import { Children, type ReactNode } from "react";
+import { Accordion } from "@base-ui/react/accordion";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconPlayerPlay from "~icons/tabler/player-play";
+import IconChevronDown from "~icons/tabler/chevron-down";
 
 /** Shared presentational chrome for the four detail screens. Purely visual —
  *  data fetching, RxDB subscriptions, and view-transition wiring stay in each
@@ -129,6 +131,30 @@ export function DetailSection({
       <h3 className="font-display text-lg font-medium text-ink">{title}</h3>
       {children}
     </section>
+  );
+}
+
+export function DetailAccordion({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <Accordion.Root className="">
+      <Accordion.Item>
+        <Accordion.Header>
+          <Accordion.Trigger className="group font-display text-lg font-medium text-ink text-text-muted inline-flex list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+            <span>{title}</span>
+            <IconChevronDown className="h-4 w-4 -rotate-90 transition-transform duration-200 group-data-panel-open:rotate-0" />
+          </Accordion.Trigger>
+        </Accordion.Header>
+        <Accordion.Panel className="h-(--accordion-panel-height) overflow-hidden transition-[height] data-ending-style:h-0 data-starting-style:h-0">
+          {children}
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion.Root>
   );
 }
 

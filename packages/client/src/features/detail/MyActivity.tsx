@@ -7,7 +7,7 @@ import {
   progressLines,
   type ProgressLine,
 } from "./activityProgress";
-import { DetailSection } from "./DetailChrome";
+import { DetailAccordion, DetailSection } from "./DetailChrome";
 
 /** `progress` is this event's derived progress line (see `progressLines`);
  *  undefined when the event has none or a later correction undid it. */
@@ -86,11 +86,11 @@ export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
   if (item === undefined) return null;
   if (!item)
     return (
-      <DetailSection title="My activity">
+      <DetailAccordion title="My activity">
         <p className="text-sm text-muted">
           Add this item to your library to start logging activity.
         </p>
-      </DetailSection>
+      </DetailAccordion>
     );
 
   // Each progress event carries its format at the time of the edit.
@@ -120,7 +120,7 @@ export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <DetailSection title="My activity">
+    <DetailAccordion title="My activity">
       <ol className="max-h-96 overflow-y-auto p-1">
         {events.map(({ event, lines }) => (
           <TimelineEntry key={event.id} at={event.at}>
@@ -143,7 +143,7 @@ export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
           <p className="text-sm text-ink">Added to library</p>
         </TimelineEntry>
       </ol>
-    </DetailSection>
+    </DetailAccordion>
   );
 }
 

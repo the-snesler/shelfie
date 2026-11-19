@@ -11,6 +11,7 @@
     "lint": "eslint src --max-warnings 0"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
     "@floating-ui/react": "^0.27.19",
     "@fontsource-variable/fraunces": "^5.2.9",
     "@react-router/node": "^8.2.0",

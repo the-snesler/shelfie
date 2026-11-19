@@ -147,7 +147,7 @@
     --shelf-cover-h: 188px;
     --shelf-ledge-h: 14px;
     --shelf-label-h: 46px;
-    --shelf-row-gap: 44px;
+    --shelf-row-gap: 16px;
     --shelf-period: calc(
       var(--shelf-cover-h) + var(--shelf-ledge-h) + var(--shelf-label-h) +
         var(--shelf-row-gap)
@@ -273,12 +273,12 @@
         transparent 0%,
         transparent 24%,
         var(--case-color) 24%,
-        var(--case-color) 26%,
-        transparent 26%,
+        var(--case-color) calc(24% + 2px),
+        transparent calc(24% + 2px),
         transparent 74%,
         var(--case-color) 74%,
-        var(--case-color) 76%,
-        transparent 76%,
+        var(--case-color) calc(74% + 2px),
+        transparent calc(74% + 2px),
         transparent 100%
       ),
       linear-gradient(
@@ -286,12 +286,12 @@
         var(--case-transparency) 0%,
         var(--case-transparency) 24%,
         var(--case-color) 24%,
-        var(--case-color) 26%,
-        var(--case-transparency) 26%,
+        var(--case-color) calc(24% + 2px),
+        var(--case-transparency) calc(24% + 2px),
         var(--case-transparency) 74%,
         var(--case-color) 74%,
-        var(--case-color) 76%,
-        var(--case-transparency) 76%,
+        var(--case-color) calc(74% + 2px),
+        var(--case-transparency) calc(74% + 2px),
         var(--case-transparency) 100%
       );
     box-shadow:

@@ -208,7 +208,7 @@ export default function Library() {
       className="library-wall min-h-full"
       data-library-theme={settings.libraryTheme}
     >
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-10 px-5 py-8 md:px-8">
+      <div className="mx-auto flex min-h-full w-full flex-col gap-10 px-5 py-8 md:px-8">
         <header className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
@@ -314,7 +314,7 @@ export default function Library() {
                     )}
                   </div>
                 </div>
-                <div className="shelf-rows -mt-2 flex flex-wrap items-start gap-x-6">
+                <div className="shelf-rows flex flex-wrap items-start justify-center gap-x-6">
                   {shownItems.map((item) => (
                     <motion.div
                       key={item.id}
