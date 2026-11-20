@@ -162,36 +162,48 @@ dropped, and planned shows are never touched. Changes are logged as
 
 ### BookOrbit
 
-BookOrbit imports use its KOReader sync credentials, which do not expire. In
-BookOrbit, open Settings → Devices & Sync → KOReader and create credentials;
-your account needs the KOReader sync permission. In Shelfie, enter the
-BookOrbit server URL (the root, or the `/api/v1/koreader` sync URL BookOrbit
-shows), the KOReader username, and its password. Shelfie stores the password's
-MD5 key, which is what KOReader itself sends; pasting that key also works.
-These credentials can also download books and change reading status in
-BookOrbit. Shelfie only reads.
+BookOrbit imports use its official API with a personal API key. In BookOrbit,
+open Settings → API keys and create a key (read access is enough; Shelfie never
+writes to BookOrbit). In Shelfie, enter the BookOrbit server URL and the key.
+The server root works, and so does a pasted `/api/v1` or `/api/docs` URL.
+Shelfie sends the key as `Authorization: Bearer bok_…`. Use the address the
+server actually answers on: Shelfie never follows redirects, so an `http://`
+URL for an HTTPS server fails with a message naming the right address.
 
-The adapter reads the catalog BookOrbit's KOReader plugin uses
-(`/api/v1/koreader/plugin/catalog/books`). BookOrbit has already matched your
-KOReader devices' documents to its books, so progress from every device is
-included. Sideloaded books that BookOrbit has not matched to its library are
-not available. Reading status, percent progress, and last-read time come from
-the book list. Personal ratings come from each book's detail, which is read
-only for books with a reading status other than unread.
+Each run reads:
 
-The catalog carries no Goodreads IDs. Shelfie matches each book once and saves
-the result, in this order:
+- `GET /api/v1/auth/me` to check the key. The username is shown in Settings
+  as “Connected as …”.
+- `POST /api/v1/books/query`, 200 books per page, for each book's reading
+  status, percent progress (ebooks and audiobooks), and 1–5 personal rating.
+  Unread books import as backlogged.
+- `GET /api/v1/reading-history` for finish days. Every completed or skimmed
+  read becomes a completion date, so rereads add one date each. Reads without
+  any reading session were marked read by hand, often in bulk when a library
+  was set up, so they import as read without a date. An abandoned past
+  attempt does not change a book's status, which always comes from the book
+  itself.
+- `GET /api/v1/books/{id}`, only for a book with no saved Goodreads match, for
+  BookOrbit's Goodreads ID and ISBN.
+
+The book list carries no Goodreads IDs. Shelfie matches each book once and
+saves the result, in this order:
 
 1. A book already in your library with the same title and author.
-2. A Goodreads search for the title and first author, accepting only a result
+2. BookOrbit's own Goodreads ID. If that exact edition is already in your
+   library it is kept. Otherwise it is mapped to the Goodreads work's best
+   edition, the one a manual Shelfie search would add, since BookOrbit
+   usually stores the edition that matches the book file's ISBN. An ID
+   Goodreads no longer knows falls through to the next step.
+3. A Goodreads search for the title and first author, accepting only a result
    whose title and an author match. Summaries and box sets are rejected, and a
    subtitle or Goodreads series suffix on one side is ignored.
-3. The ISBN from BookOrbit, if the result agrees with the title or an author.
+4. The ISBN from BookOrbit, if the result agrees with the title or an author.
 
 Title search comes before ISBN because it finds the edition a manual Shelfie
 search would add; an ISBN can name a translated edition. Books without a match
 are searched again after seven days, or sooner if their title or authors
-change in BookOrbit. Goodreads searches share the server's one-per-second
+change in BookOrbit. Goodreads requests share the server's one-per-second
 throttle, so the first import of a large library takes several minutes. After
 three consecutive Goodreads failures, a run imports only books it already
 matched and retries the rest next time.
@@ -204,13 +216,13 @@ Disconnecting BookOrbit also forgets its matches.
 
 BookOrbit progress moves Shelfie books forward: a wishlisted or backlogged book
 becomes reading or read, and a reading or paused book becomes read. Dropped
-and read books are never changed, and percent progress only increases. When a
-book is read in BookOrbit and has no completion date in Shelfie, its last-read
-day is recorded as the completion date, since BookOrbit's catalog has no
-finish date.
+and read books are never changed, and percent progress only increases.
+Completion dates are merged with the ones already in Shelfie.
 
-Earlier versions used a BookOrbit web bearer token. Upgrading clears that
-token and pauses the schedule until you enter KOReader credentials.
+Earlier versions connected with a web bearer token, then with KOReader sync
+credentials. Upgrading clears the old credential and pauses the schedule until
+you enter an API key. Saved book matches carry over, and books that had no
+match are retried on the next run.
 
 ### Steam
 
@@ -229,10 +241,12 @@ to hours. Playtime never implies a completed game.
 The source adapters were checked against
 [Yamtrack's Trakt adapter](https://github.com/FuzzyGrim/Yamtrack/blob/dev/src/integrations/imports/trakt.py),
 [its Steam adapter](https://github.com/FuzzyGrim/Yamtrack/blob/dev/src/integrations/imports/steam.py),
-and [BookOrbit's KOReader catalog controller](https://github.com/bookorbit/bookorbit/blob/main/server/src/modules/koreader/koreader-catalog.controller.ts)
-with its [KOReader auth guard](https://github.com/bookorbit/bookorbit/blob/main/server/src/modules/koreader/koreader-auth.guard.ts).
-The tests use controlled fixtures. The BookOrbit adapter was also run against a
-live BookOrbit library; Trakt and Steam live imports were not exercised.
+and BookOrbit's API. BookOrbit's OpenAPI document (`/api/docs-json`) lists
+routes but no request or response schemas, so the request shapes (for example
+the book query's `pagination` body, which ignores top-level `page` and `size`)
+were taken from a live BookOrbit v3.9.0 server. The tests use fixtures shaped
+like its responses. The BookOrbit adapter was also run against a live BookOrbit
+library; Trakt and Steam live imports were not exercised.
 
 ## Recommendations
 
