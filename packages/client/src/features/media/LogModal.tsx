@@ -1,5 +1,10 @@
 import { LOG_FORMATS_BY_MEDIA, STATUS_META_GROUP } from "@shelfie/shared";
-import type { ItemStatus, LibraryItem, LogFormat } from "@shelfie/shared";
+import type {
+  ItemStatus,
+  LibraryItem,
+  LogFormat,
+  Storefront,
+} from "@shelfie/shared";
 import { randomToken, type RxDocument } from "rxdb";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -18,6 +23,7 @@ import { LogExcitementSection } from "./LogExcitementSection";
 import { LogHeader } from "./LogHeader";
 import { LogNotesField } from "./LogNotesField";
 import { LogPlatformSection } from "./LogPlatformSection";
+import { LogStorefrontSection } from "./LogStorefrontSection";
 import { LogProgressSection, parseProgressDraft } from "./LogProgressSection";
 import { LogRatingSection } from "./LogRatingSection";
 import { LogStatusSection } from "./LogStatusSection";
@@ -164,6 +170,11 @@ export function LogModal({
     void item.incrementalPatch({ rating: value, updatedAt: Date.now() });
   }
 
+  function handleStorefront(storefront: Storefront | null) {
+    if (!item) return;
+    void item.incrementalPatch({ storefront, updatedAt: Date.now() });
+  }
+
   function handleExcitement(value: number | null) {
     if (!item) return;
     void item.incrementalPatch({ excitement: value, updatedAt: Date.now() });
@@ -279,6 +290,12 @@ export function LogModal({
               platforms={target.platforms}
               selectedPlatforms={item.platforms}
               onTogglePlatform={togglePlatform}
+            />
+            <LogStorefrontSection
+              mediaType={target.mediaType}
+              selectedPlatforms={item.platforms}
+              storefront={item.storefront}
+              onChange={handleStorefront}
             />
             <LogNotesField item={item} />
             <button

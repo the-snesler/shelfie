@@ -111,3 +111,28 @@ describe("selectGameCase", () => {
     ).toBe("PC big box");
   });
 });
+
+describe("selectGameCase with a storefront", () => {
+  const pcRelease = [{ platform: PC, date: jan1(1998) }];
+
+  it("swaps the case for the owner's store strip on PC", () => {
+    expect(selectGameCase([PC], [PC], pcRelease, "gog")).toBe("store:gog");
+    expect(selectGameCase(["Linux"], [PC, "Linux"], pcRelease, "steam")).toBe(
+      "store:steam",
+    );
+  });
+
+  it("ignores the store when the first owned platform is a console", () => {
+    expect(
+      selectGameCase(["PlayStation 4", PC], [PC], pcRelease, "steam"),
+    ).toBe("PlayStation 4");
+  });
+
+  it("ignores the store when the platform came from metadata", () => {
+    expect(selectGameCase([], [PC], pcRelease, "steam")).toBe("PC big box");
+  });
+
+  it("keeps the era case when no store is set", () => {
+    expect(selectGameCase([PC], [PC], pcRelease, null)).toBe("PC big box");
+  });
+});

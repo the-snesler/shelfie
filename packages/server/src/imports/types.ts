@@ -1,4 +1,9 @@
-import type { ItemStatus, LogFormat, MediaType } from "@shelfie/shared";
+import type {
+  ItemStatus,
+  LogFormat,
+  MediaType,
+  Storefront,
+} from "@shelfie/shared";
 
 export interface ImportedItem {
   mediaType: MediaType;
@@ -10,6 +15,7 @@ export interface ImportedItem {
   completedDates?: string[];
   watchedEpisodes?: Record<string, string>;
   platforms?: string[];
+  storefront?: Storefront;
 }
 
 export interface SourceConfig {

@@ -5,6 +5,7 @@ import {
   ITEM_STATUSES,
   LOG_FORMATS,
   MEDIA_TYPES,
+  STOREFRONTS,
 } from "./types.js";
 import type { ReplicatedLibraryItem } from "./types.js";
 
@@ -97,5 +98,7 @@ export const libraryItemDocSchema: z.ZodType<
     .max(EXCITEMENT_MAX)
     .nullable()
     .default(null),
+  // Same default-to-unset reasoning as `excitement`.
+  storefront: z.enum(STOREFRONTS).nullable().default(null),
   _deleted: z.boolean(),
 });

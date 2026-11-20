@@ -22,6 +22,8 @@ export interface LibraryItemsTable {
   rating: number | null;
   /** Integer excitement level 1–4; NULL when unset. */
   excitement: number | null;
+  /** Games only: PC storefront id (see STOREFRONTS); NULL when unset. */
+  storefront: string | null;
   /** JSON-encoded string[] of ISO YYYY-MM-DD completion dates. */
   completed_dates: string;
   /** Free-text notes; empty string when none. */

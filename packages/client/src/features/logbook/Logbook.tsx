@@ -74,6 +74,7 @@ function LogbookCover({
           item.platforms,
           game?.platforms ?? [],
           game?.platformReleaseDates ?? [],
+          item.storefront,
         )}
         name={name}
         scale={GAME_COVER_SCALE}

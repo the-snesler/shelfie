@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711 1000" preserveAspectRatio="none">
+  <!-- Mockup overlay: placeholder text strip for the EA app storefront. Replace with a final PNG at this aspect ratio (0.711, DVD keep case). -->
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#1d1d1f"/>
+      <stop offset="1" stop-color="#41434a"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="711" height="125" fill="url(#g)"/>
+  <rect x="0" y="125" width="711" height="4" fill="#ff4747"/>
+  <text x="34" y="92" font-family="Helvetica, Arial, sans-serif" font-size="84" font-weight="700" letter-spacing="1" fill="#ffffff">EA app</text>
+</svg>

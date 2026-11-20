@@ -162,5 +162,75 @@
     "heightMm": 190,
     "caseColor": "#1B1B1D",
     "paddingTop": 25
+  },
+  "store:steam": {
+    "overlay": "/assets/games/store-steam-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:epic": {
+    "overlay": "/assets/games/store-epic-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:gog": {
+    "overlay": "/assets/games/store-gog-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:ea": {
+    "overlay": "/assets/games/store-ea-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:ubisoft": {
+    "overlay": "/assets/games/store-ubisoft-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:battlenet": {
+    "overlay": "/assets/games/store-battlenet-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:microsoft": {
+    "overlay": "/assets/games/store-microsoft-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:itch": {
+    "overlay": "/assets/games/store-itch-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:amazon": {
+    "overlay": "/assets/games/store-amazon-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "store:riot": {
+    "overlay": "/assets/games/store-riot-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
   }
 }

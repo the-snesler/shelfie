@@ -128,6 +128,7 @@ export function LibraryItemCard({
           item.platforms,
           gameMeta?.platforms ?? [],
           gameMeta?.platformReleaseDates ?? [],
+          item.storefront,
         )
       : null;
 

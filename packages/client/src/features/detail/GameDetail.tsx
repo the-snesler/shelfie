@@ -61,6 +61,7 @@ export default function GameDetail({ params }: Route.ComponentProps) {
                   item?.platforms ?? [],
                   meta.platforms,
                   meta.platformReleaseDates,
+                  item?.storefront ?? null,
                 )
               : (link?.caseKey ?? null)
           }

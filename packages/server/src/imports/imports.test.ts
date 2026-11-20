@@ -86,6 +86,24 @@ describe("additive import merge", () => {
       mergeImportedItem(item, { ...merged, _deleted: true }, 400),
     ).toBeNull();
   });
+  it("fills an unset storefront but never replaces the user's choice", () => {
+    const game = {
+      mediaType: "game" as const,
+      sourceId: "5",
+      status: "backlogged" as const,
+      platforms: ["PC (Microsoft Windows)"],
+      storefront: "steam" as const,
+    };
+    const created = mergeImportedItem(game, null, 100)!;
+    expect(created.storefront).toBe("steam");
+    expect(
+      mergeImportedItem(game, { ...created, storefront: null }, 200)
+        ?.storefront,
+    ).toBe("steam");
+    expect(
+      mergeImportedItem(game, { ...created, storefront: "gog" }, 200),
+    ).toBeNull();
+  });
   it("keeps manual progress units, advances Steam hours, and ignores episode key order", () => {
     const game = {
       mediaType: "game" as const,
@@ -256,6 +274,8 @@ describe("source adapters", () => {
       status: "active",
       progressFormat: "hours",
       progressValue: 1.5,
+      platforms: ["PC (Microsoft Windows)"],
+      storefront: "steam",
     });
     expect(result.skipped).toBe(1);
     expect(deps.steamId).toHaveBeenCalledWith(10);

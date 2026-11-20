@@ -267,6 +267,7 @@ async function fetchSteam(
       mediaType: "game",
       sourceId: String(id),
       platforms: ["PC (Microsoft Windows)"],
+      storefront: "steam",
       status:
         Number(game.playtime_2weeks) > 0
           ? "active"

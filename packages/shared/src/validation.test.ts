@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { libraryItemDocSchema } from "./index.js";
+import { libraryItemDocSchema, STOREFRONTS } from "./index.js";
 import type { ReplicatedLibraryItem } from "./types.js";
 
 const base: ReplicatedLibraryItem = {
@@ -14,6 +14,7 @@ const base: ReplicatedLibraryItem = {
   platforms: [],
   rating: null,
   excitement: null,
+  storefront: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: {},
@@ -184,6 +185,30 @@ describe("libraryItemDocSchema excitement", () => {
     void _omit;
     const parsed = libraryItemDocSchema.parse(rest);
     expect(parsed.excitement).toBeNull();
+  });
+});
+
+describe("libraryItemDocSchema storefront", () => {
+  it("accepts every known store and null", () => {
+    for (const storefront of [...STOREFRONTS, null]) {
+      expect(
+        libraryItemDocSchema.safeParse({ ...base, storefront }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects unknown stores", () => {
+    for (const storefront of ["origin", "", "STEAM", 1]) {
+      expect(
+        libraryItemDocSchema.safeParse({ ...base, storefront }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("defaults a missing storefront to null (pushes from older clients)", () => {
+    const { storefront: _omit, ...rest } = base;
+    void _omit;
+    expect(libraryItemDocSchema.parse(rest).storefront).toBeNull();
   });
 });
 

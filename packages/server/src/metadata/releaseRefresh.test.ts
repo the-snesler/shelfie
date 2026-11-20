@@ -78,6 +78,7 @@ async function own(
           progressValue: null,
           rating: null,
           excitement: null,
+          storefront: null,
           notes: "",
           completedDates: [],
           watchedEpisodes: {},

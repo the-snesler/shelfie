@@ -1,5 +1,6 @@
 import templates from "./platforms.json";
-import type { PlatformRelease } from "@shelfie/shared";
+import type { PlatformRelease, Storefront } from "@shelfie/shared";
+import { STOREFRONT_PLATFORMS, storefrontCaseKey } from "./storefronts";
 
 export interface PlatformTemplate {
   overlay?: string;
@@ -118,15 +119,32 @@ export function selectCaseKey(
   return PC_ERA_CASES.find((era) => year < era.before)?.caseKey ?? PC_PLATFORM;
 }
 
-/** {@link selectPlatform} followed by {@link selectCaseKey}: the case
- *  template key every game cover surface renders. */
+/**
+ * The case template key every game cover surface renders:
+ * {@link selectPlatform}, then the owner's storefront strip when they own
+ * the game on a PC-family platform, else {@link selectCaseKey}. The
+ * storefront only counts alongside the owner's own platforms, never for a
+ * platform picked from metadata.
+ */
 export function selectGameCase(
   userPlatforms: string[],
   metaPlatforms: string[],
   platformReleaseDates: PlatformRelease[],
+  storefront: Storefront | null = null,
 ): string | null {
-  return selectCaseKey(
-    selectPlatform(userPlatforms, metaPlatforms, platformReleaseDates),
+  const platform = selectPlatform(
+    userPlatforms,
+    metaPlatforms,
     platformReleaseDates,
   );
+  if (
+    storefront &&
+    userPlatforms.length > 0 &&
+    platform &&
+    STOREFRONT_PLATFORMS.has(platform) &&
+    storefrontCaseKey(storefront) in platformTemplates
+  ) {
+    return storefrontCaseKey(storefront);
+  }
+  return selectCaseKey(platform, platformReleaseDates);
 }

@@ -16,6 +16,7 @@ const item: LibraryItem = {
   platforms: [],
   rating: 4.5,
   excitement: 2,
+  storefront: null,
   completedDates: ["2026-01-02"],
   notes: 'A note, with "quotes"\nand a newline.',
   watchedEpisodes: {},
@@ -37,6 +38,7 @@ describe("library CSV", () => {
       progressValue: null,
       rating: null,
       excitement: null,
+      storefront: null,
     };
     const [parsed] = importLibraryCsv(exportLibraryCsv([withoutNumbers]));
 
@@ -47,13 +49,37 @@ describe("library CSV", () => {
     });
   });
 
+  it("round-trips a game's storefront", () => {
+    const game: LibraryItem = {
+      ...item,
+      id: "game:7",
+      mediaType: "game",
+      sourceId: "7",
+      progressFormat: "hours",
+      platforms: ["PC (Microsoft Windows)"],
+      storefront: "gog",
+    };
+    expect(importLibraryCsv(exportLibraryCsv([game]))[0]).toEqual({
+      ...game,
+      updatedAt: 1,
+    });
+  });
+
+  it("accepts exports from before the storefront column", () => {
+    const csv = exportLibraryCsv([item])
+      .replace(",storefront", "")
+      .replace(/,2,$/, ",2");
+    expect(importLibraryCsv(csv)[0]).toEqual({ ...item, updatedAt: 1 });
+  });
+
   it("accepts exports from before the excitement column", () => {
     const csv = exportLibraryCsv([item])
-      .replace(",excitement", "")
-      .replace(/,2$/, "");
+      .replace(",excitement,storefront", "")
+      .replace(/,2,$/, "");
     expect(importLibraryCsv(csv)[0]).toEqual({
       ...item,
       excitement: null,
+      storefront: null,
       updatedAt: 1,
     });
   });
@@ -61,11 +87,12 @@ describe("library CSV", () => {
   it("accepts old exports without the activity column", () => {
     const { activity: _, ...legacy } = item;
     const csv = exportLibraryCsv([{ ...legacy, activity: [] }])
-      .replace(",activity,excitement", "")
-      .replace(/,\[\],2$/, "");
+      .replace(",activity,excitement,storefront", "")
+      .replace(/,\[\],2,$/, "");
     expect(importLibraryCsv(csv)[0]).toEqual({
       ...legacy,
       excitement: null,
+      storefront: null,
       activity: [],
       updatedAt: 1,
     });

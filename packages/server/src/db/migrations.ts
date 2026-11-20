@@ -618,6 +618,17 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 25,
+    name: "item-storefront",
+    async up(db) {
+      // Nullable: every existing item starts with no storefront.
+      await db.schema
+        .alterTable("library_items")
+        .addColumn("storefront", "text")
+        .execute();
+    },
+  },
 ];
 
 /**

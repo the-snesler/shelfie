@@ -38,6 +38,7 @@ export function mergeImportedItem(
       platforms: incoming.platforms ?? [],
       rating: incoming.rating ?? null,
       excitement: null,
+      storefront: incoming.storefront ?? null,
       completedDates: incoming.completedDates ?? [],
       notes: "",
       watchedEpisodes: incoming.watchedEpisodes ?? {},
@@ -65,6 +66,8 @@ export function mergeImportedItem(
     ...current,
     status,
     rating: current.rating ?? incoming.rating ?? null,
+    // A store the user picked wins; an import only fills an unset one.
+    storefront: current.storefront ?? incoming.storefront ?? null,
     completedDates: [
       ...new Set([
         ...current.completedDates,
