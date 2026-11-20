@@ -14,6 +14,7 @@ const METHOD_LABELS: Record<BookLinkMethod, string> = {
   manual: "Linked by you",
   ignored: "Ignored",
   library: "Matched to your library",
+  source: "Matched by BookOrbit's Goodreads ID",
   title: "Matched by title",
   isbn: "Matched by ISBN",
   none: "No Goodreads match",

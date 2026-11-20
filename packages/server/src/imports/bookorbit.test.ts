@@ -35,6 +35,45 @@ async function database(throughId = Infinity) {
   initSequence("library_items", 0);
   return db;
 }
+/** Adds a book to the library with cached Goodreads card metadata. */
+async function own(
+  db: Kysely<Database>,
+  goodreadsId: number,
+  name: string,
+  author: string,
+) {
+  const owned = mergeImportedItem(
+    { mediaType: "book", sourceId: String(goodreadsId), status: "backlogged" },
+    null,
+    1,
+  )!;
+  await db
+    .insertInto("library_items")
+    .values(libraryItemDocToRow(owned, 1))
+    .execute();
+  await db
+    .insertInto("book_metadata")
+    .values({
+      goodreads_id: goodreadsId,
+      name,
+      cover_url: null,
+      authors: JSON.stringify([author]),
+      publication_date: null,
+      page_count: null,
+      description: null,
+      publisher: null,
+      isbn13: null,
+      series_name: null,
+      series_position: null,
+      genres: null,
+      avg_rating: null,
+      ratings_count: null,
+      language: null,
+      fetched_at: 1,
+      detail_fetched_at: null,
+    })
+    .execute();
+}
 const result = (
   goodreadsId: number,
   name: string,
@@ -53,6 +92,7 @@ const hobbit = {
   title: "The Hobbit",
   authors: ["J.R.R. Tolkien"],
 };
+const noHints = async () => ({ goodreadsId: null, isbn: null });
 /** Fixture credential; not a real account. */
 const FAKE_KEY = "0123456789abcdef0123456789abcdef";
 
@@ -102,17 +142,21 @@ describe("GoodreadsBookMatcher", () => {
       result(1, "Summary of The Hobbit by J.R.R. Tolkien", "Rick James"),
       result(2, "The Hobbit (Middle-earth, #0)", "J.R.R. Tolkien"),
     ]);
-    const isbn = vi.fn(async () => "9780547928227");
+    const hints = vi.fn(async () => ({
+      goodreadsId: null,
+      isbn: "9780547928227",
+    }));
     const matcher = new GoodreadsBookMatcher(db, "bookorbit", search);
-    expect(await matcher.match(hobbit, isbn)).toEqual({
+    expect(await matcher.match(hobbit, hints)).toEqual({
       goodreadsId: 2,
       method: "title",
     });
-    expect(isbn).not.toHaveBeenCalled();
-    // A later run reuses the saved match without searching.
+    expect(hints).toHaveBeenCalledTimes(1);
+    // A later run reuses the saved match without searching or loading hints.
     const again = new GoodreadsBookMatcher(db, "bookorbit", search);
-    expect(await again.match(hobbit, isbn)).toMatchObject({ goodreadsId: 2 });
+    expect(await again.match(hobbit, hints)).toMatchObject({ goodreadsId: 2 });
     expect(search).toHaveBeenCalledTimes(1);
+    expect(hints).toHaveBeenCalledTimes(1);
   });
 
   it("searches the title alone first, then with the first author", async () => {
@@ -136,7 +180,7 @@ describe("GoodreadsBookMatcher", () => {
           title: "Death's End (The Three-Body Problem)",
           authors: ["Liu, Cixin"],
         },
-        async () => null,
+        noHints,
       ),
     ).toEqual({ goodreadsId: 10, method: "title" });
     expect(search.mock.calls.map(([q]) => q)).toEqual([
@@ -156,55 +200,105 @@ describe("GoodreadsBookMatcher", () => {
     );
     const matcher = new GoodreadsBookMatcher(db, "bookorbit", search);
     expect(
-      await matcher.match(hobbit, async () => "978-0-547-92822-7"),
+      await matcher.match(hobbit, async () => ({
+        goodreadsId: null,
+        isbn: "978-0-547-92822-7",
+      })),
     ).toEqual({ goodreadsId: 3, method: "isbn" });
     expect(
-      await matcher.match(
-        { ...hobbit, externalId: "8" },
-        async () => "0000000000",
-      ),
+      await matcher.match({ ...hobbit, externalId: "8" }, async () => ({
+        goodreadsId: null,
+        isbn: "0000000000",
+      })),
     ).toEqual({ goodreadsId: null, method: "none" });
+  });
+
+  it("maps the source's Goodreads id to the best edition before searching", async () => {
+    const db = await database();
+    const search = vi.fn(async () => [
+      result(2, "The Hobbit", "J.R.R. Tolkien"),
+    ]);
+    const bestEdition = vi.fn(async (id: number) => (id === 70 ? 5907 : null));
+    const matcher = new GoodreadsBookMatcher(
+      db,
+      "bookorbit",
+      search,
+      Date.now,
+      bestEdition,
+    );
+    expect(
+      await matcher.match(hobbit, async () => ({
+        goodreadsId: 70,
+        isbn: null,
+      })),
+    ).toEqual({ goodreadsId: 5907, method: "source" });
+    expect(search).not.toHaveBeenCalled();
+    expect(await matcher.known(hobbit)).toEqual({
+      goodreadsId: 5907,
+      method: "source",
+    });
+    // An id Goodreads does not know falls back to title search.
+    expect(
+      await matcher.match({ ...hobbit, externalId: "8" }, async () => ({
+        goodreadsId: 71,
+        isbn: null,
+      })),
+    ).toEqual({ goodreadsId: 2, method: "title" });
+  });
+
+  it("keeps an owned edition the source names exactly, without a lookup", async () => {
+    const db = await database();
+    await own(db, 70, "Some Other Title", "Someone");
+    const bestEdition = vi.fn(async () => 5907);
+    const matcher = new GoodreadsBookMatcher(
+      db,
+      "bookorbit",
+      async () => [],
+      Date.now,
+      bestEdition,
+    );
+    expect(
+      await matcher.match(hobbit, async () => ({
+        goodreadsId: 70,
+        isbn: null,
+      })),
+    ).toEqual({ goodreadsId: 70, method: "library" });
+    expect(bestEdition).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed edition lookup without saving the book", async () => {
+    const db = await database();
+    const matcher = new GoodreadsBookMatcher(
+      db,
+      "bookorbit",
+      async () => [],
+      Date.now,
+      async () => {
+        throw new Error("Goodreads GraphQL fetch failed: 503");
+      },
+    );
+    await expect(
+      matcher.match(hobbit, async () => ({ goodreadsId: 70, isbn: null })),
+    ).rejects.toBeInstanceOf(GoodreadsLookupError);
+    expect(
+      await db.selectFrom("import_book_links").selectAll().execute(),
+    ).toEqual([]);
   });
 
   it("prefers an owned edition with the same title and author", async () => {
     const db = await database();
-    const owned = mergeImportedItem(
-      { mediaType: "book", sourceId: "55", status: "backlogged" },
-      null,
-      1,
-    )!;
-    await db
-      .insertInto("library_items")
-      .values(libraryItemDocToRow(owned, 1))
-      .execute();
-    await db
-      .insertInto("book_metadata")
-      .values({
-        goodreads_id: 55,
-        name: "The Hobbit, or There and Back Again",
-        cover_url: null,
-        authors: JSON.stringify(["J. R. R. Tolkien"]),
-        publication_date: null,
-        page_count: null,
-        description: null,
-        publisher: null,
-        isbn13: null,
-        series_name: null,
-        series_position: null,
-        genres: null,
-        avg_rating: null,
-        ratings_count: null,
-        language: null,
-        fetched_at: 1,
-        detail_fetched_at: null,
-      })
-      .execute();
+    await own(
+      db,
+      55,
+      "The Hobbit, or There and Back Again",
+      "J. R. R. Tolkien",
+    );
     const search = vi.fn(async () => []);
     const matcher = new GoodreadsBookMatcher(db, "bookorbit", search);
     expect(
       await matcher.match(
         { ...hobbit, title: "The Hobbit, or There and Back Again" },
-        async () => null,
+        noHints,
       ),
     ).toEqual({ goodreadsId: 55, method: "library" });
     expect(search).not.toHaveBeenCalled();
@@ -217,20 +311,20 @@ describe("GoodreadsBookMatcher", () => {
     const make = () =>
       new GoodreadsBookMatcher(db, "bookorbit", search, () => now);
     // Each lookup of an unmatched book runs both title searches.
-    await make().match(hobbit, async () => null);
-    await make().match(hobbit, async () => null);
+    await make().match(hobbit, noHints);
+    await make().match(hobbit, noHints);
     expect(search).toHaveBeenCalledTimes(2);
     now += RETRY_UNMATCHED_MS + 1;
-    await make().match(hobbit, async () => null);
+    await make().match(hobbit, noHints);
     expect(search).toHaveBeenCalledTimes(4);
-    await make().match({ ...hobbit, title: "The Hobbit!" }, async () => null);
+    await make().match({ ...hobbit, title: "The Hobbit!" }, noHints);
     expect(search).toHaveBeenCalledTimes(6);
 
     const service = new ImportService(db, vi.fn());
     await service.setBookLink("bookorbit", "7", 99);
     now += RETRY_UNMATCHED_MS + 1;
     expect(
-      await make().match({ ...hobbit, title: "Renamed" }, async () => null),
+      await make().match({ ...hobbit, title: "Renamed" }, noHints),
     ).toEqual({ goodreadsId: 99, method: "manual" });
     expect(search).toHaveBeenCalledTimes(6);
   });
@@ -241,13 +335,13 @@ describe("GoodreadsBookMatcher", () => {
     // Seed the row so the concurrent manual update has something to change.
     await new GoodreadsBookMatcher(db, "bookorbit", async () => []).match(
       { ...hobbit, title: "Old title" },
-      async () => null,
+      noHints,
     );
     const matcher = new GoodreadsBookMatcher(db, "bookorbit", async () => {
       await service.setBookLink("bookorbit", "7", 42);
       return [];
     });
-    await matcher.match(hobbit, async () => null);
+    await matcher.match(hobbit, noHints);
     expect(await service.listBookLinks("bookorbit")).toEqual([
       expect.objectContaining({ goodreadsId: 42, method: "manual" }),
     ]);
@@ -258,9 +352,9 @@ describe("GoodreadsBookMatcher", () => {
     const matcher = new GoodreadsBookMatcher(db, "bookorbit", async () => {
       throw new Error("Goodreads search failed: 503");
     });
-    await expect(
-      matcher.match(hobbit, async () => null),
-    ).rejects.toBeInstanceOf(GoodreadsLookupError);
+    await expect(matcher.match(hobbit, noHints)).rejects.toBeInstanceOf(
+      GoodreadsLookupError,
+    );
     expect(
       await db.selectFrom("import_book_links").selectAll().execute(),
     ).toEqual([]);
@@ -591,7 +685,7 @@ describe("BookOrbit connection settings and links", () => {
     const service = new ImportService(db, vi.fn());
     await new GoodreadsBookMatcher(db, "bookorbit", async () => []).match(
       hobbit,
-      async () => null,
+      noHints,
     );
     const app = new Hono();
     registerImportRoutes(app, service);
@@ -634,7 +728,7 @@ describe("BookOrbit connection settings and links", () => {
 
     await new GoodreadsBookMatcher(db, "bookorbit", async () => []).match(
       hobbit,
-      async () => null,
+      noHints,
     );
     await service.disconnect("bookorbit");
     expect(await service.listBookLinks("bookorbit")).toEqual([]);

@@ -469,7 +469,10 @@ async function fetchBookOrbit(
           match = await matcher.match(book, async () => {
             const found = await loadDetail();
             const isbn = found.isbn13 ?? found.isbn10;
-            return typeof isbn === "string" ? isbn : null;
+            return {
+              goodreadsId: null,
+              isbn: typeof isbn === "string" ? isbn : null,
+            };
           });
           failures = 0;
         } catch (error) {
