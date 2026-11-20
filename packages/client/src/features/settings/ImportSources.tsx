@@ -202,7 +202,7 @@ function SourceForm({
           ? "Import your public Steam library and playtime with a Steam Web API key and SteamID64. Apps without an exact IGDB mapping are skipped."
           : source === "trakt"
             ? "Import movies, TV watch history, watchlist, and ratings. Enter your profile slug and Trakt application's client ID. Private profiles also need an access token; replace it when it expires."
-            : "Import reading status, progress and ratings from BookOrbit. Use the KOReader sync credentials from BookOrbit's Settings → Devices & Sync → KOReader; they do not expire. Books are matched to Goodreads by title and author, then ISBN."}
+            : "Import reading status, progress, ratings and finish dates from BookOrbit. Create an API key in BookOrbit under Settings → API keys; read access is enough. Books are matched to Goodreads by BookOrbit's Goodreads ID, then by title and author, then ISBN."}
       </p>
       <form className="mt-4" onSubmit={(event) => void save(event)}>
         <fieldset
@@ -222,26 +222,24 @@ function SourceForm({
               />
             </label>
           )}
-          <label className="text-sm text-muted">
-            {source === "steam"
-              ? "SteamID64"
-              : source === "trakt"
-                ? "Trakt profile slug"
-                : "KOReader username"}
-            <input
-              className={inputClass}
-              required
-              value={account}
-              onChange={(event) => setAccount(event.currentTarget.value)}
-              autoComplete="off"
-            />
-          </label>
+          {source !== "bookorbit" && (
+            <label className="text-sm text-muted">
+              {source === "steam" ? "SteamID64" : "Trakt profile slug"}
+              <input
+                className={inputClass}
+                required
+                value={account}
+                onChange={(event) => setAccount(event.currentTarget.value)}
+                autoComplete="off"
+              />
+            </label>
+          )}
           <label className="text-sm text-muted">
             {source === "steam"
               ? "Steam Web API key"
               : source === "trakt"
                 ? "Trakt client ID"
-                : "KOReader password"}
+                : "BookOrbit API key"}
             <input
               className={inputClass}
               type="password"
@@ -251,7 +249,9 @@ function SourceForm({
               placeholder={
                 connection.hasApiKey
                   ? "Saved — leave blank to keep"
-                  : "Required"
+                  : source === "bookorbit"
+                    ? "bok_…"
+                    : "Required"
               }
               required={!connection.hasApiKey}
             />
@@ -313,6 +313,11 @@ function SourceForm({
           </div>
         </fieldset>
       </form>
+      {source === "bookorbit" && connection.hasApiKey && connection.account && (
+        <p className="mt-3 text-xs text-muted">
+          Connected as {connection.account}
+        </p>
+      )}
       {connection.lastRunAt && (
         <p className="mt-3 text-xs text-muted">
           Last started {new Date(connection.lastRunAt).toLocaleString()}

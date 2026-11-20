@@ -42,11 +42,12 @@ export type BookLinkSource = (typeof BOOK_LINK_SOURCES)[number];
 
 /**
  * How a source book reached its Goodreads ID. `manual` and `ignored` are user
- * choices that imports never revisit; `none` means automatic matching found
- * nothing and will retry later.
+ * choices that imports never revisit; `source` is the source's own Goodreads
+ * ID, mapped to the work's best edition; `none` means automatic matching
+ * found nothing and will retry later.
  */
 export type BookLinkMethod =
-  "manual" | "ignored" | "library" | "title" | "isbn" | "none";
+  "manual" | "ignored" | "library" | "source" | "title" | "isbn" | "none";
 
 export interface ImportBookLink {
   /** The source's own book ID, e.g. BookOrbit's numeric book id. */

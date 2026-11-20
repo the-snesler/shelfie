@@ -7,7 +7,7 @@ import {
   progressLines,
   type ProgressLine,
 } from "./activityProgress";
-import { DetailAccordion, DetailSection } from "./DetailChrome";
+import { DetailAccordion } from "./DetailChrome";
 
 /** `progress` is this event's derived progress line (see `progressLines`);
  *  undefined when the event has none or a later correction undid it. */

@@ -6,7 +6,7 @@ import type {
 } from "@shelfie/shared";
 import type { Kysely } from "kysely";
 import type { Database, ImportBookLinksTable } from "../db/types.js";
-import { searchBooks } from "../goodreads/client.js";
+import { fetchBestEditionId, searchBooks } from "../goodreads/client.js";
 
 /** A book as an import source describes it, before Goodreads matching. */
 export interface SourceBook {
@@ -21,19 +21,26 @@ export interface BookMatch {
   method: BookLinkMethod;
 }
 
-/** A Goodreads search failed; the book stays unsaved so a later run retries it. */
+/**
+ * Identifiers a source may know for a book, loaded only when a book needs a
+ * fresh match (a source may need a detail request to provide them).
+ */
+export interface BookHints {
+  /** The source's own Goodreads id for the book; any edition. */
+  goodreadsId: number | null;
+  isbn: string | null;
+}
+
+/** A Goodreads lookup failed; the book stays unsaved so a later run retries it. */
 export class GoodreadsLookupError extends Error {}
 
 export interface BookMatcher {
   /**
-   * Resolves a source book to a Goodreads id. `isbn` is called only when
-   * title matching fails, so sources can defer a detail request. Throws
-   * GoodreadsLookupError when a search fails.
+   * Resolves a source book to a Goodreads id. `hints` is called only when the
+   * book has no saved or library match, so sources can defer a detail
+   * request. Throws GoodreadsLookupError when a Goodreads request fails.
    */
-  match(
-    book: SourceBook,
-    isbn: () => Promise<string | null>,
-  ): Promise<BookMatch>;
+  match(book: SourceBook, hints: () => Promise<BookHints>): Promise<BookMatch>;
   /** A saved match that needs no new lookup, or undefined. Never searches. */
   known(book: SourceBook): Promise<BookMatch | undefined>;
 }
@@ -130,10 +137,13 @@ export function publicBookLink(row: ImportBookLinksTable): ImportBookLink {
 
 /**
  * Matches source books in priority order: a saved match, a book already in
- * the library with the same title and author, a strict title and author
- * match from Goodreads title searches, then the ISBN. Title search comes before ISBN because it
- * finds the edition a manual Shelfie search would add; an ISBN can name a
- * translated edition. Results are saved per source so later runs skip lookups.
+ * the library with the same title and author, the source's own Goodreads id,
+ * a strict title and author match from Goodreads title searches, then the
+ * ISBN. A source's Goodreads id usually names the edition matching its file,
+ * so it is mapped to the work's best edition, the one a manual Shelfie search
+ * would add. Title search comes before ISBN for the same reason; an ISBN can
+ * name a translated edition. Results are saved per source so later runs skip
+ * lookups.
  */
 export class GoodreadsBookMatcher implements BookMatcher {
   private saved?: Map<string, ImportBookLinksTable>;
@@ -146,6 +156,9 @@ export class GoodreadsBookMatcher implements BookMatcher {
       q: string,
     ) => Promise<BookSearchResult[]> = searchBooks,
     private readonly now: () => number = Date.now,
+    private readonly bestEdition: (
+      goodreadsId: number,
+    ) => Promise<number | null> = fetchBestEditionId,
   ) {}
 
   async known(book: SourceBook): Promise<BookMatch | undefined> {
@@ -160,13 +173,16 @@ export class GoodreadsBookMatcher implements BookMatcher {
 
   async match(
     book: SourceBook,
-    isbn: () => Promise<string | null>,
+    hints: () => Promise<BookHints>,
   ): Promise<BookMatch> {
     const saved = await this.known(book);
     if (saved) return saved;
+    let loaded: BookHints | undefined;
+    const hint = async () => (loaded ??= await hints());
     const found = (await this.fromLibrary(book, null)) ??
+      (await this.fromSourceId((await hint()).goodreadsId)) ??
       (await this.fromTitle(book)) ??
-      (await this.fromIsbn(book, await isbn())) ?? {
+      (await this.fromIsbn(book, (await hint()).isbn)) ?? {
         goodreadsId: null,
         method: "none" as const,
       };
@@ -256,6 +272,25 @@ export class GoodreadsBookMatcher implements BookMatcher {
     return candidates.length === 1
       ? { goodreadsId: candidates[0].goodreadsId, method: "library" }
       : null;
+  }
+
+  private async fromSourceId(
+    goodreadsId: number | null,
+  ): Promise<BookMatch | null> {
+    if (!goodreadsId) return null;
+    // The exact edition is already on the shelf: keep using it.
+    if ((await this.libraryBooks()).some((b) => b.goodreadsId === goodreadsId))
+      return { goodreadsId, method: "library" };
+    let best: number | null;
+    try {
+      best = await this.bestEdition(goodreadsId);
+    } catch (error) {
+      throw new GoodreadsLookupError("Goodreads edition lookup failed.", {
+        cause: error,
+      });
+    }
+    // An id Goodreads does not know is stale source metadata; search instead.
+    return best ? { goodreadsId: best, method: "source" } : null;
   }
 
   private async fromTitle(book: SourceBook): Promise<BookMatch | null> {
