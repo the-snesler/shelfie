@@ -20,7 +20,8 @@ import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
 import { formatIsoDay, formatIsoDayRange } from "../media/dates";
-import { DetailSection, ExpandableText, TrailerChips } from "./DetailChrome";
+import { DetailSection, ExpandableText } from "./DetailChrome";
+import { CastRail, VideoRail } from "./Rail";
 
 /** Ascending by seasonNumber, with Specials (0) pushed to the end. */
 function orderedSeasons(seasons: TvSeason[]): TvSeason[] {
@@ -222,18 +223,6 @@ export default function TvDetail({ params }: Route.ComponentProps) {
           ],
           body: (
             <>
-              <TrailerChips videos={meta.videos} />
-              {meta.cast.length > 0 && (
-                <DetailSection title="Cast">
-                  <p className="text-sm leading-relaxed text-ink">
-                    {meta.cast
-                      .map((c) =>
-                        c.character ? `${c.name} as ${c.character}` : c.name,
-                      )
-                      .join(" · ")}
-                  </p>
-                </DetailSection>
-              )}
               {meta.numberOfEpisodes > 0 && (
                 <DetailSection title="Episodes">
                   <div className="flex flex-col gap-1.5">
@@ -333,6 +322,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
                   })}
                 </div>
               )}
+              <CastRail cast={meta.cast} />
+              <VideoRail videos={meta.videos} />
             </>
           ),
         };

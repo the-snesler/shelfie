@@ -15,7 +15,8 @@ import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
 import { formatIsoDay } from "../media/dates";
-import { DetailSection, ExpandableText, TrailerChips } from "./DetailChrome";
+import { ExpandableText } from "./DetailChrome";
+import { CastRail, VideoRail } from "./Rail";
 
 export default function MovieDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
@@ -108,18 +109,8 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
         ],
         body: (
           <>
-            <TrailerChips videos={meta.videos} />
-            {meta.cast.length > 0 && (
-              <DetailSection title="Cast">
-                <p className="text-sm leading-relaxed text-ink">
-                  {meta.cast
-                    .map((c) =>
-                      c.character ? `${c.name} as ${c.character}` : c.name,
-                    )
-                    .join(" · ")}
-                </p>
-              </DetailSection>
-            )}
+            <CastRail cast={meta.cast} />
+            <VideoRail videos={meta.videos} />
           </>
         ),
       })}

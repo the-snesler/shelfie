@@ -8,7 +8,6 @@ import {
 } from "react";
 import IconArrowLeft from "~icons/tabler/arrow-left";
 import IconArrowUpRight from "~icons/tabler/arrow-up-right";
-import IconPlayerPlay from "~icons/tabler/player-play";
 
 /** Shared presentational chrome for the four detail screens. Purely visual —
  *  data fetching, RxDB subscriptions, and view-transition wiring stay in each
@@ -175,32 +174,6 @@ export function DetailSection({
       <h3 className="font-display text-lg font-medium text-ink">{title}</h3>
       {children}
     </section>
-  );
-}
-
-export function TrailerChips({
-  videos,
-}: {
-  videos: readonly { videoId: string; name: string | null }[];
-}) {
-  if (videos.length === 0) return null;
-  return (
-    <DetailSection title="Videos">
-      <div className="flex flex-wrap gap-2">
-        {videos.map((video) => (
-          <a
-            key={video.videoId}
-            target="_blank"
-            rel="noreferrer"
-            href={`https://www.youtube.com/watch?v=${video.videoId}`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-well px-3 py-1.5 text-xs font-medium text-ink ring-1 ring-divider hover:ring-accent"
-          >
-            <IconPlayerPlay className="size-3.5 text-accent" />
-            {video.name ?? "Trailer"}
-          </a>
-        ))}
-      </div>
-    </DetailSection>
   );
 }
 

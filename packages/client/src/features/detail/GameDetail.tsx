@@ -18,7 +18,8 @@ import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
 import { formatIsoDay } from "../media/dates";
-import { DetailSection, ExpandableText, TrailerChips } from "./DetailChrome";
+import { ExpandableText } from "./DetailChrome";
+import { Rail, VideoRail } from "./Rail";
 
 const STORE_LABELS: Record<StoreName, string> = {
   official: "Official site",
@@ -163,24 +164,26 @@ export default function GameDetail({ params }: Route.ComponentProps) {
           body: (
             <>
               {meta.screenshotImageIds.length > 0 && (
-                <DetailSection title="Screenshots">
-                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-                    {meta.screenshotImageIds.map((id, i) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setLightbox(i)}
-                        className="shrink-0"
-                      >
-                        <img
-                          loading="lazy"
-                          src={gameImageUrl("t_screenshot_med", id)}
-                          className="h-28 w-auto rounded-lg object-contain ring-1 ring-divider"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </DetailSection>
+                <Rail
+                  title="Screenshots"
+                  count={meta.screenshotImageIds.length}
+                >
+                  {meta.screenshotImageIds.map((id, i) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setLightbox(i)}
+                      className="aspect-video w-64 shrink-0 snap-start overflow-hidden rounded-md bg-well ring-1 ring-divider hover:ring-accent"
+                    >
+                      <img
+                        loading="lazy"
+                        src={gameImageUrl("t_screenshot_med", id)}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </Rail>
               )}
               {lightbox !== null && (
                 <Lightbox
@@ -192,7 +195,7 @@ export default function GameDetail({ params }: Route.ComponentProps) {
                   onIndexChange={setLightbox}
                 />
               )}
-              <TrailerChips videos={meta.videos} />
+              <VideoRail videos={meta.videos} />
             </>
           ),
         };
