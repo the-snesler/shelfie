@@ -26,7 +26,7 @@ describe("movie-book-release-dates migration", () => {
       database,
     );
 
-    await runMigrations(database);
+    await runMigrations(database, 13);
 
     expect(
       await database
@@ -50,7 +50,7 @@ describe("tv-first-air-date migration", () => {
       database,
     );
 
-    await runMigrations(database);
+    await runMigrations(database, 17);
 
     expect(
       await database
@@ -72,5 +72,31 @@ describe("tv-first-air-date migration", () => {
         detail_fetched_at: null,
       },
     ]);
+  });
+});
+
+describe("person-metadata migration", () => {
+  it("creates the cache and expires only the detail tier", async () => {
+    await runMigrations(database, 22);
+    await sql`INSERT INTO movie_metadata (tmdb_id, name, fetched_at, detail_fetched_at) VALUES (1, 'Movie', 500, 400)`.execute(
+      database,
+    );
+    await sql`INSERT INTO tv_metadata (tmdb_id, name, fetched_at, detail_fetched_at) VALUES (2, 'Show', 500, 400)`.execute(
+      database,
+    );
+
+    await runMigrations(database, 23);
+
+    for (const table of ["movie_metadata", "tv_metadata"] as const) {
+      expect(
+        await database
+          .selectFrom(table)
+          .select(["fetched_at", "detail_fetched_at"])
+          .executeTakeFirstOrThrow(),
+      ).toEqual({ fetched_at: 500, detail_fetched_at: null });
+    }
+    expect(
+      await database.selectFrom("person_metadata").selectAll().execute(),
+    ).toEqual([]);
   });
 });

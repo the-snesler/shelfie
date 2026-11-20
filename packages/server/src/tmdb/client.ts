@@ -2,6 +2,8 @@ import type {
   CastMember,
   MediaVideo,
   MovieDetail,
+  PersonCredit,
+  PersonDetail,
   MovieMetadata,
   MovieSearchResult,
   TvDetail,
@@ -98,6 +100,7 @@ interface TmdbCrewMember {
 }
 
 interface TmdbCastMember {
+  id: number;
   name: string;
   character: string;
   profile_path: string | null;
@@ -171,6 +174,7 @@ interface TmdbAggregateRole {
 }
 
 interface TmdbAggregateCastMember {
+  id: number;
   name: string;
   profile_path: string | null;
   roles: TmdbAggregateRole[];
@@ -271,6 +275,7 @@ function extractMovieCertification(
 
 function extractCast(cast: TmdbCastMember[] | undefined): CastMember[] {
   return (cast ?? []).slice(0, 20).map((member) => ({
+    id: member.id ?? null,
     name: member.name,
     character: member.character || null,
     profilePath: member.profile_path,
@@ -281,6 +286,7 @@ function extractAggregateCast(
   cast: TmdbAggregateCastMember[] | undefined,
 ): CastMember[] {
   return (cast ?? []).slice(0, 20).map((member) => ({
+    id: member.id ?? null,
     name: member.name,
     character: member.roles[0]?.character || null,
     profilePath: member.profile_path,
@@ -477,5 +483,124 @@ export async function fetchTvDetail(id: number): Promise<TvDetail> {
     lastAirDate: tv.last_air_date ?? null,
     inProduction: tv.in_production ?? false,
     imdbId: tv.external_ids?.imdb_id ?? null,
+  };
+}
+
+export interface TmdbPersonCastCredit {
+  id: number;
+  media_type: string;
+  /** movies */
+  title?: string;
+  release_date?: string;
+  /** tv */
+  name?: string;
+  first_air_date?: string;
+  episode_count?: number;
+  character?: string | null;
+  poster_path: string | null;
+  vote_count?: number;
+  genre_ids?: number[];
+}
+
+interface TmdbPerson {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  biography: string | null;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  known_for_department: string | null;
+  imdb_id: string | null;
+  combined_credits?: { cast: TmdbPersonCastCredit[] };
+}
+
+/** TMDB TV genres that are appearances rather than roles. */
+const NON_ROLE_TV_GENRES = new Set([10763 /* News */, 10767 /* Talk */]);
+const SELF_CHARACTER = /^(self|himself|herself|themselves)\b/i;
+
+/**
+ * Acting credits for a person page: movies and shows only, minus talk/news
+ * spots and "Self" appearances, one entry per title (TMDB lists a credit per
+ * role), newest first with undated titles leading.
+ */
+export function personCredits(
+  cast: readonly TmdbPersonCastCredit[],
+): PersonCredit[] {
+  const byTitle = new Map<string, PersonCredit>();
+  for (const credit of cast) {
+    if (credit.media_type !== "movie" && credit.media_type !== "tv") continue;
+    if (
+      credit.media_type === "tv" &&
+      credit.genre_ids?.some((genre) => NON_ROLE_TV_GENRES.has(genre))
+    )
+      continue;
+    const character = credit.character?.trim() || null;
+    if (character && SELF_CHARACTER.test(character)) continue;
+    const key = `${credit.media_type}:${credit.id}`;
+    const existing = byTitle.get(key);
+    if (existing) {
+      if (character && !existing.character?.split(" / ").includes(character))
+        existing.character = existing.character
+          ? `${existing.character} / ${character}`
+          : character;
+      if (credit.episode_count != null)
+        existing.episodeCount = Math.max(
+          existing.episodeCount ?? 0,
+          credit.episode_count,
+        );
+      continue;
+    }
+    byTitle.set(key, {
+      mediaType: credit.media_type,
+      tmdbId: credit.id,
+      name: (credit.media_type === "movie" ? credit.title : credit.name) ?? "",
+      character,
+      date: isoDateOrNull(
+        credit.media_type === "movie"
+          ? credit.release_date
+          : credit.first_air_date,
+      ),
+      posterPath: credit.poster_path,
+      episodeCount:
+        credit.media_type === "tv" ? (credit.episode_count ?? null) : null,
+      voteCount: credit.vote_count ?? 0,
+    });
+  }
+  return [...byTitle.values()]
+    .filter((credit) => credit.name)
+    .sort((a, b) => {
+      if (a.date === b.date) return b.voteCount - a.voteCount;
+      if (a.date === null) return -1;
+      if (b.date === null) return 1;
+      return b.date.localeCompare(a.date);
+    });
+}
+
+/** A person with their acting credits; null when TMDB has no such id. */
+export async function fetchPersonDetail(
+  id: number,
+): Promise<PersonDetail | null> {
+  const res = await tmdbFetch(`/person/${id}`, {
+    append_to_response: "combined_credits",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(
+      `TMDB request failed: /person/${id} -> ${res.status} ${res.statusText}`,
+    );
+  }
+  const person = (await res.json()) as TmdbPerson;
+  return {
+    tmdbId: person.id,
+    name: person.name,
+    profilePath: person.profile_path,
+    biography: person.biography?.trim() || null,
+    birthday: isoDateOrNull(person.birthday),
+    deathday: isoDateOrNull(person.deathday),
+    placeOfBirth: person.place_of_birth || null,
+    knownForDepartment: person.known_for_department || null,
+    imdbId: person.imdb_id || null,
+    credits: personCredits(person.combined_credits?.cast ?? []),
   };
 }

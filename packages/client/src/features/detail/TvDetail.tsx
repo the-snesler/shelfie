@@ -1,7 +1,6 @@
-import { MyActivity } from "./MyActivity";
-import type { TvDetail as TvDetailDto, TvSeason } from "@shelfie/shared";
+import type { TvDetail as TvDetailDto, TvEpisode } from "@shelfie/shared";
 import { episodeKey } from "@shelfie/shared";
-import { useLocation, useNavigate, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/TvDetail";
 import { upsertTvCards } from "../../db/tvCards";
@@ -18,42 +17,26 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { StatusControl } from "../media/StatusControl";
-import { useBackNavigation } from "./useBackNavigation";
 import { useDetailFetch } from "./useDetailFetch";
-import {
-  Description,
-  DetailBackdrop,
-  DetailBodySkeleton,
-  DetailCard,
-  DetailHero,
-  DetailPage,
-  DetailSection,
-  NotFound,
-  RatingPills,
-  TrailerChips,
-} from "./DetailChrome";
-
-/** Ascending by seasonNumber, with Specials (0) pushed to the end. */
-function orderedSeasons(seasons: TvSeason[]): TvSeason[] {
-  return [...seasons].sort((a, b) => {
-    if (a.seasonNumber === 0) return 1;
-    if (b.seasonNumber === 0) return -1;
-    return a.seasonNumber - b.seasonNumber;
-  });
-}
+import { DetailScreen } from "./DetailScreen";
+import { formatIsoDay, formatIsoDayRange } from "../media/dates";
+import IconCheck from "~icons/tabler/check";
+import { ExpandableText } from "./DetailChrome";
+import { TvEpisodes } from "./TvEpisodes";
+import { nextUpEpisode } from "./episodeProgress";
+import { useToday } from "../media/useToday";
+import { CastRail, VideoRail } from "./Rail";
 
 export default function TvDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
-  const navigate = useNavigate();
-  const location = useLocation();
   const { metaState, item } = useDetailFetch<TvDetailDto>({
     db,
     url: `/api/tv/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `tv:${meta.tmdbId}`,
     upsertCards: upsertTvCards,
   });
-  const handleBack = useBackNavigation();
+  const today = useToday();
 
   /** Persists a `watchedEpisodes` update by deriving the next map from the
    *  document's current data at write time via `incrementalModify` (RxDB
@@ -74,7 +57,6 @@ export default function TvDetail({ params }: Route.ComponentProps) {
         updatedAt: Date.now(),
       }));
     } else {
-      const meta = metaState.meta;
       const derived = deriveEpisodeWatch(
         { watchedEpisodes: {}, status: "active", completedDates: [] },
         card,
@@ -83,8 +65,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       const base = newLibraryItem(
         {
           mediaType: "tv",
-          sourceId: String(meta.tmdbId),
-          name: meta.name,
+          sourceId: String(card.tmdbId),
+          name: card.name,
           platforms: [],
         },
         derived.status,
@@ -97,8 +79,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
     }
   }
 
-  function toggleEpisode(season: number, episode: number) {
-    const key = episodeKey(season, episode);
+  function toggleEpisode(episode: TvEpisode) {
+    const key = episodeKey(episode.seasonNumber, episode.episodeNumber);
     void applyWatched((current) => {
       if (key in current) {
         const { [key]: _omit, ...rest } = current;
@@ -108,233 +90,160 @@ export default function TvDetail({ params }: Route.ComponentProps) {
     });
   }
 
-  function toggleSeason(season: TvSeason) {
-    const keys = season.episodes.map((ep) =>
-      episodeKey(season.seasonNumber, ep.episodeNumber),
-    );
+  /** Marks `keys` watched (today, keeping existing dates) or unwatched. */
+  function setEpisodes(keys: string[], watched: boolean) {
     void applyWatched((current) => {
-      const allWatched = keys.length > 0 && keys.every((k) => k in current);
-      if (allWatched) {
-        const next = { ...current };
-        for (const k of keys) delete next[k];
-        return next;
-      }
-      const today = todayLocalIsoDate();
       const next = { ...current };
-      for (const k of keys) if (!(k in next)) next[k] = today;
+      if (watched) {
+        const today = todayLocalIsoDate();
+        for (const key of keys) next[key] ??= today;
+      } else {
+        for (const key of keys) delete next[key];
+      }
       return next;
     });
   }
 
-  if (metaState.status === "loading") {
-    const linkState = location.state as {
-      coverUrl?: string | null;
-      coverHash?: string | null;
-      name?: string;
-    } | null;
-    return (
-      <DetailPage onBack={handleBack}>
-        <DetailBackdrop src={null} />
-        <DetailHero
-          overlap
-          name={linkState?.name ?? null}
-          cover={
-            <MediaCover
-              coverUrl={linkState?.coverUrl ?? null}
-              coverHash={linkState?.coverHash}
-              name={linkState?.name ?? "Loading…"}
-              width={MEDIA_DETAIL_COVER_WIDTH}
-              viewTransitionName={mediaCoverTransitionName("tv", id)}
-            />
-          }
-        />
-        <DetailBodySkeleton />
-      </DetailPage>
-    );
-  }
-
-  if (metaState.status === "error") {
-    return (
-      <NotFound
-        message={metaState.message ?? "Show not found"}
-        onBack={() => navigate("/")}
-      />
-    );
-  }
-
-  const meta = metaState.meta;
-  const poster = meta.posterPath ? tmdbImageUrl(meta.posterPath, "w500") : null;
-  const backdrop = meta.backdropPath
-    ? tmdbImageUrl(meta.backdropPath, "w1280")
-    : null;
-
-  const watchedEpisodes = item?.watchedEpisodes ?? {};
-  const watchedCount = Object.keys(watchedEpisodes).filter(
-    (k) => !k.startsWith("s0e"),
-  ).length;
-  const percent =
-    meta.numberOfEpisodes > 0
-      ? Math.round((watchedCount / meta.numberOfEpisodes) * 100)
-      : 0;
-  const seasons = orderedSeasons(meta.seasons);
-
   return (
-    <DetailPage onBack={handleBack}>
-      <DetailBackdrop src={backdrop} />
-      <DetailHero
-        overlap
-        name={meta.name}
-        tagline={meta.tagline}
-        lines={[
-          [meta.firstAirYear, meta.status, meta.certification]
-            .filter(Boolean)
-            .join(" · "),
-          meta.genres.length > 0 && meta.genres.join(", "),
-          [...meta.networks, ...meta.createdBy].filter(Boolean).join(" · "),
-        ]}
-        cover={
-          <MediaCover
-            coverUrl={poster}
-            coverHash={meta.coverHash}
-            name={meta.name}
-            width={MEDIA_DETAIL_COVER_WIDTH}
-            viewTransitionName={mediaCoverTransitionName("tv", id)}
-          />
-        }
-      >
-        <div className="mt-2 flex flex-col items-start gap-3">
-          <RatingPills
-            pills={[
-              meta.voteAverage != null &&
-                `TMDB ${meta.voteAverage.toFixed(1)}${
-                  meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
-                }`,
-            ]}
-          />
-          <StatusControl
-            db={db}
-            target={{
-              mediaType: "tv",
-              sourceId: String(meta.tmdbId),
-              name: meta.name,
-              platforms: [],
-              releaseDate:
-                meta.firstAirDate ?? releaseDateFromYear(meta.firstAirYear),
-            }}
-            item={item}
-          />
-        </div>
-      </DetailHero>
-      <MyActivity item={item} />
-      {meta.summary && <Description>{meta.summary}</Description>}
-      <TrailerChips videos={meta.videos} />
-      {meta.cast.length > 0 && (
-        <DetailCard>
-          <span className="font-display text-base font-medium text-ink">
-            Cast
-          </span>
-          <p className="leading-relaxed text-ink">
-            {meta.cast
-              .map((c) =>
-                c.character ? `${c.name} as ${c.character}` : c.name,
-              )
-              .join(" · ")}
-          </p>
-        </DetailCard>
+    <DetailScreen
+      state={metaState}
+      item={item}
+      notFoundMessage="Show not found"
+      cover={(meta, link) => (
+        <MediaCover
+          coverUrl={
+            meta
+              ? meta.posterPath
+                ? tmdbImageUrl(meta.posterPath, "w500")
+                : null
+              : (link?.coverUrl ?? null)
+          }
+          coverHash={meta ? meta.coverHash : link?.coverHash}
+          name={meta?.name ?? link?.name ?? "Loading…"}
+          width={MEDIA_DETAIL_COVER_WIDTH}
+          viewTransitionName={mediaCoverTransitionName("tv", id)}
+        />
       )}
-      {meta.numberOfEpisodes > 0 && (
-        <DetailSection title="Episodes">
-          <div className="flex flex-col gap-1.5">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-well ring-1 ring-divider">
-              <div
-                className="h-full rounded-full bg-accent"
-                style={{ width: `${percent}%` }}
+      render={(meta) => {
+        const watchedEpisodes = item?.watchedEpisodes ?? {};
+        const nextUp = nextUpEpisode(
+          meta.seasons,
+          watchedEpisodes,
+          meta.lastEpisodeToAir,
+          today,
+        );
+        const nextAiring = meta.nextEpisodeToAir;
+        return {
+          name: meta.name,
+          tagline: meta.tagline,
+          coverUrl: meta.posterPath
+            ? tmdbImageUrl(meta.posterPath, "w500")
+            : null,
+          backdrop: meta.backdropPath
+            ? tmdbImageUrl(meta.backdropPath, "w1280")
+            : null,
+          lines: [
+            [
+              meta.firstAirYear,
+              meta.numberOfEpisodes > 0 && `${meta.numberOfEpisodes} eps`,
+              meta.certification,
+              meta.status,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            meta.genres.length > 0 && meta.genres.join(", "),
+          ],
+          pills: [
+            meta.voteAverage != null &&
+              `TMDB ${meta.voteAverage.toFixed(1)}${
+                meta.voteCount > 0 ? ` · ${meta.voteCount}` : ""
+              }`,
+          ],
+          status: (
+            <StatusControl
+              db={db}
+              target={{
+                mediaType: "tv",
+                sourceId: String(meta.tmdbId),
+                name: meta.name,
+                platforms: [],
+                releaseDate:
+                  meta.firstAirDate ?? releaseDateFromYear(meta.firstAirYear),
+              }}
+              item={item}
+            />
+          ),
+          actions: item && nextUp?.aired && (
+            <button
+              type="button"
+              onClick={() => toggleEpisode(nextUp.episode)}
+              title={`Mark S${nextUp.episode.seasonNumber}E${nextUp.episode.episodeNumber} watched`}
+              className="inline-flex max-w-full min-w-0 items-center gap-2 rounded bg-well/80 px-3 py-2 text-sm text-ink ring-1 ring-divider hover:ring-accent"
+            >
+              <IconCheck className="size-4 shrink-0 text-accent" />
+              <span className="shrink-0 text-faint tabular-nums">
+                S{nextUp.episode.seasonNumber}E{nextUp.episode.episodeNumber}
+              </span>
+              <span className="max-w-[16rem] truncate">
+                {nextUp.episode.name}
+              </span>
+            </button>
+          ),
+          about: meta.summary && (
+            <ExpandableText>
+              <p>{meta.summary}</p>
+            </ExpandableText>
+          ),
+          facts: [
+            { label: "Status", value: meta.status },
+            {
+              label: "Aired",
+              value:
+                meta.inProduction || !meta.lastAirDate
+                  ? meta.firstAirDate &&
+                    `Since ${formatIsoDay(meta.firstAirDate)}`
+                  : formatIsoDayRange(meta.firstAirDate, meta.lastAirDate),
+            },
+            nextAiring && {
+              label: "Next",
+              value: `S${nextAiring.seasonNumber}E${nextAiring.episodeNumber} · ${formatIsoDay(nextAiring.airDate)}`,
+            },
+            { label: "Network", value: meta.networks.join(", ") },
+            { label: "Created by", value: meta.createdBy.join(", ") },
+            meta.numberOfSeasons > 0 && {
+              label: "Seasons",
+              value: `${meta.numberOfSeasons} · ${meta.numberOfEpisodes} episodes`,
+            },
+            { label: "Rated", value: meta.certification },
+          ],
+          links: [
+            meta.imdbId && {
+              label: "IMDb",
+              href: `https://www.imdb.com/title/${meta.imdbId}/`,
+            },
+            {
+              label: "TMDB",
+              href: `https://www.themoviedb.org/tv/${meta.tmdbId}`,
+            },
+          ],
+          body: (
+            <>
+              <TvEpisodes
+                key={meta.tmdbId}
+                meta={meta}
+                watched={watchedEpisodes}
+                disabled={item === undefined}
+                today={today}
+                nextUp={nextUp}
+                onToggle={toggleEpisode}
+                onSetWatched={setEpisodes}
               />
-            </div>
-            <p className="text-xs text-muted">
-              {watchedCount}/{meta.numberOfEpisodes} episodes · {percent}%
-            </p>
-          </div>
-        </DetailSection>
-      )}
-      {seasons.length > 0 && (
-        <div className="flex flex-col gap-4">
-          {seasons.map((season) => {
-            const keys = season.episodes.map((ep) =>
-              episodeKey(season.seasonNumber, ep.episodeNumber),
-            );
-            const seasonWatched = keys.filter(
-              (k) => k in watchedEpisodes,
-            ).length;
-            const allWatched = keys.length > 0 && seasonWatched === keys.length;
-            return (
-              <div
-                key={season.seasonNumber}
-                className="flex flex-col gap-2.5 rounded-xl border border-divider bg-panel/60 p-4"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-ink">
-                    {season.seasonNumber === 0
-                      ? "Specials"
-                      : season.name || `Season ${season.seasonNumber}`}
-                    <span className="ml-2 text-xs font-normal text-faint">
-                      {seasonWatched}/{keys.length}
-                    </span>
-                  </h3>
-                  <button
-                    type="button"
-                    disabled={item === undefined || keys.length === 0}
-                    onClick={() => toggleSeason(season)}
-                    className="rounded-md bg-well px-2.5 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent disabled:opacity-50"
-                  >
-                    {allWatched
-                      ? "Mark season unwatched"
-                      : "Mark season watched"}
-                  </button>
-                </div>
-                <ul className="flex flex-col">
-                  {season.episodes.map((ep) => {
-                    const key = episodeKey(
-                      season.seasonNumber,
-                      ep.episodeNumber,
-                    );
-                    const watched = key in watchedEpisodes;
-                    return (
-                      <li key={key}>
-                        <label className="-mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 text-sm hover:bg-well/60">
-                          <input
-                            type="checkbox"
-                            checked={watched}
-                            disabled={item === undefined}
-                            onChange={() =>
-                              toggleEpisode(
-                                season.seasonNumber,
-                                ep.episodeNumber,
-                              )
-                            }
-                            className="size-4 accent-accent"
-                          />
-                          <span className="shrink-0 text-xs text-faint tabular-nums">
-                            S{season.seasonNumber}E{ep.episodeNumber}
-                          </span>
-                          <span className={watched ? "text-muted" : "text-ink"}>
-                            {ep.name}
-                          </span>
-                          {ep.airDate && (
-                            <span className="ml-auto shrink-0 text-xs text-faint">
-                              {ep.airDate}
-                            </span>
-                          )}
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </DetailPage>
+              <CastRail cast={meta.cast} />
+              <VideoRail videos={meta.videos} />
+            </>
+          ),
+        };
+      }}
+    />
   );
 }

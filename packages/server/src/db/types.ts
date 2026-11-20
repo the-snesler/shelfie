@@ -271,6 +271,21 @@ export interface Database {
   notification_deliveries: NotificationDeliveriesTable;
   tv_progress: TvProgressTable;
   cover_hashes: CoverHashesTable;
+  person_metadata: PersonMetadataTable;
+}
+
+/**
+ * Cache of TMDB person pages (`GET /api/people/by-id/:id`). The whole
+ * `PersonDetail` DTO is stored as JSON: nothing queries its fields, and the
+ * credit list is only ever read back whole.
+ */
+export interface PersonMetadataTable {
+  tmdb_id: number;
+  name: string;
+  /** JSON-encoded `PersonDetail`. */
+  detail: string;
+  /** epoch ms */
+  fetched_at: number;
 }
 
 /**

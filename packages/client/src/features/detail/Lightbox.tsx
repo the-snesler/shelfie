@@ -4,7 +4,7 @@ import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 import IconX from "~icons/tabler/x";
 
-/** Full-viewport image lightbox for the game screenshot strip on `Detail`.
+/** Full-viewport image lightbox for the game screenshot strip on `GameDetail`.
  *  Portals to `document.body` so it escapes the detail page's scroll
  *  container, locks body scroll while mounted, and supports keyboard
  *  (Escape / ArrowLeft / ArrowRight) alongside click navigation. */

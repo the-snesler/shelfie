@@ -127,6 +127,7 @@ it("only exposes known catalog GET routes", () => {
     "/api/books/search",
     "/api/games/by-slug/portal",
     "/api/tv/by-id/1",
+    "/api/people/by-id/17419",
   ]) {
     expect(isPublicCatalogRequest("GET", path)).toBe(true);
     expect(isPublicCatalogRequest("POST", path)).toBe(false);

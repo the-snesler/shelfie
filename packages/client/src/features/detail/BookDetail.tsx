@@ -1,6 +1,5 @@
-import { MyActivity } from "./MyActivity";
 import type { BookDetail as BookDetailDto } from "@shelfie/shared";
-import { useLocation, useNavigate, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/BookDetail";
 import { upsertBookCards } from "../../db/bookCards";
@@ -11,140 +10,105 @@ import {
 } from "../media/MediaCover";
 import { yearOf } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
-import { useBackNavigation } from "./useBackNavigation";
 import { useDetailFetch } from "./useDetailFetch";
-import {
-  Description,
-  DetailBodySkeleton,
-  DetailCard,
-  DetailHero,
-  DetailPage,
-  DetailRow,
-  DetailSection,
-  NotFound,
-  RatingPills,
-} from "./DetailChrome";
+import { DetailScreen } from "./DetailScreen";
+import { formatIsoDay } from "../media/dates";
+import { ExpandableText } from "./DetailChrome";
 
 export default function BookDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
-  const navigate = useNavigate();
-  const location = useLocation();
   const { metaState, item } = useDetailFetch<BookDetailDto>({
     db,
     url: `/api/books/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `book:${meta.goodreadsId}`,
     upsertCards: upsertBookCards,
   });
-  const handleBack = useBackNavigation();
-
-  if (metaState.status === "loading") {
-    const linkState = location.state as {
-      coverUrl?: string | null;
-      coverHash?: string | null;
-      name?: string;
-    } | null;
-    return (
-      <DetailPage onBack={handleBack}>
-        <DetailHero
-          name={linkState?.name ?? null}
-          cover={
-            <MediaCover
-              coverUrl={linkState?.coverUrl ?? null}
-              coverHash={linkState?.coverHash}
-              name={linkState?.name ?? "Loading…"}
-              width={MEDIA_DETAIL_COVER_WIDTH}
-              mediaType="book"
-              viewTransitionName={mediaCoverTransitionName("book", id)}
-            />
-          }
-        />
-        <DetailBodySkeleton />
-      </DetailPage>
-    );
-  }
-
-  if (metaState.status === "error") {
-    return (
-      <NotFound
-        message={metaState.message ?? "Book not found"}
-        onBack={() => navigate("/")}
-      />
-    );
-  }
-
-  const meta = metaState.meta;
-  const detailRows = [
-    meta.publisher && { label: "Publisher", value: meta.publisher },
-    meta.publicationDate && { label: "Published", value: meta.publicationDate },
-    meta.isbn13 && { label: "ISBN-13", value: meta.isbn13 },
-    meta.language && { label: "Language", value: meta.language },
-  ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   return (
-    <DetailPage onBack={handleBack}>
-      <DetailHero
-        name={meta.name}
-        lines={[
-          meta.authors.length > 0 && meta.authors.join(", "),
-          meta.series &&
-            `${meta.series.name}${
-              meta.series.position ? ` #${meta.series.position}` : ""
-            }`,
-          [
-            yearOf(meta.publicationDate),
-            meta.pageCount != null && `${meta.pageCount} pages`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-          meta.genres.length > 0 && meta.genres.join(", "),
-        ]}
-        cover={
-          <MediaCover
-            coverUrl={meta.coverUrl}
-            coverHash={meta.coverHash}
-            name={meta.name}
-            width={MEDIA_DETAIL_COVER_WIDTH}
-            mediaType="book"
-            viewTransitionName={mediaCoverTransitionName("book", id)}
-          />
-        }
-      >
-        <div className="mt-2 flex flex-col items-start gap-3">
-          <RatingPills
-            pills={[
-              meta.avgRating != null &&
-                `Goodreads ${meta.avgRating.toFixed(2)}${
-                  (meta.ratingsCount ?? 0) > 0 ? ` (${meta.ratingsCount})` : ""
-                }`,
-            ]}
-          />
-          <StatusControl
-            db={db}
-            target={{
-              mediaType: "book",
-              sourceId: String(meta.goodreadsId),
-              name: meta.name,
-              platforms: [],
-              releaseDate: meta.publicationDate,
-            }}
-            item={item}
-          />
-        </div>
-      </DetailHero>
-      <MyActivity item={item} />
-      {meta.description && <Description>{meta.description}</Description>}
-      {detailRows.length > 0 && (
-        <DetailSection title="Details">
-          <DetailCard>
-            {detailRows.map((row) => (
-              <DetailRow key={row.label} label={row.label}>
-                {row.value}
-              </DetailRow>
-            ))}
-          </DetailCard>
-        </DetailSection>
+    <DetailScreen
+      state={metaState}
+      item={item}
+      notFoundMessage="Book not found"
+      cover={(meta, link) => (
+        <MediaCover
+          coverUrl={meta ? meta.coverUrl : (link?.coverUrl ?? null)}
+          coverHash={meta ? meta.coverHash : link?.coverHash}
+          name={meta?.name ?? link?.name ?? "Loading…"}
+          width={MEDIA_DETAIL_COVER_WIDTH}
+          mediaType="book"
+          viewTransitionName={mediaCoverTransitionName("book", id)}
+        />
       )}
-    </DetailPage>
+      render={(meta) => {
+        const series =
+          meta.series &&
+          `${meta.series.name}${
+            meta.series.position ? ` #${meta.series.position}` : ""
+          }`;
+        return {
+          name: meta.name,
+          coverUrl: meta.coverUrl,
+          lines: [
+            meta.authors.length > 0 && meta.authors.join(", "),
+            [
+              yearOf(meta.publicationDate),
+              meta.pageCount != null && `${meta.pageCount} pages`,
+              series,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            meta.genres.length > 0 && meta.genres.slice(0, 5).join(", "),
+          ],
+          pills: [
+            meta.avgRating != null &&
+              `Goodreads ${meta.avgRating.toFixed(2)}${
+                (meta.ratingsCount ?? 0) > 0
+                  ? ` · ${meta.ratingsCount!.toLocaleString()}`
+                  : ""
+              }`,
+          ],
+          status: (
+            <StatusControl
+              db={db}
+              target={{
+                mediaType: "book",
+                sourceId: String(meta.goodreadsId),
+                name: meta.name,
+                platforms: [],
+                releaseDate: meta.publicationDate,
+              }}
+              item={item}
+            />
+          ),
+          about: meta.description && (
+            <ExpandableText>
+              <p className="whitespace-pre-line">{meta.description}</p>
+            </ExpandableText>
+          ),
+          facts: [
+            { label: "Series", value: series },
+            { label: "Published", value: formatIsoDay(meta.publicationDate) },
+            { label: "Publisher", value: meta.publisher },
+            meta.pageCount != null && {
+              label: "Pages",
+              value: String(meta.pageCount),
+            },
+            { label: "ISBN-13", value: meta.isbn13 },
+            { label: "Language", value: meta.language },
+          ],
+          links: [
+            {
+              label: "Goodreads",
+              href: `https://www.goodreads.com/book/show/${meta.goodreadsId}`,
+            },
+            meta.isbn13 && {
+              label: "Open Library",
+              href: `https://openlibrary.org/isbn/${meta.isbn13}`,
+            },
+          ],
+        };
+      }}
+    />
   );
 }

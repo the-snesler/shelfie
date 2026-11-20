@@ -26,6 +26,7 @@ packages/
 │       ├── conflict.ts     createLwwConflictHandler<TDoc>() + libraryItemConflictHandler
 │       ├── metadata.ts     game DTOs: SearchResult / GameMetadata (card) / GameDetail (detail) + GameVideo/StoreLink/TimeToBeat — HTTP-only, never synced
 │       ├── movies.ts / tv.ts / books.ts   the same card/detail DTO split per medium (Movie*/Tv*/Book*), incl. TvSeason/TvEpisode (the episode catalog) — HTTP-only, never synced
+│       ├── people.ts       PersonDetail/PersonCredit for the actor page (CastMember.id links to it) — HTTP-only, never synced
 │       ├── contract.test.ts    asserts zod ↔ RxDB schema field alignment stays in lockstep
 │       └── index.ts        barrel export
 ├── client/  @shelfie/client  Vite + React 18 + RxDB (Dexie storage) + Tailwind v4
@@ -38,12 +39,12 @@ packages/
 │       ├── features/
 │       │   ├── library/Library.tsx   grid of owned items across all media, reads card metadata reactively from the four local caches (renders offline), refreshed over HTTP on mount
 │       │   ├── search/Search.tsx     tabbed search (Games/Movies/TV/Books) against the per-medium /api/*/search endpoints
-│       │   ├── detail/Detail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens + status/progress editor; each warms its card cache on load. TvDetail owns the episode watched-checklist.
+│       │   ├── detail/GameDetail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens on the shared DetailScreen frame (loading/not-found/hero/activity); each warms its card cache on load. TvDetail owns episode tracking (TvEpisodes rail/list, episodeProgress.ts aired/next-up rules).
 │       │   ├── demo/           guest-only demo shelf: DEMO_ITEMS plan + bundled demoCards.json fixture (scripts/demo-fixture.mjs), GuestEmptyShelf/GuestShelfNotice
 │       │   ├── lists/          automatic lists (/lists index + /lists/:id shelf/list view): predicate-defined, never stored or synced
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
 │       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
-│       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /logbook, /calendar, /lists, /lists/:listId, /recommendations, /settings, catch-all
+│       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /people/:id, /logbook, /calendar, /lists, /lists/:listId, /recommendations, /settings, catch-all
 │       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly; coverPlaceholderStyle() decodes card ThumbHashes
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
 │       ├── App.tsx, main.tsx, AuthScreen.tsx, index.css (Tailwind v4 theme tokens)
@@ -66,7 +67,8 @@ packages/
         ├── tmdb/           TMDB v3 client (static Bearer TMDB_TOKEN, ~100ms self-throttle, 429-retry-once); movie/tv search + card/detail fetches, per-season episode fetches
         ├── goodreads/      Goodreads client (autocomplete search JSON + internal AppSync GraphQL getBookPageData; ~1s+jitter throttle; GOODREADS_APPSYNC_KEY env override)
         ├── covers/         ThumbHash cover placeholders: size-independent cover keys + background hashing queue → cover_hashes
-        └── games/ movies/ tv/ books/   cache-first metadata endpoints per medium — search / batch-by-ids card / detail (by-slug for games, by-id elsewhere); row↔DTO mappers and upserts live directly in each routes.ts
+        ├── games/ movies/ tv/ books/   cache-first metadata endpoints per medium — search / batch-by-ids card / detail (by-slug for games, by-id elsewhere); row↔DTO mappers and upserts live directly in each routes.ts
+        └── people/         GET /api/people/by-id/:id — TMDB person + acting credits, cached whole as JSON in person_metadata (shared TTL; no card tier or search)
 ```
 
 **`shared` is load-bearing.** `LibraryItem`'s shape, its RxDB schema, its zod
@@ -290,10 +292,10 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - **Migrations are append-only.** `db/migrations.ts` is a numbered `Migration[]` array bookkept in a `migrations` table — add a new numbered entry, never edit a shipped one (contrast with RxDB's `migrationStrategies`, which is a separate, currently-empty seam in `shared/src/schema.ts`).
 - **State management (client).** No global store, no React Query. RxDB is the reactive data layer (`collection.find().$` subscriptions via `useEffect`); everything else is local `useState`/`useEffect` per feature screen, with a `let active = true` unmount guard pattern on async effects.
 - **Long lists (client).** Pages scroll inside App's `<main>`, not the window. Window any list that can grow with the library (the logbook feed is the reference) with `useContainerVirtualizer` from `components/virtualList.ts` (`@tanstack/react-virtual` against that `<main>`, measured rows, offset for content above the list) instead of rendering every row.
-- **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/lists`, `/lists/:listId` (`?type=&view=&sort=&dir=&group=`), `/recommendations`, `/settings`, catch-all → `/`.
+- **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/people/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/lists`, `/lists/:listId` (`?type=&view=&sort=&dir=&group=`), `/recommendations`, `/settings`, catch-all → `/`.
 - **Adding a media type.** Widen `MEDIA_TYPES` + zod, add per-media label/subset entries in `features/media/status.ts` and `LOG_FORMATS_BY_MEDIA`, add shared card/detail DTOs, a server client + `<medium>/routes.ts` + metadata table migration, a client `*Cards.ts` cache + collection, a detail screen + route, a Search tab, and Library href/caption/refresh branches. Statuses themselves need no schema bump.
 - **Auth (client).** Never call bare `fetch` for `/api/*` — use `authFetch()` (`auth.ts`), which attaches the bearer token and treats a 401 (not 403) as session loss, dispatching a `shelfie-auth-lost` window event.
-- **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `Detail.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.
+- **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `media/LogModal.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.
 
 ## Important Files
 

@@ -1,3 +1,13 @@
+/** Whole hours + minutes from a second count (IGDB time-to-beat),
+ *  e.g. `64800 -> "18h"`, `81000 -> "22h 30m"`. */
+export function formatDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 /** Human-friendly runtime from a minute count.
  *  90 -> "1h 30m", 145 -> "2h 25m", 60 -> "1h", 45 -> "45m".
  *  Returns null for null/0 (nothing to show). */

@@ -111,6 +111,6 @@ export function isPublicCatalogRequest(method: string, path: string): boolean {
     (/^\/api\/(games|movies|tv|books)$/.test(path) ||
       /^\/api\/(games|movies|tv|books)\/search$/.test(path) ||
       /^\/api\/games\/by-slug\/[^/]+$/.test(path) ||
-      /^\/api\/(movies|tv|books)\/by-id\/[^/]+$/.test(path))
+      /^\/api\/(movies|tv|books|people)\/by-id\/[^/]+$/.test(path))
   );
 }

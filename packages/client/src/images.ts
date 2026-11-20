@@ -9,7 +9,7 @@ export function gameImageUrl(size: GameImageSize, imageId: string): string {
   return `/api/images/${size}/${imageId}`;
 }
 
-export type TmdbImageSize = "w300" | "w342" | "w500" | "w1280";
+export type TmdbImageSize = "w185" | "w300" | "w342" | "w500" | "w1280";
 
 /** Composes a full TMDB CDN URL from a bare path the server stores (e.g.
  *  "/gDzOcq0.jpg") — unlike IGDB images, TMDB CDN is loaded directly, no
