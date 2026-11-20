@@ -565,6 +565,37 @@ const migrations: Migration[] = [
   },
   {
     id: 23,
+    name: "bookorbit-api-key",
+    async up(db) {
+      // BookOrbit moved from KOReader sync credentials to its official API.
+      // The saved MD5 key cannot authenticate there: clear it and pause the
+      // schedule until the owner enters an API key. Book links survive, since
+      // KOReader catalog ids are BookOrbit book ids.
+      await db
+        .updateTable("import_connections")
+        .set({
+          account: "",
+          api_key: "",
+          access_token: "",
+          enabled: 0,
+          schedule: "",
+          last_error:
+            "BookOrbit now connects with an API key. Create one in BookOrbit and enter it to resume imports.",
+        })
+        .where("source", "=", "bookorbit")
+        .execute();
+      // Unmatched books may now match by BookOrbit's own Goodreads id, so
+      // retry them on the next run instead of a week after the last search.
+      await db
+        .updateTable("import_book_links")
+        .set({ checked_at: 0 })
+        .where("source", "=", "bookorbit")
+        .where("method", "=", "none")
+        .execute();
+    },
+  },
+  {
+    id: 24,
     name: "person-metadata",
     async up(db) {
       await db.schema

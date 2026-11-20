@@ -339,8 +339,9 @@ See `docs/integrations.md` for public browsing quotas/CORS, private iCal feeds,
 Apprise reminders, scheduled Trakt/BookOrbit/Steam imports, and recommendations.
 Integration state is server-only (`calendar_subscription`, `notification_settings`,
 `notification_deliveries`, `import_connections`, `import_book_links`); it never
-enters RxDB replication. BookOrbit imports use its static KOReader sync
-credentials and match books to Goodreads in `server/src/imports/bookLinks.ts`.
+enters RxDB replication. BookOrbit imports use its official API with a user API
+key and match books to Goodreads in `server/src/imports/bookLinks.ts`, preferring
+BookOrbit's own Goodreads ID mapped to the work's best edition.
 The release refresh worker (`metadata/releaseWorker.ts`) follows the same rule.
 Workers start only in `server/src/index.ts`, not `createApp()`, and stop with a
 bounded shutdown so SSE clients cannot hold container termination indefinitely.
