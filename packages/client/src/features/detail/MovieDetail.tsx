@@ -14,7 +14,8 @@ import { formatRuntime } from "../media/duration";
 import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
-import { Description, DetailCard, TrailerChips } from "./DetailChrome";
+import { formatIsoDay } from "../media/dates";
+import { DetailSection, ExpandableText, TrailerChips } from "./DetailChrome";
 
 export default function MovieDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
@@ -31,7 +32,6 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
       state={metaState}
       item={item}
       notFoundMessage="Movie not found"
-      hasBackdrop
       cover={(meta, link) => (
         <MediaCover
           coverUrl={
@@ -50,6 +50,9 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
       render={(meta) => ({
         name: meta.name,
         tagline: meta.tagline,
+        coverUrl: meta.posterPath
+          ? tmdbImageUrl(meta.posterPath, "w500")
+          : null,
         backdrop: meta.backdropPath
           ? tmdbImageUrl(meta.backdropPath, "w1280")
           : null,
@@ -62,12 +65,11 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
             .filter(Boolean)
             .join(" · "),
           meta.genres.length > 0 && meta.genres.join(", "),
-          meta.director,
         ],
         pills: [
           meta.voteAverage != null &&
             `TMDB ${meta.voteAverage.toFixed(1)}${
-              meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
+              meta.voteCount > 0 ? ` · ${meta.voteCount}` : ""
             }`,
         ],
         status: (
@@ -83,23 +85,40 @@ export default function MovieDetail({ params }: Route.ComponentProps) {
             item={item}
           />
         ),
+        about: meta.summary && (
+          <ExpandableText>
+            <p>{meta.summary}</p>
+          </ExpandableText>
+        ),
+        facts: [
+          { label: "Released", value: formatIsoDay(meta.releaseDate) },
+          { label: "Director", value: meta.director },
+          { label: "Runtime", value: formatRuntime(meta.runtime) },
+          { label: "Rated", value: meta.certification },
+        ],
+        links: [
+          meta.imdbId && {
+            label: "IMDb",
+            href: `https://www.imdb.com/title/${meta.imdbId}/`,
+          },
+          {
+            label: "TMDB",
+            href: `https://www.themoviedb.org/movie/${meta.tmdbId}`,
+          },
+        ],
         body: (
           <>
-            {meta.summary && <Description>{meta.summary}</Description>}
             <TrailerChips videos={meta.videos} />
             {meta.cast.length > 0 && (
-              <DetailCard>
-                <span className="font-display text-base font-medium text-ink">
-                  Cast
-                </span>
-                <p className="leading-relaxed text-ink">
+              <DetailSection title="Cast">
+                <p className="text-sm leading-relaxed text-ink">
                   {meta.cast
                     .map((c) =>
                       c.character ? `${c.name} as ${c.character}` : c.name,
                     )
                     .join(" · ")}
                 </p>
-              </DetailCard>
+              </DetailSection>
             )}
           </>
         ),

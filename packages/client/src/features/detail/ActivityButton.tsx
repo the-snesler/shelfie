@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Popover } from "@base-ui/react/popover";
+import IconHistory from "~icons/tabler/history";
 import type { ActivityChanges, LibraryItem } from "@shelfie/shared";
 import { parseEpisodeKey } from "@shelfie/shared";
 import { STATUS_LABELS } from "../media/status";
@@ -7,7 +9,6 @@ import {
   progressLines,
   type ProgressLine,
 } from "./activityProgress";
-import { DetailAccordion } from "./DetailChrome";
 
 /** `progress` is this event's derived progress line (see `progressLines`);
  *  undefined when the event has none or a later correction undid it. */
@@ -82,17 +83,9 @@ function describeEpisodes(
   });
 }
 
-export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
-  if (item === undefined) return null;
-  if (!item)
-    return (
-      <DetailAccordion title="My activity">
-        <p className="text-sm text-muted">
-          Add this item to your library to start logging activity.
-        </p>
-      </DetailAccordion>
-    );
-
+/** The item's activity, newest first: logged events, then legacy dates
+ *  recorded before the activity log existed, then the add itself. */
+function activityEntries(item: LibraryItem) {
   // Each progress event carries its format at the time of the edit.
   const progress = progressLines(item.activity, item.progressFormat);
   const events = item.activity
@@ -118,32 +111,59 @@ export function MyActivity({ item }: { item: LibraryItem | null | undefined }) {
       .filter(([key]) => !recordedEpisodes.has(key))
       .map(([key, date]) => ({ date, label: `Watched ${key.toUpperCase()}` })),
   ].sort((a, b) => b.date.localeCompare(a.date));
+  return { events, legacy };
+}
+
+/** Hero chip that opens the item's activity timeline in a popover. Hidden
+ *  until the item is in the library, since there is nothing to show. */
+export function ActivityButton({
+  item,
+}: {
+  item: LibraryItem | null | undefined;
+}) {
+  if (!item) return null;
+  const { events, legacy } = activityEntries(item);
+  const count = events.length + legacy.length + 1;
 
   return (
-    <DetailAccordion title="My activity">
-      <ol className="max-h-96 overflow-y-auto p-1">
-        {events.map(({ event, lines }) => (
-          <TimelineEntry key={event.id} at={event.at}>
-            {lines.map((line, index) => (
-              <p
-                key={index}
-                className="text-sm whitespace-pre-wrap break-words text-ink"
-              >
-                {line}
-              </p>
-            ))}
-          </TimelineEntry>
-        ))}
-        {legacy.map(({ date, label }, index) => (
-          <TimelineEntry key={`legacy:${index}`} legacyDate={date}>
-            <p className="text-sm text-ink">{label}</p>
-          </TimelineEntry>
-        ))}
-        <TimelineEntry at={item.addedAt}>
-          <p className="text-sm text-ink">Added to library</p>
-        </TimelineEntry>
-      </ol>
-    </DetailAccordion>
+    <Popover.Root>
+      <Popover.Trigger className="inline-flex items-center gap-1 rounded bg-well/80 px-3 py-2 text-sm text-ink ring-1 ring-divider hover:ring-accent data-popup-open:ring-accent">
+        <IconHistory className="size-4 text-muted" />
+        My activity
+        <span className="text-faint tabular-nums">{count}</span>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={8}>
+          <Popover.Popup className="max-h-[min(28rem,70vh)] w-[min(24rem,calc(100vw-2rem))] origin-(--transform-origin) overflow-y-auto rounded border border-divider bg-panel p-4 shadow-xl transition-[opacity,scale] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+            <Popover.Title className="mb-3 font-display text-base font-medium text-ink">
+              My activity
+            </Popover.Title>
+            <ol>
+              {events.map(({ event, lines }) => (
+                <TimelineEntry key={event.id} at={event.at}>
+                  {lines.map((line, index) => (
+                    <p
+                      key={index}
+                      className="text-sm whitespace-pre-wrap break-words text-ink"
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </TimelineEntry>
+              ))}
+              {legacy.map(({ date, label }, index) => (
+                <TimelineEntry key={`legacy:${index}`} legacyDate={date}>
+                  <p className="text-sm text-ink">{label}</p>
+                </TimelineEntry>
+              ))}
+              <TimelineEntry at={item.addedAt}>
+                <p className="text-sm text-ink">Added to library</p>
+              </TimelineEntry>
+            </ol>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 

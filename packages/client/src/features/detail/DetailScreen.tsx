@@ -2,15 +2,20 @@ import type { LibraryItem } from "@shelfie/shared";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import type { RxDocument } from "rxdb";
+import { StaticStars } from "../../components/StaticStars";
+import { ActivityButton } from "./ActivityButton";
 import {
+  type DetailFact,
   DetailBackdrop,
   DetailBodySkeleton,
+  DetailFacts,
   DetailHero,
+  type DetailLink,
   DetailPage,
   NotFound,
+  type Omitted,
   RatingPills,
 } from "./DetailChrome";
-import { MyActivity } from "./MyActivity";
 import { useBackNavigation } from "./useBackNavigation";
 import type { DetailFetchState } from "./useDetailFetch";
 
@@ -34,33 +39,40 @@ export interface DetailSlots {
   name: string;
   tagline?: string | null;
   lines?: readonly Line[];
-  /** Backdrop image URL; only read when the screen opts into a backdrop. */
+  /** Wide backdrop image; without one the band paints the blurred cover. */
   backdrop?: string | null;
+  /** The cover image URL, for the blurred backdrop fallback. */
+  coverUrl: string | null;
   pills?: readonly Line[];
   /** The `StatusControl` for this item. */
   status: ReactNode;
-  /** Everything below the hero and activity timeline. */
+  /** Extra buttons beside the status control (e.g. TV's next episode). */
+  actions?: ReactNode;
+  /** Description paragraphs, clamped by the hero. */
+  about?: ReactNode;
+  facts?: readonly (DetailFact | Omitted)[];
+  links?: readonly (DetailLink | Omitted)[];
+  /** Everything below the hero. */
   body?: ReactNode;
 }
 
 /**
  * The frame every detail screen shares: the loading placeholder (cover from
  * link state + skeleton), the not-found screen, and the loaded hero with
- * ratings, status control and activity. Screens keep their own fetching and
- * RxDB writes and describe only what differs, through `cover` and `render`.
+ * ratings, actions, description and facts sidebar. Screens keep their own
+ * fetching and RxDB writes and describe only what differs, through `cover`
+ * and `render`.
  */
 export function DetailScreen<TMeta>({
   state,
   item,
   notFoundMessage,
-  hasBackdrop = false,
   cover,
   render,
 }: {
   state: DetailFetchState<TMeta>;
   item: RxDocument<LibraryItem> | null | undefined;
   notFoundMessage: string;
-  hasBackdrop?: boolean;
   /** The hero cover; `meta` is null while loading, when only the link
    *  state's cover data is available. */
   cover: (meta: TMeta | null, link: DetailLinkState | null) => ReactNode;
@@ -83,9 +95,10 @@ export function DetailScreen<TMeta>({
     const link = location.state as DetailLinkState | null;
     return (
       <DetailPage onBack={handleBack}>
-        {hasBackdrop && <DetailBackdrop src={null} />}
         <DetailHero
-          overlap={hasBackdrop}
+          backdrop={
+            <DetailBackdrop src={null} blurSrc={link?.coverUrl ?? null} />
+          }
           name={link?.name ?? null}
           cover={cover(null, link)}
         />
@@ -95,22 +108,44 @@ export function DetailScreen<TMeta>({
   }
 
   const slots = render(state.meta);
+  const rating = item?.rating ?? null;
   return (
     <DetailPage onBack={handleBack}>
-      {hasBackdrop && <DetailBackdrop src={slots.backdrop ?? null} />}
       <DetailHero
-        overlap={hasBackdrop}
+        backdrop={
+          <DetailBackdrop
+            src={slots.backdrop ?? null}
+            blurSrc={slots.coverUrl}
+          />
+        }
         name={slots.name}
         tagline={slots.tagline}
         lines={slots.lines}
         cover={cover(state.meta, null)}
+        actions={
+          <>
+            {slots.status}
+            {slots.actions}
+            <ActivityButton item={item} />
+          </>
+        }
+        about={slots.about}
+        sidebar={
+          slots.facts || slots.links ? (
+            <DetailFacts facts={slots.facts ?? []} links={slots.links} />
+          ) : null
+        }
       >
-        <div className="mt-2 flex flex-col items-start gap-3">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
           <RatingPills pills={slots.pills ?? []} />
-          {slots.status}
+          {rating !== null && (
+            <span className="flex items-center gap-1.5 text-xs text-faint">
+              <StaticStars value={rating} />
+              yours
+            </span>
+          )}
         </div>
       </DetailHero>
-      <MyActivity item={item} />
       {slots.body}
     </DetailPage>
   );

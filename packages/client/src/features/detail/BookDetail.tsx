@@ -12,12 +12,8 @@ import { yearOf } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
-import {
-  Description,
-  DetailCard,
-  DetailRow,
-  DetailSection,
-} from "./DetailChrome";
+import { formatIsoDay } from "../media/dates";
+import { ExpandableText } from "./DetailChrome";
 
 export default function BookDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
@@ -45,38 +41,31 @@ export default function BookDetail({ params }: Route.ComponentProps) {
         />
       )}
       render={(meta) => {
-        const detailRows = [
-          meta.publisher && { label: "Publisher", value: meta.publisher },
-          meta.publicationDate && {
-            label: "Published",
-            value: meta.publicationDate,
-          },
-          meta.isbn13 && { label: "ISBN-13", value: meta.isbn13 },
-          meta.language && { label: "Language", value: meta.language },
-        ].filter((row): row is { label: string; value: string } =>
-          Boolean(row),
-        );
-
+        const series =
+          meta.series &&
+          `${meta.series.name}${
+            meta.series.position ? ` #${meta.series.position}` : ""
+          }`;
         return {
           name: meta.name,
+          coverUrl: meta.coverUrl,
           lines: [
             meta.authors.length > 0 && meta.authors.join(", "),
-            meta.series &&
-              `${meta.series.name}${
-                meta.series.position ? ` #${meta.series.position}` : ""
-              }`,
             [
               yearOf(meta.publicationDate),
               meta.pageCount != null && `${meta.pageCount} pages`,
+              series,
             ]
               .filter(Boolean)
               .join(" · "),
-            meta.genres.length > 0 && meta.genres.join(", "),
+            meta.genres.length > 0 && meta.genres.slice(0, 5).join(", "),
           ],
           pills: [
             meta.avgRating != null &&
               `Goodreads ${meta.avgRating.toFixed(2)}${
-                (meta.ratingsCount ?? 0) > 0 ? ` (${meta.ratingsCount})` : ""
+                (meta.ratingsCount ?? 0) > 0
+                  ? ` · ${meta.ratingsCount!.toLocaleString()}`
+                  : ""
               }`,
           ],
           status: (
@@ -92,24 +81,32 @@ export default function BookDetail({ params }: Route.ComponentProps) {
               item={item}
             />
           ),
-          body: (
-            <>
-              {meta.description && (
-                <Description>{meta.description}</Description>
-              )}
-              {detailRows.length > 0 && (
-                <DetailSection title="Details">
-                  <DetailCard>
-                    {detailRows.map((row) => (
-                      <DetailRow key={row.label} label={row.label}>
-                        {row.value}
-                      </DetailRow>
-                    ))}
-                  </DetailCard>
-                </DetailSection>
-              )}
-            </>
+          about: meta.description && (
+            <ExpandableText>
+              <p className="whitespace-pre-line">{meta.description}</p>
+            </ExpandableText>
           ),
+          facts: [
+            { label: "Series", value: series },
+            { label: "Published", value: formatIsoDay(meta.publicationDate) },
+            { label: "Publisher", value: meta.publisher },
+            meta.pageCount != null && {
+              label: "Pages",
+              value: String(meta.pageCount),
+            },
+            { label: "ISBN-13", value: meta.isbn13 },
+            { label: "Language", value: meta.language },
+          ],
+          links: [
+            {
+              label: "Goodreads",
+              href: `https://www.goodreads.com/book/show/${meta.goodreadsId}`,
+            },
+            meta.isbn13 && {
+              label: "Open Library",
+              href: `https://openlibrary.org/isbn/${meta.isbn13}`,
+            },
+          ],
         };
       }}
     />

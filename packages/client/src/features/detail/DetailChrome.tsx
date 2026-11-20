@@ -1,8 +1,14 @@
-import { Children, type ReactNode } from "react";
-import { Accordion } from "@base-ui/react/accordion";
+import {
+  Children,
+  Fragment,
+  type ReactNode,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import IconArrowLeft from "~icons/tabler/arrow-left";
+import IconArrowUpRight from "~icons/tabler/arrow-up-right";
 import IconPlayerPlay from "~icons/tabler/player-play";
-import IconChevronDown from "~icons/tabler/chevron-down";
 
 /** Shared presentational chrome for the four detail screens. Purely visual —
  *  data fetching, RxDB subscriptions, and view-transition wiring stay in each
@@ -16,11 +22,11 @@ export function DetailPage({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-6 md:px-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-6 md:px-8">
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-1.5 self-start rounded text-sm text-muted hover:text-ink"
+        className="relative z-10 flex items-center gap-1.5 self-start rounded text-sm text-muted hover:text-ink"
       >
         <IconArrowLeft className="size-4" />
         Back
@@ -33,66 +39,104 @@ export function DetailPage({
   );
 }
 
-/** Full-width backdrop band that the hero overlaps. Always renders at
- *  aspect-video — including with `src` null while loading — so the cover's
- *  view-transition target position never shifts when metadata lands. */
-export function DetailBackdrop({ src }: { src: string | null }) {
+/** Backdrop band the hero sits on, absolutely positioned behind it. With no
+ *  backdrop image it paints the cover itself, heavily blurred, so every
+ *  medium (and the loading state) gets the same frame. The band has a fixed
+ *  height either way, so the cover's view-transition target never shifts
+ *  when metadata lands. */
+export function DetailBackdrop({
+  src,
+  blurSrc,
+}: {
+  src: string | null;
+  blurSrc?: string | null;
+}) {
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-well">
-      {src && (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 -top-14 h-80 overflow-hidden rounded-xl bg-well/40 md:h-[26rem]"
+    >
+      {src ? (
         <img
-          loading="lazy"
           src={src}
           alt=""
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-[50%_25%] opacity-80"
         />
+      ) : (
+        blurSrc && (
+          <img
+            src={blurSrc}
+            alt=""
+            className="h-full w-full scale-125 object-cover opacity-60 blur-3xl saturate-150"
+          />
+        )
       )}
-      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-bg to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/70 to-bg/10" />
+      <div className="absolute inset-0 hidden bg-gradient-to-r from-bg/70 via-transparent to-transparent lg:block" />
     </div>
   );
 }
 
-/** Cover + title/meta block. `overlap` pulls it up over a DetailBackdrop
- *  rendered immediately before it. */
+/**
+ * The hero: cover, title block, then the description and a facts sidebar.
+ * Phones stack it as cover+title, description, sidebar; wide screens put
+ * the sidebar in a third column and the description under the title, next
+ * to the cover. The cover is always top-aligned at a fixed offset so its
+ * view-transition position is the same while loading and once loaded.
+ */
 export function DetailHero({
   cover,
+  backdrop,
   name,
   tagline,
   lines = [],
-  overlap = false,
+  actions,
+  about,
+  sidebar,
   children,
 }: {
   cover: ReactNode;
+  backdrop: ReactNode;
   name: string | null;
   tagline?: string | null;
   lines?: readonly (string | null | false | undefined)[];
-  overlap?: boolean;
+  /** The action row (status control etc.); full width under the cover on
+   *  phones, under the title on wide screens. */
+  actions?: ReactNode;
+  about?: ReactNode;
+  sidebar?: ReactNode;
   children?: ReactNode;
 }) {
   return (
-    <div
-      className={
-        overlap
-          ? "relative z-10 -mt-28 flex items-end gap-5 px-2 md:px-4"
-          : "flex items-start gap-5"
-      }
-    >
-      <div className="shrink-0">{cover}</div>
-      <div className="flex min-w-0 flex-col gap-1 pb-1">
-        {name && (
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-balance text-ink md:text-3xl">
-            {name}
-          </h2>
+    <div className="relative">
+      {backdrop}
+      <div className="relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-5 pt-20 [grid-template-areas:'cover_title''actions_actions''about_about''side_side'] md:pt-32 lg:grid-cols-[auto_minmax(0,1fr)_17rem] lg:grid-rows-[auto_auto_1fr] lg:gap-y-4 lg:[grid-template-areas:'cover_title_side''cover_actions_side''cover_about_side']">
+        <div className="self-start [grid-area:cover]">{cover}</div>
+        <div className="flex min-w-0 flex-col gap-1 self-end [grid-area:title] lg:self-start">
+          {name && (
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-balance text-ink md:text-4xl">
+              {name}
+            </h2>
+          )}
+          {tagline && <p className="text-sm text-muted italic">{tagline}</p>}
+          {lines
+            .filter((line): line is string => Boolean(line))
+            .map((line, i) => (
+              <p key={i} className="text-sm text-muted">
+                {line}
+              </p>
+            ))}
+          {children}
+        </div>
+        {actions && (
+          <div className="flex min-w-0 flex-wrap items-center gap-2 [grid-area:actions]">
+            {actions}
+          </div>
         )}
-        {tagline && <p className="text-sm text-muted italic">{tagline}</p>}
-        {lines
-          .filter((line): line is string => Boolean(line))
-          .map((line, i) => (
-            <p key={i} className="text-sm text-muted">
-              {line}
-            </p>
-          ))}
-        {children}
+        {about && <div className="min-w-0 [grid-area:about]">{about}</div>}
+        {sidebar && (
+          <div className="min-w-0 self-start [grid-area:side]">{sidebar}</div>
+        )}
       </div>
     </div>
   );
@@ -134,30 +178,6 @@ export function DetailSection({
   );
 }
 
-export function DetailAccordion({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <Accordion.Root>
-      <Accordion.Item>
-        <Accordion.Header>
-          <Accordion.Trigger className="group inline-flex items-center gap-1 font-display text-lg font-medium text-ink">
-            <span>{title}</span>
-            <IconChevronDown className="h-4 w-4 -rotate-90 transition-transform duration-200 group-data-panel-open:rotate-0" />
-          </Accordion.Trigger>
-        </Accordion.Header>
-        <Accordion.Panel className="h-(--accordion-panel-height) overflow-hidden transition-[height] data-ending-style:h-0 data-starting-style:h-0">
-          {children}
-        </Accordion.Panel>
-      </Accordion.Item>
-    </Accordion.Root>
-  );
-}
-
 export function TrailerChips({
   videos,
 }: {
@@ -184,31 +204,119 @@ export function TrailerChips({
   );
 }
 
-export function Description({ children }: { children: ReactNode }) {
-  return (
-    <p className="max-w-[70ch] text-sm leading-relaxed text-ink">{children}</p>
-  );
+export interface DetailFact {
+  label: string;
+  value: ReactNode;
 }
 
-export function DetailCard({ children }: { children: ReactNode }) {
+export interface DetailLink {
+  label: string;
+  href: string;
+}
+
+/** Placeholder entries callers may leave in a facts/links list, so they can
+ *  write `cond && { ... }` inline; dropped before rendering. */
+export type Omitted = null | undefined | false | "";
+
+/** The hero sidebar: a compact key/value list plus external links. Rows
+ *  with an empty value are dropped, so callers can list every candidate. */
+export function DetailFacts({
+  facts,
+  links = [],
+}: {
+  facts: readonly (DetailFact | Omitted)[];
+  links?: readonly (DetailLink | Omitted)[];
+}) {
+  const shownFacts = facts.filter((fact): fact is DetailFact =>
+    Boolean(fact && fact.value),
+  );
+  const shownLinks = links.filter((link): link is DetailLink => Boolean(link));
+  if (shownFacts.length === 0 && shownLinks.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-divider bg-panel/70 p-4 text-sm">
-      {children}
+    <div className="flex flex-col gap-3 rounded-xl border border-divider bg-panel/80 p-4 text-sm backdrop-blur">
+      {shownFacts.length > 0 && (
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5">
+          {shownFacts.map((fact) => (
+            <Fragment key={fact.label}>
+              <dt className="text-faint">{fact.label}</dt>
+              <dd className="text-right text-ink">{fact.value}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      )}
+      {shownLinks.length > 0 && (
+        <div
+          className={`flex flex-wrap gap-x-3 gap-y-1 ${
+            shownFacts.length > 0 ? "border-t border-divider pt-3" : ""
+          }`}
+        >
+          {shownLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"
+            >
+              {link.label}
+              <IconArrowUpRight className="size-3.5" />
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-export function DetailRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+/** Description block clamped to a few lines with a More/Less toggle. The
+ *  toggle only appears when the text actually overflows the clamp. Uses a
+ *  max-height + fade mask rather than line-clamp so it can hold several
+ *  paragraphs. */
+export function ExpandableText({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      if (!expanded) setOverflows(el.scrollHeight > el.clientHeight + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [expanded]);
+
+  const clamped = !expanded;
   return (
-    <div className="flex justify-between gap-4">
-      <span className="shrink-0 text-muted">{label}</span>
-      <span className="text-right text-ink">{children}</span>
+    <div className="flex max-w-[70ch] flex-col items-start gap-1">
+      <div
+        ref={ref}
+        className={`flex flex-col gap-2 text-sm leading-relaxed text-ink ${
+          clamped ? "max-h-[6.5lh] overflow-hidden" : ""
+        }`}
+        style={
+          clamped && overflows
+            ? {
+                maskImage:
+                  "linear-gradient(to bottom, black 60%, transparent 100%)",
+              }
+            : undefined
+        }
+      >
+        {children}
+      </div>
+      {(overflows || expanded) && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-xs font-medium text-accent hover:underline"
+        >
+          {expanded ? "Less" : "More"}
+        </button>
+      )}
     </div>
   );
 }

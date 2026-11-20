@@ -17,13 +17,8 @@ import { releaseDateFromEpoch } from "../media/libraryActions";
 import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
-import {
-  Description,
-  DetailCard,
-  DetailRow,
-  DetailSection,
-  TrailerChips,
-} from "./DetailChrome";
+import { formatIsoDay } from "../media/dates";
+import { DetailSection, ExpandableText, TrailerChips } from "./DetailChrome";
 
 const STORE_LABELS: Record<StoreName, string> = {
   official: "Official site",
@@ -74,25 +69,16 @@ export default function GameDetail({ params }: Route.ComponentProps) {
         />
       )}
       render={(meta) => {
-        const detailRows = [
-          meta.gameModes.length > 0 && {
-            label: "Modes",
-            value: meta.gameModes.join(" · "),
-          },
-          meta.themes.length > 0 && {
-            label: "Themes",
-            value: meta.themes.join(" · "),
-          },
-          meta.playerPerspectives.length > 0 && {
-            label: "Perspectives",
-            value: meta.playerPerspectives.join(" · "),
-          },
-        ].filter((row): row is { label: string; value: string } =>
-          Boolean(row),
-        );
-
+        const coverUrl = meta.coverImageId
+          ? gameImageUrl("t_cover_big", meta.coverImageId)
+          : null;
+        const ttb = meta.timeToBeat;
         return {
           name: meta.name,
+          coverUrl,
+          backdrop: meta.screenshotImageIds[0]
+            ? gameImageUrl("t_1080p", meta.screenshotImageIds[0])
+            : null,
           lines: [
             [
               meta.firstReleaseDate &&
@@ -101,7 +87,6 @@ export default function GameDetail({ params }: Route.ComponentProps) {
             ]
               .filter(Boolean)
               .join(" · "),
-            meta.platforms.length > 0 && meta.platforms.join(", "),
             [meta.developer, meta.publisher]
               .filter(Boolean)
               .filter((v, i, arr) => arr.indexOf(v) === i)
@@ -111,12 +96,13 @@ export default function GameDetail({ params }: Route.ComponentProps) {
             meta.aggregatedRating != null &&
               `Critics ${Math.round(meta.aggregatedRating)}${
                 meta.aggregatedRatingCount > 0
-                  ? ` (${meta.aggregatedRatingCount})`
+                  ? ` · ${meta.aggregatedRatingCount}`
                   : ""
               }`,
-            meta.rating != null && `IGDB ${(meta.rating / 10).toFixed(1)}`,
-            meta.timeToBeat?.normally != null &&
-              `HLTB ~${formatDuration(meta.timeToBeat.normally)}`,
+            meta.rating != null &&
+              `IGDB ${(meta.rating / 10).toFixed(1)}${
+                meta.ratingCount > 0 ? ` · ${meta.ratingCount}` : ""
+              }`,
           ],
           status: (
             <StatusControl
@@ -131,18 +117,51 @@ export default function GameDetail({ params }: Route.ComponentProps) {
               item={item}
             />
           ),
+          about: (meta.summary || meta.storyline) && (
+            <ExpandableText>
+              {meta.summary && <p>{meta.summary}</p>}
+              {meta.storyline && <p className="text-muted">{meta.storyline}</p>}
+            </ExpandableText>
+          ),
+          facts: [
+            {
+              label: "Released",
+              value: formatIsoDay(releaseDateFromEpoch(meta.firstReleaseDate)),
+            },
+            { label: "Developer", value: meta.developer },
+            meta.publisher !== meta.developer && {
+              label: "Publisher",
+              value: meta.publisher,
+            },
+            { label: "Platforms", value: meta.platforms.join(", ") },
+            { label: "Modes", value: meta.gameModes.join(", ") },
+            { label: "Perspective", value: meta.playerPerspectives.join(", ") },
+            { label: "Themes", value: meta.themes.join(", ") },
+            ttb?.hastily != null && {
+              label: "Rushed",
+              value: `~${formatDuration(ttb.hastily)}`,
+            },
+            ttb?.normally != null && {
+              label: "Main story",
+              value: `~${formatDuration(ttb.normally)}`,
+            },
+            ttb?.completely != null && {
+              label: "Completionist",
+              value: `~${formatDuration(ttb.completely)}`,
+            },
+          ],
+          links: [
+            ...meta.stores.map((store) => ({
+              label: STORE_LABELS[store.store],
+              href: store.url,
+            })),
+            {
+              label: "IGDB",
+              href: `https://www.igdb.com/games/${encodeURIComponent(meta.slug)}`,
+            },
+          ],
           body: (
             <>
-              {(meta.summary || meta.storyline) && (
-                <div className="flex flex-col gap-2">
-                  {meta.summary && <Description>{meta.summary}</Description>}
-                  {meta.storyline && (
-                    <p className="max-w-[70ch] text-sm leading-relaxed text-muted">
-                      {meta.storyline}
-                    </p>
-                  )}
-                </div>
-              )}
               {meta.screenshotImageIds.length > 0 && (
                 <DetailSection title="Screenshots">
                   <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
@@ -174,34 +193,6 @@ export default function GameDetail({ params }: Route.ComponentProps) {
                 />
               )}
               <TrailerChips videos={meta.videos} />
-              {(detailRows.length > 0 || meta.stores.length > 0) && (
-                <DetailSection title="Details">
-                  <DetailCard>
-                    {detailRows.map((row) => (
-                      <DetailRow key={row.label} label={row.label}>
-                        {row.value}
-                      </DetailRow>
-                    ))}
-                    {meta.stores.length > 0 && (
-                      <DetailRow label="Get it">
-                        <span className="flex flex-wrap justify-end gap-2">
-                          {meta.stores.map((store) => (
-                            <a
-                              key={store.store}
-                              target="_blank"
-                              rel="noreferrer"
-                              href={store.url}
-                              className="font-medium text-accent hover:underline"
-                            >
-                              {STORE_LABELS[store.store]}
-                            </a>
-                          ))}
-                        </span>
-                      </DetailRow>
-                    )}
-                  </DetailCard>
-                </DetailSection>
-              )}
             </>
           ),
         };

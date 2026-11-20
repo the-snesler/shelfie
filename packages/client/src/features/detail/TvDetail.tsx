@@ -19,12 +19,8 @@ import {
 import { StatusControl } from "../media/StatusControl";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
-import {
-  Description,
-  DetailCard,
-  DetailSection,
-  TrailerChips,
-} from "./DetailChrome";
+import { formatIsoDay, formatIsoDayRange } from "../media/dates";
+import { DetailSection, ExpandableText, TrailerChips } from "./DetailChrome";
 
 /** Ascending by seasonNumber, with Specials (0) pushed to the end. */
 function orderedSeasons(seasons: TvSeason[]): TvSeason[] {
@@ -120,7 +116,6 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       state={metaState}
       item={item}
       notFoundMessage="Show not found"
-      hasBackdrop
       cover={(meta, link) => (
         <MediaCover
           coverUrl={
@@ -147,23 +142,31 @@ export default function TvDetail({ params }: Route.ComponentProps) {
             : 0;
         const seasons = orderedSeasons(meta.seasons);
 
+        const nextAiring = meta.nextEpisodeToAir;
         return {
           name: meta.name,
           tagline: meta.tagline,
+          coverUrl: meta.posterPath
+            ? tmdbImageUrl(meta.posterPath, "w500")
+            : null,
           backdrop: meta.backdropPath
             ? tmdbImageUrl(meta.backdropPath, "w1280")
             : null,
           lines: [
-            [meta.firstAirYear, meta.status, meta.certification]
+            [
+              meta.firstAirYear,
+              meta.numberOfEpisodes > 0 && `${meta.numberOfEpisodes} eps`,
+              meta.certification,
+              meta.status,
+            ]
               .filter(Boolean)
               .join(" · "),
             meta.genres.length > 0 && meta.genres.join(", "),
-            [...meta.networks, ...meta.createdBy].filter(Boolean).join(" · "),
           ],
           pills: [
             meta.voteAverage != null &&
               `TMDB ${meta.voteAverage.toFixed(1)}${
-                meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
+                meta.voteCount > 0 ? ` · ${meta.voteCount}` : ""
               }`,
           ],
           status: (
@@ -180,23 +183,56 @@ export default function TvDetail({ params }: Route.ComponentProps) {
               item={item}
             />
           ),
+          about: meta.summary && (
+            <ExpandableText>
+              <p>{meta.summary}</p>
+            </ExpandableText>
+          ),
+          facts: [
+            { label: "Status", value: meta.status },
+            {
+              label: "Aired",
+              value:
+                meta.inProduction || !meta.lastAirDate
+                  ? meta.firstAirDate &&
+                    `Since ${formatIsoDay(meta.firstAirDate)}`
+                  : formatIsoDayRange(meta.firstAirDate, meta.lastAirDate),
+            },
+            nextAiring && {
+              label: "Next",
+              value: `S${nextAiring.seasonNumber}E${nextAiring.episodeNumber} · ${formatIsoDay(nextAiring.airDate)}`,
+            },
+            { label: "Network", value: meta.networks.join(", ") },
+            { label: "Created by", value: meta.createdBy.join(", ") },
+            meta.numberOfSeasons > 0 && {
+              label: "Seasons",
+              value: `${meta.numberOfSeasons} · ${meta.numberOfEpisodes} episodes`,
+            },
+            { label: "Rated", value: meta.certification },
+          ],
+          links: [
+            meta.imdbId && {
+              label: "IMDb",
+              href: `https://www.imdb.com/title/${meta.imdbId}/`,
+            },
+            {
+              label: "TMDB",
+              href: `https://www.themoviedb.org/tv/${meta.tmdbId}`,
+            },
+          ],
           body: (
             <>
-              {meta.summary && <Description>{meta.summary}</Description>}
               <TrailerChips videos={meta.videos} />
               {meta.cast.length > 0 && (
-                <DetailCard>
-                  <span className="font-display text-base font-medium text-ink">
-                    Cast
-                  </span>
-                  <p className="leading-relaxed text-ink">
+                <DetailSection title="Cast">
+                  <p className="text-sm leading-relaxed text-ink">
                     {meta.cast
                       .map((c) =>
                         c.character ? `${c.name} as ${c.character}` : c.name,
                       )
                       .join(" · ")}
                   </p>
-                </DetailCard>
+                </DetailSection>
               )}
               {meta.numberOfEpisodes > 0 && (
                 <DetailSection title="Episodes">
