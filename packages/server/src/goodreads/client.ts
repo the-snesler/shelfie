@@ -172,8 +172,8 @@ interface GoodreadsBookByLegacyId {
   work?: { stats?: GoodreadsWorkStats };
 }
 
-interface GoodreadsGraphqlResponse {
-  data?: { getBookByLegacyId?: GoodreadsBookByLegacyId | null };
+interface GoodreadsGraphqlResponse<TData> {
+  data?: TData;
   errors?: { message: string }[];
 }
 
@@ -220,31 +220,39 @@ function extractSeries(book: GoodreadsBookByLegacyId): BookSeries | null {
   };
 }
 
-export async function fetchBookByLegacyId(
-  legacyId: number,
-): Promise<BookDetail | null> {
+/** One AppSync GraphQL operation through the shared throttle. */
+async function appsync<TData>(
+  operationName: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<TData | undefined> {
   const res = await goodreadsFetch(GRAPHQL_URL, {
     method: "POST",
     headers: {
       "x-api-key": process.env.GOODREADS_APPSYNC_KEY ?? DEFAULT_APPSYNC_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      operationName: "getBookPageData",
-      variables: { legacyBookId: legacyId },
-      query: GRAPHQL_QUERY,
-    }),
+    body: JSON.stringify({ operationName, variables, query }),
   });
   if (!res.ok) {
     throw new Error(`Goodreads GraphQL fetch failed: ${res.status}`);
   }
-  const payload = (await res.json()) as GoodreadsGraphqlResponse;
+  const payload = (await res.json()) as GoodreadsGraphqlResponse<TData>;
   if (payload.errors && payload.errors.length > 0) {
     throw new Error(
       `Goodreads GraphQL error: ${payload.errors.map((e) => e.message).join("; ")}`,
     );
   }
-  const book = payload.data?.getBookByLegacyId;
+  return payload.data;
+}
+
+export async function fetchBookByLegacyId(
+  legacyId: number,
+): Promise<BookDetail | null> {
+  const data = await appsync<{
+    getBookByLegacyId?: GoodreadsBookByLegacyId | null;
+  }>("getBookPageData", GRAPHQL_QUERY, { legacyBookId: legacyId });
+  const book = data?.getBookByLegacyId;
   if (!book) return null;
 
   const publicationDate = epochMsToIsoDate(book.details?.publicationTime);
@@ -266,4 +274,35 @@ export async function fetchBookByLegacyId(
     ratingsCount: book.work?.stats?.ratingsCount ?? null,
     language: book.details?.language?.name ?? null,
   };
+}
+
+const BEST_EDITION_QUERY = `
+query getBestEdition($legacyBookId: Int!) {
+  getBookByLegacyId(legacyId: $legacyBookId) {
+    work { bestBook { legacyId } }
+  }
+}
+`;
+
+/**
+ * Goodreads legacy ids name one edition. Shelfie keys books by the edition
+ * Goodreads search ranks first, which is the work's "best book", so an
+ * edition id from elsewhere (e.g. one matching an ebook's ISBN) is mapped to
+ * that edition. Returns the input id when Goodreads names no best edition,
+ * and null when the id is unknown.
+ */
+export async function fetchBestEditionId(
+  legacyId: number,
+): Promise<number | null> {
+  const data = await appsync<{
+    getBookByLegacyId?: {
+      work?: { bestBook?: { legacyId?: number } | null } | null;
+    } | null;
+  }>("getBestEdition", BEST_EDITION_QUERY, { legacyBookId: legacyId });
+  const book = data?.getBookByLegacyId;
+  if (!book) return null;
+  const best = book.work?.bestBook?.legacyId;
+  return typeof best === "number" && Number.isSafeInteger(best) && best > 0
+    ? best
+    : legacyId;
 }
