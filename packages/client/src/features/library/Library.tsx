@@ -72,6 +72,10 @@ function storedManualOrder(): string[] {
   }
 }
 
+function sameOrder(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 export default function Library() {
   const { db, settings, authenticated } = useOutletContext<AppOutletContext>();
   const { items, cards, tvCatalogs } = useLibraryData(db);
@@ -128,7 +132,13 @@ export default function Library() {
     // order intact during that brief empty snapshot instead of replacing it
     // with `[]` before the real library arrives.
     if (plannedItems.length === 0) return;
-    setManualOrder((current) => normalizeManualOrder(current, plannedItems));
+    // Keep the old array when nothing moved: a new one re-renders the whole
+    // shelf, and on the way back from a detail page that extra render lands
+    // inside the view transition's frozen update callback.
+    setManualOrder((current) => {
+      const next = normalizeManualOrder(current, plannedItems);
+      return sameOrder(current, next) ? current : next;
+    });
   }, [plannedItems]);
 
   useEffect(() => {

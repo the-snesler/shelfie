@@ -1,7 +1,7 @@
 import type { LibraryItem, MediaType, TvSeason } from "@shelfie/shared";
 import { episodeKey } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useViewTransitionState } from "react-router";
 import IconPlus from "~icons/tabler/plus";
 import { AnimatePresence, motion } from "motion/react";
@@ -25,7 +25,11 @@ import {
   MEDIA_LIBRARY_COVER_WIDTH,
   mediaCoverTransitionName,
 } from "../media/MediaCover";
-import { deriveEpisodeWatch, todayLocalIsoDate } from "../media/libraryActions";
+import {
+  deriveEpisodeWatch,
+  type LogTarget,
+  todayLocalIsoDate,
+} from "../media/libraryActions";
 import { itemLogTarget } from "../media/logTarget";
 import { useLogPopover } from "../media/useLogPopover";
 import {
@@ -74,12 +78,6 @@ export function LibraryItemCard({
    *  a stable callback. */
   onLogOpenChange?: (itemId: string, open: boolean) => void;
 }) {
-  const popover = useLogPopover();
-
-  useEffect(() => {
-    onLogOpenChange?.(item.id, popover.open);
-  }, [onLogOpenChange, item.id, popover.open]);
-
   const gameMeta =
     item.mediaType === "game" ? (meta as GameCardDoc | undefined) : undefined;
   const movieMeta =
@@ -385,21 +383,86 @@ export function LibraryItemCard({
             className="mt-0.5 size-5 shrink-0 cursor-pointer appearance-none rounded-full border-2 border-current bg-transparent text-faint hover:text-accent"
           />
         ) : (
-          <button
-            type="button"
-            ref={popover.refs.setReference}
-            {...popover.getReferenceProps()}
-            aria-label="Log activity"
-            onClick={() => popover.setOpen(true)}
-            className="shrink-0 rounded text-xl leading-none text-faint hover:text-accent"
-          >
-            <IconPlus />
-          </button>
+          <CardLogButton
+            db={db}
+            item={item}
+            target={logTarget}
+            onOpenChange={onLogOpenChange}
+          />
         )}
       </div>
-      {!airedNext && (
-        <LogPopover popover={popover} db={db} target={logTarget} item={item} />
-      )}
     </div>
   );
+}
+
+/** A card's "+" button. Like `Tooltip`, the closed state is just a button:
+ *  floating-ui's reference ref re-renders its owner on mount, which on a full
+ *  shelf doubles the cost of mounting the library. Coming back from a detail
+ *  page, that mount runs inside the view transition's update callback, with
+ *  the old page frozen on screen. The popover hooks mount on the first click
+ *  and stay mounted after it. */
+function CardLogButton({
+  db,
+  item,
+  target,
+  onOpenChange,
+}: {
+  db: ShelfieDatabase;
+  item: RxDocument<LibraryItem>;
+  target: LogTarget;
+  onOpenChange?: (itemId: string, open: boolean) => void;
+}) {
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    onOpenChange?.(item.id, open);
+  }, [onOpenChange, item.id, open]);
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Log activity"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(event) => {
+          setAnchor(event.currentTarget);
+          setOpen(true);
+        }}
+        className="shrink-0 rounded text-xl leading-none text-faint hover:text-accent"
+      >
+        <IconPlus />
+      </button>
+      {anchor && (
+        <CardLogPopover
+          anchor={anchor}
+          open={open}
+          onOpenChange={setOpen}
+          db={db}
+          item={item}
+          target={target}
+        />
+      )}
+    </>
+  );
+}
+
+function CardLogPopover({
+  anchor,
+  open,
+  onOpenChange,
+  db,
+  item,
+  target,
+}: {
+  anchor: HTMLButtonElement;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  db: ShelfieDatabase;
+  item: RxDocument<LibraryItem>;
+  target: LogTarget;
+}) {
+  const popover = useLogPopover({ reference: anchor, open, onOpenChange });
+  return <LogPopover popover={popover} db={db} target={target} item={item} />;
 }
