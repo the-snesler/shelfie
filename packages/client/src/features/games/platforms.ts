@@ -9,9 +9,13 @@ export interface PlatformTemplate {
   paddingTop?: number; // optional, in px. for platforms with "strip across the top" overlays, so the logos don't get cut off by the top of the box.
   paddingLeft?: number; // optional, in px. same idea for overlays with a strip/bezel down the left edge (e.g. DS/3DS).
   paddingRight?: number; // optional, in px. same idea for overlays with a strip/bezel down the right edge.
+  material?: "cardboard"; // optional. cardboard boxes drop the plastic case's translucent edges.
 }
 
-export const platformTemplates: Record<string, PlatformTemplate> = templates;
+/** Case templates, keyed by IGDB platform name or by a synthetic case key
+ *  such as "PC big box" (see {@link selectCaseKey}). */
+export const platformTemplates: Record<string, PlatformTemplate> =
+  templates as Record<string, PlatformTemplate>;
 
 /** Fallback dims for untemplated platforms (~IGDB cover ratio). */
 export const DEFAULT_TEMPLATE = { aspectRatio: 0.71, heightMm: 172 } as const;
@@ -22,8 +26,8 @@ export const DETAIL_COVER_SCALE = 1.5;
 export const SEARCH_COVER_SCALE = 0.37;
 
 /** Computes the rendered width for a game cover at a given scale. */
-export function gameCoverWidth(platform: string | null, scale: number): number {
-  const template = platform ? platformTemplates[platform] : undefined;
+export function gameCoverWidth(caseKey: string | null, scale: number): number {
+  const template = caseKey ? platformTemplates[caseKey] : undefined;
   const aspectRatio = template?.aspectRatio ?? DEFAULT_TEMPLATE.aspectRatio;
   const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;
   return heightMm * scale * aspectRatio + 4; // +4px for the case padding
@@ -37,6 +41,11 @@ export function gameCoverWidth(platform: string | null, scale: number): number {
 export function gameCoverTransitionName(slug: string): string {
   return `game-cover-${slug}`;
 }
+
+export const PC_PLATFORM = "PC (Microsoft Windows)";
+
+/** Platforms whose retail packaging changed with the era. */
+const ERA_PLATFORMS = new Set([PC_PLATFORM, "DOS"]);
 
 /** Mac/Linux releases are usually ports of a Windows or console game, so
  *  they only become a title's default case when nothing else is templated. */
@@ -60,11 +69,64 @@ export function selectPlatform(
     ...releaseOrdered,
     ...metaPlatforms.filter((p) => !releaseOrdered.includes(p)),
   ];
-  const templated = ordered.filter((p) => p in platformTemplates);
+  const templated = ordered.filter(
+    (p) => p in platformTemplates || ERA_PLATFORMS.has(p),
+  );
   return (
     templated.find((p) => !PORT_PLATFORMS.has(p)) ??
     templated[0] ??
     ordered[0] ??
     null
+  );
+}
+
+/** PC retail formats by release year, oldest first: the first entry whose
+ *  `before` year is later than the release wins; anything newer gets the
+ *  modern PC strip. The cutoffs are approximate (formats overlapped, and
+ *  differed by region). */
+export const PC_ERA_CASES: readonly { before: number; caseKey: string }[] = [
+  { before: 2002, caseKey: "PC big box" },
+  { before: 2006, caseKey: "PC jewel case" },
+  { before: 2015, caseKey: "PC DVD" },
+];
+
+/** Earliest dated release on `platform`, else on any platform (epoch s). */
+function releaseDateFor(
+  platform: string,
+  platformReleaseDates: PlatformRelease[],
+): number | null {
+  const own = platformReleaseDates.find((r) => r.platform === platform);
+  if (own) return own.date;
+  if (platformReleaseDates.length === 0) return null;
+  return Math.min(...platformReleaseDates.map((r) => r.date));
+}
+
+/**
+ * Maps the selected platform to the case template to render. Most platforms
+ * are their own case; PC and DOS pick a retail format from the year the
+ * game came out on that platform (undated DOS games get a big box, undated
+ * PC games the modern strip).
+ */
+export function selectCaseKey(
+  platform: string | null,
+  platformReleaseDates: PlatformRelease[],
+): string | null {
+  if (!platform || !ERA_PLATFORMS.has(platform)) return platform;
+  const date = releaseDateFor(platform, platformReleaseDates);
+  if (date === null) return platform === "DOS" ? "PC big box" : PC_PLATFORM;
+  const year = new Date(date * 1000).getUTCFullYear();
+  return PC_ERA_CASES.find((era) => year < era.before)?.caseKey ?? PC_PLATFORM;
+}
+
+/** {@link selectPlatform} followed by {@link selectCaseKey}: the case
+ *  template key every game cover surface renders. */
+export function selectGameCase(
+  userPlatforms: string[],
+  metaPlatforms: string[],
+  platformReleaseDates: PlatformRelease[],
+): string | null {
+  return selectCaseKey(
+    selectPlatform(userPlatforms, metaPlatforms, platformReleaseDates),
+    platformReleaseDates,
   );
 }

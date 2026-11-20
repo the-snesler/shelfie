@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711 1000" preserveAspectRatio="none">
+  <!-- Mockup overlay: placeholder art, replace with a final PNG at this aspect ratio (0.711, DVD keep case, ~2006–2014 "PC DVD-ROM" band). -->
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fbfbfb"/>
+      <stop offset="1" stop-color="#d9dde2"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="711" height="125" fill="url(#g)"/>
+  <rect x="0" y="125" width="711" height="4" fill="#1b1b1d"/>
+  <text x="34" y="92" font-family="Helvetica, Arial, sans-serif" font-size="74" font-weight="800" fill="#111">PC</text>
+  <rect x="160" y="34" width="250" height="64" rx="8" fill="#111"/>
+  <text x="285" y="83" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="50" font-weight="700" letter-spacing="1" fill="#fff">DVD-ROM</text>
+</svg>

@@ -308,6 +308,17 @@
       var(--content-elevated-shadow);
   }
 
+  /* Cardboard big boxes: opaque, square-edged, no plastic case rim. */
+  .video-game[data-material="cardboard"] {
+    --border-radius: 1px;
+    background: var(--case-color);
+    box-shadow: var(--content-base-shadow);
+  }
+
+  .video-game[data-material="cardboard"]:hover {
+    box-shadow: var(--content-elevated-shadow);
+  }
+
   .video-game::after {
     content: "";
     position: absolute;

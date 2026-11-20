@@ -17,7 +17,7 @@ import {
   gameCoverTransitionName,
   LIBRARY_COVER_SCALE,
   gameCoverWidth,
-  selectPlatform,
+  selectGameCase,
 } from "../games/platforms";
 import { LogPopover } from "../media/LogPopover";
 import {
@@ -122,9 +122,9 @@ export function LibraryItemCard({
 
   const isTransitioning = useViewTransitionState(href ?? "/__no_transition__");
 
-  const platform =
+  const caseKey =
     item.mediaType === "game"
-      ? selectPlatform(
+      ? selectGameCase(
           item.platforms,
           gameMeta?.platforms ?? [],
           gameMeta?.platformReleaseDates ?? [],
@@ -134,7 +134,7 @@ export function LibraryItemCard({
   const cardWidth = airedNext
     ? MEDIA_LIBRARY_COVER_WIDTH + TV_STILL_GAP + TV_STILL_WIDTH
     : item.mediaType === "game"
-      ? gameCoverWidth(platform, LIBRARY_COVER_SCALE)
+      ? gameCoverWidth(caseKey, LIBRARY_COVER_SCALE)
       : MEDIA_LIBRARY_COVER_WIDTH;
 
   const cover =
@@ -153,7 +153,7 @@ export function LibraryItemCard({
       <GameCover
         coverUrl={cover}
         coverHash={meta?.coverHash}
-        platform={platform}
+        caseKey={caseKey}
         name={name}
         scale={LIBRARY_COVER_SCALE}
         viewTransitionName={
@@ -235,7 +235,7 @@ export function LibraryItemCard({
             state={{
               coverUrl: cover,
               coverHash: meta?.coverHash,
-              platform,
+              caseKey,
               name,
             }}
             className="rounded text-left"
@@ -254,7 +254,7 @@ export function LibraryItemCard({
             state={{
               coverUrl: cover,
               coverHash: meta?.coverHash,
-              platform,
+              caseKey,
               name,
             }}
             className="relative overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"

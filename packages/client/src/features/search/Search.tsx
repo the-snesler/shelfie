@@ -25,7 +25,7 @@ import { GameCover } from "../games/GameCover";
 import {
   gameCoverTransitionName,
   SEARCH_COVER_SCALE,
-  selectPlatform,
+  selectGameCase,
 } from "../games/platforms";
 import {
   MediaCover,
@@ -144,7 +144,7 @@ function SearchResultRow({
 }) {
   const href = `/games/${encodeURIComponent(result.slug)}`;
   const isTransitioning = useViewTransitionState(href);
-  const platform = selectPlatform(
+  const caseKey = selectGameCase(
     [],
     result.platforms,
     result.platformReleaseDates,
@@ -164,7 +164,7 @@ function SearchResultRow({
         state={{
           coverUrl: result.coverUrl,
           coverHash: result.coverHash,
-          platform,
+          caseKey,
           name: result.name,
         }}
         className="flex min-w-0 flex-1 items-center gap-4 text-left"
@@ -173,7 +173,7 @@ function SearchResultRow({
           <GameCover
             coverUrl={result.coverUrl}
             coverHash={result.coverHash}
-            platform={platform}
+            caseKey={caseKey}
             name={result.name}
             scale={SEARCH_COVER_SCALE}
             viewTransitionName={

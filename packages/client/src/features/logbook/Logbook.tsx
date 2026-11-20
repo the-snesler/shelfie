@@ -10,7 +10,7 @@ import { useContainerVirtualizer } from "../../components/virtualList";
 import type { GameCardDoc } from "../../db/gameCards";
 import { refreshCardCaches } from "../../db/refreshCards";
 import { GameCover } from "../games/GameCover";
-import { selectPlatform } from "../games/platforms";
+import { selectGameCase } from "../games/platforms";
 import { emptyTypeCounts } from "../lists/listStats";
 import { parseMediaType } from "../lists/listViewState";
 import { MediaFilter } from "../lists/MediaFilter";
@@ -70,7 +70,7 @@ function LogbookCover({
       <GameCover
         coverUrl={coverUrl}
         coverHash={card?.coverHash}
-        platform={selectPlatform(
+        caseKey={selectGameCase(
           item.platforms,
           game?.platforms ?? [],
           game?.platformReleaseDates ?? [],

@@ -24,11 +24,11 @@ import type { DetailFetchState } from "./useDetailFetch";
  *  detail fetch resolves) already has a cover box on-screen — a view
  *  transition can only pair a `view-transition-name` across old/new
  *  snapshots if the named element is actually present in the DOM when each
- *  snapshot is taken. `platform` is game-only. */
+ *  snapshot is taken. `caseKey` is game-only. */
 export interface DetailLinkState {
   coverUrl?: string | null;
   coverHash?: string | null;
-  platform?: string | null;
+  caseKey?: string | null;
   name?: string;
 }
 

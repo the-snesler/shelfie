@@ -5,7 +5,7 @@ import { DEFAULT_TEMPLATE, platformTemplates } from "./platforms";
 export function GameCover({
   coverUrl,
   coverHash,
-  platform,
+  caseKey,
   name,
   scale,
   viewTransitionName,
@@ -14,7 +14,9 @@ export function GameCover({
   coverUrl: string | null;
   /** The card's base64 ThumbHash (`coverHash`), painted until the image loads. */
   coverHash?: string | null;
-  platform: string | null;
+  /** Template key from `selectGameCase()`: an IGDB platform name or a
+   *  synthetic case such as "PC big box". */
+  caseKey: string | null;
   name: string;
   scale: number; // px per mm of case height
   /** CSS `view-transition-name` to assign to the cover box, e.g. from
@@ -23,7 +25,7 @@ export function GameCover({
   viewTransitionName?: string;
   children?: ReactNode;
 }) {
-  const template = platform ? platformTemplates[platform] : undefined;
+  const template = caseKey ? platformTemplates[caseKey] : undefined;
   const aspectRatio = template?.aspectRatio ?? DEFAULT_TEMPLATE.aspectRatio;
   const heightMm = template?.heightMm ?? DEFAULT_TEMPLATE.heightMm;
 
@@ -42,6 +44,7 @@ export function GameCover({
   return (
     <div
       className="video-game relative overflow-hidden rounded bg-panel"
+      data-material={template?.material}
       style={style}
     >
       {coverUrl ? (
