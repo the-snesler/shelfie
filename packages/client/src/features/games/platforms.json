@@ -119,5 +119,26 @@
     "heightMm": 169,
     "caseColor": "#F23132",
     "paddingTop": 20
+  },
+  "PC (Microsoft Windows)": {
+    "overlay": "/assets/games/pc-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
+  },
+  "Mac": {
+    "overlay": "/assets/games/mac-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#D9DCE1",
+    "paddingTop": 25
+  },
+  "Linux": {
+    "overlay": "/assets/games/linux-cover.svg",
+    "aspectRatio": 0.711,
+    "heightMm": 190,
+    "caseColor": "#1B1B1D",
+    "paddingTop": 25
   }
 }

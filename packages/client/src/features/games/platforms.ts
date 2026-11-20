@@ -38,10 +38,15 @@ export function gameCoverTransitionName(slug: string): string {
   return `game-cover-${slug}`;
 }
 
+/** Mac/Linux releases are usually ports of a Windows or console game, so
+ *  they only become a title's default case when nothing else is templated. */
+const PORT_PLATFORMS = new Set(["Mac", "Linux"]);
+
 /**
  * Picks the platform whose overlay to render.
  * - User has recorded platforms -> their first choice, verbatim.
- * - Otherwise -> earliest-released platform that has a template; else the
+ * - Otherwise -> earliest-released templated platform, skipping Mac/Linux
+ *   ports; else an earliest-released templated port; else the
  *   earliest-released platform overall; else the first listed platform.
  */
 export function selectPlatform(
@@ -55,5 +60,11 @@ export function selectPlatform(
     ...releaseOrdered,
     ...metaPlatforms.filter((p) => !releaseOrdered.includes(p)),
   ];
-  return ordered.find((p) => p in platformTemplates) ?? ordered[0] ?? null;
+  const templated = ordered.filter((p) => p in platformTemplates);
+  return (
+    templated.find((p) => !PORT_PLATFORMS.has(p)) ??
+    templated[0] ??
+    ordered[0] ??
+    null
+  );
 }
