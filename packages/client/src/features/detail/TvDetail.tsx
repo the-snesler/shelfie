@@ -1,7 +1,6 @@
-import { MyActivity } from "./MyActivity";
 import type { TvDetail as TvDetailDto, TvSeason } from "@shelfie/shared";
 import { episodeKey } from "@shelfie/shared";
-import { useLocation, useNavigate, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/TvDetail";
 import { upsertTvCards } from "../../db/tvCards";
@@ -18,18 +17,12 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { StatusControl } from "../media/StatusControl";
-import { useBackNavigation } from "./useBackNavigation";
 import { useDetailFetch } from "./useDetailFetch";
+import { DetailScreen } from "./DetailScreen";
 import {
   Description,
-  DetailBackdrop,
-  DetailBodySkeleton,
   DetailCard,
-  DetailHero,
-  DetailPage,
   DetailSection,
-  NotFound,
-  RatingPills,
   TrailerChips,
 } from "./DetailChrome";
 
@@ -45,15 +38,12 @@ function orderedSeasons(seasons: TvSeason[]): TvSeason[] {
 export default function TvDetail({ params }: Route.ComponentProps) {
   const { db } = useOutletContext<AppOutletContext>();
   const id = params.id;
-  const navigate = useNavigate();
-  const location = useLocation();
   const { metaState, item } = useDetailFetch<TvDetailDto>({
     db,
     url: `/api/tv/by-id/${encodeURIComponent(id)}`,
     libraryItemId: (meta) => `tv:${meta.tmdbId}`,
     upsertCards: upsertTvCards,
   });
-  const handleBack = useBackNavigation();
 
   /** Persists a `watchedEpisodes` update by deriving the next map from the
    *  document's current data at write time via `incrementalModify` (RxDB
@@ -74,7 +64,6 @@ export default function TvDetail({ params }: Route.ComponentProps) {
         updatedAt: Date.now(),
       }));
     } else {
-      const meta = metaState.meta;
       const derived = deriveEpisodeWatch(
         { watchedEpisodes: {}, status: "active", completedDates: [] },
         card,
@@ -83,8 +72,8 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       const base = newLibraryItem(
         {
           mediaType: "tv",
-          sourceId: String(meta.tmdbId),
-          name: meta.name,
+          sourceId: String(card.tmdbId),
+          name: card.name,
           platforms: [],
         },
         derived.status,
@@ -126,215 +115,192 @@ export default function TvDetail({ params }: Route.ComponentProps) {
     });
   }
 
-  if (metaState.status === "loading") {
-    const linkState = location.state as {
-      coverUrl?: string | null;
-      coverHash?: string | null;
-      name?: string;
-    } | null;
-    return (
-      <DetailPage onBack={handleBack}>
-        <DetailBackdrop src={null} />
-        <DetailHero
-          overlap
-          name={linkState?.name ?? null}
-          cover={
-            <MediaCover
-              coverUrl={linkState?.coverUrl ?? null}
-              coverHash={linkState?.coverHash}
-              name={linkState?.name ?? "Loading…"}
-              width={MEDIA_DETAIL_COVER_WIDTH}
-              viewTransitionName={mediaCoverTransitionName("tv", id)}
-            />
-          }
-        />
-        <DetailBodySkeleton />
-      </DetailPage>
-    );
-  }
-
-  if (metaState.status === "error") {
-    return (
-      <NotFound
-        message={metaState.message ?? "Show not found"}
-        onBack={() => navigate("/")}
-      />
-    );
-  }
-
-  const meta = metaState.meta;
-  const poster = meta.posterPath ? tmdbImageUrl(meta.posterPath, "w500") : null;
-  const backdrop = meta.backdropPath
-    ? tmdbImageUrl(meta.backdropPath, "w1280")
-    : null;
-
-  const watchedEpisodes = item?.watchedEpisodes ?? {};
-  const watchedCount = Object.keys(watchedEpisodes).filter(
-    (k) => !k.startsWith("s0e"),
-  ).length;
-  const percent =
-    meta.numberOfEpisodes > 0
-      ? Math.round((watchedCount / meta.numberOfEpisodes) * 100)
-      : 0;
-  const seasons = orderedSeasons(meta.seasons);
-
   return (
-    <DetailPage onBack={handleBack}>
-      <DetailBackdrop src={backdrop} />
-      <DetailHero
-        overlap
-        name={meta.name}
-        tagline={meta.tagline}
-        lines={[
-          [meta.firstAirYear, meta.status, meta.certification]
-            .filter(Boolean)
-            .join(" · "),
-          meta.genres.length > 0 && meta.genres.join(", "),
-          [...meta.networks, ...meta.createdBy].filter(Boolean).join(" · "),
-        ]}
-        cover={
-          <MediaCover
-            coverUrl={poster}
-            coverHash={meta.coverHash}
-            name={meta.name}
-            width={MEDIA_DETAIL_COVER_WIDTH}
-            viewTransitionName={mediaCoverTransitionName("tv", id)}
-          />
-        }
-      >
-        <div className="mt-2 flex flex-col items-start gap-3">
-          <RatingPills
-            pills={[
-              meta.voteAverage != null &&
-                `TMDB ${meta.voteAverage.toFixed(1)}${
-                  meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
-                }`,
-            ]}
-          />
-          <StatusControl
-            db={db}
-            target={{
-              mediaType: "tv",
-              sourceId: String(meta.tmdbId),
-              name: meta.name,
-              platforms: [],
-              releaseDate:
-                meta.firstAirDate ?? releaseDateFromYear(meta.firstAirYear),
-            }}
-            item={item}
-          />
-        </div>
-      </DetailHero>
-      <MyActivity item={item} />
-      {meta.summary && <Description>{meta.summary}</Description>}
-      <TrailerChips videos={meta.videos} />
-      {meta.cast.length > 0 && (
-        <DetailCard>
-          <span className="font-display text-base font-medium text-ink">
-            Cast
-          </span>
-          <p className="leading-relaxed text-ink">
-            {meta.cast
-              .map((c) =>
-                c.character ? `${c.name} as ${c.character}` : c.name,
-              )
-              .join(" · ")}
-          </p>
-        </DetailCard>
+    <DetailScreen
+      state={metaState}
+      item={item}
+      notFoundMessage="Show not found"
+      hasBackdrop
+      cover={(meta, link) => (
+        <MediaCover
+          coverUrl={
+            meta
+              ? meta.posterPath
+                ? tmdbImageUrl(meta.posterPath, "w500")
+                : null
+              : (link?.coverUrl ?? null)
+          }
+          coverHash={meta ? meta.coverHash : link?.coverHash}
+          name={meta?.name ?? link?.name ?? "Loading…"}
+          width={MEDIA_DETAIL_COVER_WIDTH}
+          viewTransitionName={mediaCoverTransitionName("tv", id)}
+        />
       )}
-      {meta.numberOfEpisodes > 0 && (
-        <DetailSection title="Episodes">
-          <div className="flex flex-col gap-1.5">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-well ring-1 ring-divider">
-              <div
-                className="h-full rounded-full bg-accent"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted">
-              {watchedCount}/{meta.numberOfEpisodes} episodes · {percent}%
-            </p>
-          </div>
-        </DetailSection>
-      )}
-      {seasons.length > 0 && (
-        <div className="flex flex-col gap-4">
-          {seasons.map((season) => {
-            const keys = season.episodes.map((ep) =>
-              episodeKey(season.seasonNumber, ep.episodeNumber),
-            );
-            const seasonWatched = keys.filter(
-              (k) => k in watchedEpisodes,
-            ).length;
-            const allWatched = keys.length > 0 && seasonWatched === keys.length;
-            return (
-              <div
-                key={season.seasonNumber}
-                className="flex flex-col gap-2.5 rounded-xl border border-divider bg-panel/60 p-4"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-ink">
-                    {season.seasonNumber === 0
-                      ? "Specials"
-                      : season.name || `Season ${season.seasonNumber}`}
-                    <span className="ml-2 text-xs font-normal text-faint">
-                      {seasonWatched}/{keys.length}
-                    </span>
-                  </h3>
-                  <button
-                    type="button"
-                    disabled={item === undefined || keys.length === 0}
-                    onClick={() => toggleSeason(season)}
-                    className="rounded-md bg-well px-2.5 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent disabled:opacity-50"
-                  >
-                    {allWatched
-                      ? "Mark season unwatched"
-                      : "Mark season watched"}
-                  </button>
-                </div>
-                <ul className="flex flex-col">
-                  {season.episodes.map((ep) => {
-                    const key = episodeKey(
-                      season.seasonNumber,
-                      ep.episodeNumber,
+      render={(meta) => {
+        const watchedEpisodes = item?.watchedEpisodes ?? {};
+        const watchedCount = Object.keys(watchedEpisodes).filter(
+          (k) => !k.startsWith("s0e"),
+        ).length;
+        const percent =
+          meta.numberOfEpisodes > 0
+            ? Math.round((watchedCount / meta.numberOfEpisodes) * 100)
+            : 0;
+        const seasons = orderedSeasons(meta.seasons);
+
+        return {
+          name: meta.name,
+          tagline: meta.tagline,
+          backdrop: meta.backdropPath
+            ? tmdbImageUrl(meta.backdropPath, "w1280")
+            : null,
+          lines: [
+            [meta.firstAirYear, meta.status, meta.certification]
+              .filter(Boolean)
+              .join(" · "),
+            meta.genres.length > 0 && meta.genres.join(", "),
+            [...meta.networks, ...meta.createdBy].filter(Boolean).join(" · "),
+          ],
+          pills: [
+            meta.voteAverage != null &&
+              `TMDB ${meta.voteAverage.toFixed(1)}${
+                meta.voteCount > 0 ? ` (${meta.voteCount})` : ""
+              }`,
+          ],
+          status: (
+            <StatusControl
+              db={db}
+              target={{
+                mediaType: "tv",
+                sourceId: String(meta.tmdbId),
+                name: meta.name,
+                platforms: [],
+                releaseDate:
+                  meta.firstAirDate ?? releaseDateFromYear(meta.firstAirYear),
+              }}
+              item={item}
+            />
+          ),
+          body: (
+            <>
+              {meta.summary && <Description>{meta.summary}</Description>}
+              <TrailerChips videos={meta.videos} />
+              {meta.cast.length > 0 && (
+                <DetailCard>
+                  <span className="font-display text-base font-medium text-ink">
+                    Cast
+                  </span>
+                  <p className="leading-relaxed text-ink">
+                    {meta.cast
+                      .map((c) =>
+                        c.character ? `${c.name} as ${c.character}` : c.name,
+                      )
+                      .join(" · ")}
+                  </p>
+                </DetailCard>
+              )}
+              {meta.numberOfEpisodes > 0 && (
+                <DetailSection title="Episodes">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-well ring-1 ring-divider">
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted">
+                      {watchedCount}/{meta.numberOfEpisodes} episodes ·{" "}
+                      {percent}%
+                    </p>
+                  </div>
+                </DetailSection>
+              )}
+              {seasons.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  {seasons.map((season) => {
+                    const keys = season.episodes.map((ep) =>
+                      episodeKey(season.seasonNumber, ep.episodeNumber),
                     );
-                    const watched = key in watchedEpisodes;
+                    const seasonWatched = keys.filter(
+                      (k) => k in watchedEpisodes,
+                    ).length;
+                    const allWatched =
+                      keys.length > 0 && seasonWatched === keys.length;
                     return (
-                      <li key={key}>
-                        <label className="-mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 text-sm hover:bg-well/60">
-                          <input
-                            type="checkbox"
-                            checked={watched}
-                            disabled={item === undefined}
-                            onChange={() =>
-                              toggleEpisode(
-                                season.seasonNumber,
-                                ep.episodeNumber,
-                              )
-                            }
-                            className="size-4 accent-accent"
-                          />
-                          <span className="shrink-0 text-xs text-faint tabular-nums">
-                            S{season.seasonNumber}E{ep.episodeNumber}
-                          </span>
-                          <span className={watched ? "text-muted" : "text-ink"}>
-                            {ep.name}
-                          </span>
-                          {ep.airDate && (
-                            <span className="ml-auto shrink-0 text-xs text-faint">
-                              {ep.airDate}
+                      <div
+                        key={season.seasonNumber}
+                        className="flex flex-col gap-2.5 rounded-xl border border-divider bg-panel/60 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-sm font-semibold text-ink">
+                            {season.seasonNumber === 0
+                              ? "Specials"
+                              : season.name || `Season ${season.seasonNumber}`}
+                            <span className="ml-2 text-xs font-normal text-faint">
+                              {seasonWatched}/{keys.length}
                             </span>
-                          )}
-                        </label>
-                      </li>
+                          </h3>
+                          <button
+                            type="button"
+                            disabled={item === undefined || keys.length === 0}
+                            onClick={() => toggleSeason(season)}
+                            className="rounded-md bg-well px-2.5 py-1 text-xs text-ink ring-1 ring-divider hover:ring-accent disabled:opacity-50"
+                          >
+                            {allWatched
+                              ? "Mark season unwatched"
+                              : "Mark season watched"}
+                          </button>
+                        </div>
+                        <ul className="flex flex-col">
+                          {season.episodes.map((ep) => {
+                            const key = episodeKey(
+                              season.seasonNumber,
+                              ep.episodeNumber,
+                            );
+                            const watched = key in watchedEpisodes;
+                            return (
+                              <li key={key}>
+                                <label className="-mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1 text-sm hover:bg-well/60">
+                                  <input
+                                    type="checkbox"
+                                    checked={watched}
+                                    disabled={item === undefined}
+                                    onChange={() =>
+                                      toggleEpisode(
+                                        season.seasonNumber,
+                                        ep.episodeNumber,
+                                      )
+                                    }
+                                    className="size-4 accent-accent"
+                                  />
+                                  <span className="shrink-0 text-xs text-faint tabular-nums">
+                                    S{season.seasonNumber}E{ep.episodeNumber}
+                                  </span>
+                                  <span
+                                    className={
+                                      watched ? "text-muted" : "text-ink"
+                                    }
+                                  >
+                                    {ep.name}
+                                  </span>
+                                  {ep.airDate && (
+                                    <span className="ml-auto shrink-0 text-xs text-faint">
+                                      {ep.airDate}
+                                    </span>
+                                  )}
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
                     );
                   })}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </DetailPage>
+                </div>
+              )}
+            </>
+          ),
+        };
+      }}
+    />
   );
 }

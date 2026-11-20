@@ -142,10 +142,10 @@ export function DetailAccordion({
   children: ReactNode;
 }) {
   return (
-    <Accordion.Root className="">
+    <Accordion.Root>
       <Accordion.Item>
         <Accordion.Header>
-          <Accordion.Trigger className="group font-display text-lg font-medium text-ink text-text-muted inline-flex list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+          <Accordion.Trigger className="group inline-flex items-center gap-1 font-display text-lg font-medium text-ink">
             <span>{title}</span>
             <IconChevronDown className="h-4 w-4 -rotate-90 transition-transform duration-200 group-data-panel-open:rotate-0" />
           </Accordion.Trigger>

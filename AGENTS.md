@@ -38,7 +38,7 @@ packages/
 │       ├── features/
 │       │   ├── library/Library.tsx   grid of owned items across all media, reads card metadata reactively from the four local caches (renders offline), refreshed over HTTP on mount
 │       │   ├── search/Search.tsx     tabbed search (Games/Movies/TV/Books) against the per-medium /api/*/search endpoints
-│       │   ├── detail/Detail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens + status/progress editor; each warms its card cache on load. TvDetail owns the episode watched-checklist.
+│       │   ├── detail/GameDetail.tsx | MovieDetail.tsx | TvDetail.tsx | BookDetail.tsx   per-medium detail screens on the shared DetailScreen frame (loading/not-found/hero/activity); each warms its card cache on load. TvDetail owns the episode watched-checklist.
 │       │   ├── demo/           guest-only demo shelf: DEMO_ITEMS plan + bundled demoCards.json fixture (scripts/demo-fixture.mjs), GuestEmptyShelf/GuestShelfNotice
 │       │   ├── lists/          automatic lists (/lists index + /lists/:id shelf/list view): predicate-defined, never stored or synced
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
@@ -293,7 +293,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/lists`, `/lists/:listId` (`?type=&view=&sort=&dir=&group=`), `/recommendations`, `/settings`, catch-all → `/`.
 - **Adding a media type.** Widen `MEDIA_TYPES` + zod, add per-media label/subset entries in `features/media/status.ts` and `LOG_FORMATS_BY_MEDIA`, add shared card/detail DTOs, a server client + `<medium>/routes.ts` + metadata table migration, a client `*Cards.ts` cache + collection, a detail screen + route, a Search tab, and Library href/caption/refresh branches. Statuses themselves need no schema bump.
 - **Auth (client).** Never call bare `fetch` for `/api/*` — use `authFetch()` (`auth.ts`), which attaches the bearer token and treats a 401 (not 403) as session loss, dispatching a `shelfie-auth-lost` window event.
-- **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `Detail.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.
+- **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `media/LogModal.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.
 
 ## Important Files
 
