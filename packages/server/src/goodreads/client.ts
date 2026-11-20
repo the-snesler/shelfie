@@ -174,7 +174,7 @@ interface GoodreadsBookByLegacyId {
 
 interface GoodreadsGraphqlResponse<TData> {
   data?: TData;
-  errors?: { message: string }[];
+  errors?: { message: string; errorType?: string }[];
 }
 
 /** Strips HTML tags out of the raw Goodreads description (the only spot Grimmory touches HTML). */
@@ -238,6 +238,11 @@ async function appsync<TData>(
     throw new Error(`Goodreads GraphQL fetch failed: ${res.status}`);
   }
   const payload = (await res.json()) as GoodreadsGraphqlResponse<TData>;
+  // An unknown or deleted legacy id comes back as a null field plus a
+  // RESOURCE_NOT_FOUND error ("Book is invalid"); callers treat null as
+  // not found.
+  if (payload.errors?.every((e) => e.errorType === "RESOURCE_NOT_FOUND"))
+    return payload.data;
   if (payload.errors && payload.errors.length > 0) {
     throw new Error(
       `Goodreads GraphQL error: ${payload.errors.map((e) => e.message).join("; ")}`,

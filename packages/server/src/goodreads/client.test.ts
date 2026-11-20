@@ -38,10 +38,27 @@ describe("fetchBestEditionId", () => {
     expect(await settle(fetchBestEditionId(42))).toBe(42);
   });
 
-  it("returns null for an unknown book and throws on GraphQL errors", async () => {
+  it("returns null for an unknown book and throws on other GraphQL errors", async () => {
     vi.useFakeTimers();
     stubGraphql({ getBookByLegacyId: null });
     expect(await settle(fetchBestEditionId(1))).toBeNull();
+    // What AppSync sends for a deleted or merged legacy id.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          data: { getBookByLegacyId: null },
+          errors: [
+            {
+              path: ["getBookByLegacyId"],
+              errorType: "RESOURCE_NOT_FOUND",
+              message: "Book is invalid",
+            },
+          ],
+        }),
+      ),
+    );
+    expect(await settle(fetchBestEditionId(40376072))).toBeNull();
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => Response.json({ errors: [{ message: "boom" }] })),
