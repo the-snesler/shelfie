@@ -37,6 +37,18 @@ export interface LogPopoverState {
   getFloatingProps: UseInteractionsReturn["getFloatingProps"];
 }
 
+export interface LogPopoverOptions {
+  /** The trigger element, for callers that capture it on click instead of
+   *  attaching `refs.setReference`. That ref callback sets state, so every
+   *  mounted trigger renders twice; on a long shelf the second render costs
+   *  as much as the first. */
+  reference?: Element | null;
+  /** Controlled open state, for a caller that mounts the popover lazily
+   *  and needs to keep `open` above it. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
 /**
  * Floating-ui wiring shared by every trigger that opens a `LogPopover`
  * (the Detail page's split status button, a library card's `+` button, …).
@@ -45,13 +57,20 @@ export interface LogPopoverState {
  * trigger — and passes the whole returned object straight through to
  * `<LogPopover popover={...} />`, which renders the anchored panel.
  */
-export function useLogPopover(): LogPopoverState {
-  const [isOpen, setIsOpen] = useState(false);
+export function useLogPopover({
+  reference,
+  open: controlledOpen,
+  onOpenChange,
+}: LogPopoverOptions = {}): LogPopoverState {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isOpen = controlledOpen ?? uncontrolledOpen;
+  const setIsOpen = onOpenChange ?? setUncontrolledOpen;
   const arrowRef = useRef<SVGSVGElement>(null);
 
   const { refs, floatingStyles, context, middlewareData } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
+    elements: { reference },
     placement: "bottom-start",
     middleware: [
       offset(10),

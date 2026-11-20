@@ -43,6 +43,16 @@ function resetSnapshotFor(db: ShelfieDatabase): void {
   cachedTvCatalogs = new Map();
 }
 
+function sameDocs<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a.length === b.length && a.every((doc, index) => doc === b[index]);
+}
+
+/** Cards arrive as RxDocuments, whose `toJSON()` (which `JSON.stringify`
+ *  calls) leaves out revision and write-time metadata. */
+function sameCard(a: CardMeta | undefined, b: CardMeta): boolean {
+  return a === b || JSON.stringify(a) === JSON.stringify(b);
+}
+
 /** Replaces every entry under `prefix` (a media type's `"<type>:"` id
  *  namespace) with a fresh snapshot from that type's collection, leaving
  *  the other three media types' entries untouched. */
@@ -51,6 +61,17 @@ function mergeCards(
   prefix: string,
   found: readonly CardMeta[],
 ): Map<string, CardMeta> {
+  // Keep the old map when nothing changed, so the shelf skips a whole
+  // re-render. The refresh on mount re-upserts every card, which gives RxDB
+  // new document instances even for identical data, so compare contents.
+  let previousCount = 0;
+  for (const key of prev.keys()) if (key.startsWith(prefix)) previousCount++;
+  if (
+    previousCount === found.length &&
+    found.every((doc) => sameCard(prev.get(doc.id), doc))
+  ) {
+    return prev;
+  }
   const next = new Map(prev);
   for (const key of next.keys()) {
     if (key.startsWith(prefix)) next.delete(key);
@@ -76,6 +97,11 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
     const sub = db.library_items
       .find({ selector: { status: { $in: [...NON_FINISHED_STATUSES] } } })
       .$.subscribe((found) => {
+        // The first emission after a remount usually repeats the cached
+        // snapshot (RxDB reuses unchanged document instances). Skipping it
+        // avoids re-rendering every card while the view transition back to
+        // the library is still animating.
+        if (sameDocs(cachedItems, found)) return;
         cachedItems = [...found];
         setItems(cachedItems);
       });
@@ -93,7 +119,9 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
         db,
         idsKey ? idsKey.split(",") : [],
         (prefix, found) => {
-          cachedCards = mergeCards(cachedCards, prefix, found);
+          const next = mergeCards(cachedCards, prefix, found);
+          if (next === cachedCards) return;
+          cachedCards = next;
           setCards(cachedCards);
         },
       ),
@@ -128,10 +156,12 @@ export function useLibraryData(db: ShelfieDatabase): LibraryData {
     // The view-transition cache should not retain catalogs for shows that
     // left this shelf, even after many detail-page visits.
     const referenced = new Set(inProgressTvIds.map((id) => `tv:${id}`));
-    cachedTvCatalogs = new Map(
-      [...cachedTvCatalogs].filter(([id]) => referenced.has(id)),
-    );
-    setTvCatalogs(cachedTvCatalogs);
+    if ([...cachedTvCatalogs.keys()].some((id) => !referenced.has(id))) {
+      cachedTvCatalogs = new Map(
+        [...cachedTvCatalogs].filter(([id]) => referenced.has(id)),
+      );
+      setTvCatalogs(cachedTvCatalogs);
+    }
     for (const id of inProgressTvIds) {
       if (cachedTvCatalogs.has(`tv:${id}`)) continue;
       void authFetch(`/api/tv/by-id/${encodeURIComponent(id)}`)
