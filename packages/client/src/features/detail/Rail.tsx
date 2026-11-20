@@ -14,15 +14,12 @@ import { tmdbImageUrl } from "../../images";
 
 /**
  * A titled, horizontally scrolling strip of cards — the detail pages' unit
- * for cast, episodes, videos and screenshots. Scrolls natively (touch,
- * trackpad, shift+wheel); on pointer devices, edge buttons page it by most
- * of its width and hide when there is nothing further that way.
+ * for cast, episodes, videos and screenshots.
  */
 export function Rail({
   title,
   count,
   actions,
-  scrollerRef,
   children,
 }: {
   title: string;
@@ -30,6 +27,49 @@ export function Rail({
   count?: ReactNode;
   /** Controls right-aligned in the header row. */
   actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <RailHeader title={title} count={count} actions={actions} />
+      <RailScroller>{children}</RailScroller>
+    </section>
+  );
+}
+
+export function RailHeader({
+  title,
+  count,
+  actions,
+}: {
+  title: string;
+  count?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-2">
+      <h3 className="font-display text-lg font-medium text-ink">{title}</h3>
+      {count != null && (
+        <span className="text-sm text-faint tabular-nums">{count}</span>
+      )}
+      {actions && (
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {actions}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The scrolling part of a rail. Scrolls natively (touch, trackpad,
+ * shift+wheel); on pointer devices, edge buttons page it by most of its
+ * width and hide when there is nothing further that way.
+ */
+export function RailScroller({
+  scrollerRef,
+  children,
+}: {
   /** Exposes the scroll container (e.g. to scroll a card into view). */
   scrollerRef?: (el: HTMLDivElement | null) => void;
   children: ReactNode;
@@ -69,33 +109,20 @@ export function Rail({
   };
 
   return (
-    <section className="flex min-w-0 flex-col gap-3">
-      <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-2">
-        <h3 className="font-display text-lg font-medium text-ink">{title}</h3>
-        {count != null && (
-          <span className="text-sm text-faint tabular-nums">{count}</span>
-        )}
-        {actions && (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {actions}
-          </div>
-        )}
+    <div className="group/rail relative">
+      <div
+        ref={(el) => {
+          ref.current = el;
+          scrollerRef?.(el);
+        }}
+        onScroll={update}
+        className="-mx-1 flex snap-x scroll-px-1 gap-3 overflow-x-auto px-1 pt-1 pb-3 [scrollbar-width:thin]"
+      >
+        {children}
       </div>
-      <div className="group/rail relative">
-        <div
-          ref={(el) => {
-            ref.current = el;
-            scrollerRef?.(el);
-          }}
-          onScroll={update}
-          className="-mx-1 flex snap-x scroll-px-1 gap-3 overflow-x-auto px-1 pt-1 pb-3 [scrollbar-width:thin]"
-        >
-          {children}
-        </div>
-        {!edges.start && <RailButton side="start" onClick={() => page(-1)} />}
-        {!edges.end && <RailButton side="end" onClick={() => page(1)} />}
-      </div>
-    </section>
+      {!edges.start && <RailButton side="start" onClick={() => page(-1)} />}
+      {!edges.end && <RailButton side="end" onClick={() => page(1)} />}
+    </div>
   );
 }
 
