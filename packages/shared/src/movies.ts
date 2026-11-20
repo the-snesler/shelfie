@@ -24,6 +24,9 @@ export interface MediaVideo {
 
 /** One cast credit, movie or TV. */
 export interface CastMember {
+  /** TMDB person id (drives /people/<id>); null on details cached before
+   *  cast ids were recorded. */
+  id: number | null;
   name: string;
   character: string | null;
   profilePath: string | null;

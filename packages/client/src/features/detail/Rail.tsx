@@ -10,6 +10,7 @@ import IconChevronLeft from "~icons/tabler/chevron-left";
 import IconChevronRight from "~icons/tabler/chevron-right";
 import IconPlayerPlayFilled from "~icons/tabler/player-play-filled";
 import IconUser from "~icons/tabler/user";
+import { Link } from "react-router";
 import { tmdbImageUrl } from "../../images";
 
 /**
@@ -148,12 +149,12 @@ function RailButton({
   );
 }
 
-/** One cast credit: a 2:3 headshot (initials-free silhouette fallback),
- *  the actor's name and their role. */
+/** One cast credit: a 2:3 headshot (silhouette fallback), the actor's
+ *  name and their role, linking to the person page when TMDB gave an id. */
 export function CastCard({ member }: { member: CastMember }) {
-  return (
-    <div className="flex w-24 shrink-0 snap-start flex-col gap-1.5">
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-md bg-well ring-1 ring-divider">
+  const body = (
+    <>
+      <div className="aspect-[2/3] w-full overflow-hidden rounded-md bg-well ring-1 ring-divider group-hover:ring-accent">
         {member.profilePath ? (
           <img
             loading="lazy"
@@ -168,7 +169,10 @@ export function CastCard({ member }: { member: CastMember }) {
         )}
       </div>
       <div className="min-w-0 text-xs leading-snug">
-        <p className="truncate font-medium text-ink" title={member.name}>
+        <p
+          className="truncate font-medium text-ink group-hover:text-accent"
+          title={member.name}
+        >
           {member.name}
         </p>
         {member.character && (
@@ -177,7 +181,15 @@ export function CastCard({ member }: { member: CastMember }) {
           </p>
         )}
       </div>
-    </div>
+    </>
+  );
+  const className = "group flex w-24 shrink-0 snap-start flex-col gap-1.5";
+  return member.id != null ? (
+    <Link to={`/people/${member.id}`} className={className}>
+      {body}
+    </Link>
+  ) : (
+    <div className={className}>{body}</div>
   );
 }
 

@@ -563,6 +563,30 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 23,
+    name: "person-metadata",
+    async up(db) {
+      await db.schema
+        .createTable("person_metadata")
+        .addColumn("tmdb_id", "integer", (c) => c.primaryKey())
+        .addColumn("name", "text", (c) => c.notNull())
+        .addColumn("detail", "text", (c) => c.notNull())
+        .addColumn("fetched_at", "integer", (c) => c.notNull())
+        .execute();
+      // Cached cast lacks TMDB person ids, which the cast rail now links
+      // with: expire movie/TV detail so it refetches on next view. Card
+      // columns (and their freshness) stay put.
+      await db
+        .updateTable("movie_metadata")
+        .set({ detail_fetched_at: null })
+        .execute();
+      await db
+        .updateTable("tv_metadata")
+        .set({ detail_fetched_at: null })
+        .execute();
+    },
+  },
 ];
 
 /**

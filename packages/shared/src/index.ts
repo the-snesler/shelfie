@@ -70,6 +70,7 @@ export type {
   BookDetail,
   BookSeries,
 } from "./books.js";
+export type { PersonCredit, PersonDetail } from "./people.js";
 export { DEFAULT_LIBRARY_THEME, LIBRARY_THEMES } from "./settings.js";
 export type {
   LibraryTheme,

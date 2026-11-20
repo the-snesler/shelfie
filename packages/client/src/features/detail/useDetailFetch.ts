@@ -15,11 +15,12 @@ export interface UseDetailFetchOptions<TMeta> {
    *  this string changes. */
   url: string;
   /** Derives the `library_items` primary key (e.g. `movie:42`) from the
-   *  loaded metadata, used to key the RxDB subscription below. */
-  libraryItemId: (meta: TMeta) => string;
+   *  loaded metadata, used to key the RxDB subscription below. Omit for
+   *  pages that aren't library items (people); `item` then stays undefined. */
+  libraryItemId?: (meta: TMeta) => string;
   /** Card-tier upsert for the loaded metadata, fired once on success so the
    *  library/search caches stay warm without waiting for a resync. */
-  upsertCards: (db: ShelfieDatabase, cards: TMeta[]) => unknown;
+  upsertCards?: (db: ShelfieDatabase, cards: TMeta[]) => unknown;
 }
 
 export interface UseDetailFetchResult<TMeta> {
@@ -62,7 +63,7 @@ export function useDetailFetch<TMeta>({
         if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
         const meta = (await res.json()) as TMeta;
         setMetaState({ status: "loaded", meta });
-        void upsertCards(db, [meta]);
+        if (upsertCards) void upsertCards(db, [meta]);
       })
       .catch(() => {
         if (active) setMetaState({ status: "error" });
@@ -73,7 +74,9 @@ export function useDetailFetch<TMeta>({
   }, [db, url, upsertCards]);
 
   const itemId =
-    metaState.status === "loaded" ? libraryItemId(metaState.meta) : null;
+    metaState.status === "loaded" && libraryItemId
+      ? libraryItemId(metaState.meta)
+      : null;
   useEffect(() => {
     if (itemId === null) {
       setItem(undefined);

@@ -8,7 +8,7 @@ reads and the Settings page; they are plaintext in SQLite, so protect backups.
 
 ## Browser access and deployment
 
-Search, card lookups, and media detail pages are public. Library documents,
+Search, card lookups, media detail pages and actor pages are public. Library documents,
 TV schedules for your collection, sync, and settings require login. Guests get
 their own shelf in a separate, never-replicated browser database
 (`shelfiedb-guest`): they can log titles and use Home, lists, the logbook,
