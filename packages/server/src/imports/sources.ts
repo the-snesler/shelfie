@@ -126,7 +126,11 @@ async function sourceError(
   );
 }
 
-/** Redirects are rejected so a source cannot forward a saved credential elsewhere. */
+/**
+ * Redirects are never followed, so a source cannot forward a saved
+ * credential elsewhere. The error names the target (scheme, host and path
+ * only) because the usual cause is an http:// URL for an https:// server.
+ */
 export async function sourceJson(
   url: string | URL,
   init: RequestInit = {},
@@ -139,7 +143,7 @@ export async function sourceJson(
       ...init,
       headers,
       signal: AbortSignal.timeout(30_000),
-      redirect: "error",
+      redirect: "manual",
     });
   } catch (error) {
     const cause = error instanceof Error ? error.cause : undefined;
@@ -152,11 +156,26 @@ export async function sourceJson(
             ? error.message
             : String(error);
     console.warn(
-      `[imports] ${describeUrl(url)} -> request did not complete: ${reason} (redirects are refused)`,
+      `[imports] ${describeUrl(url)} -> request did not complete: ${reason}`,
     );
     throw new Error(
       "Source request could not complete. Check the server's network access and the source URL; server logs have details.",
       { cause: error },
+    );
+  }
+  if (response.status >= 300 && response.status < 400) {
+    let target = "another address";
+    try {
+      const next = new URL(response.headers.get("location") ?? "", url);
+      target = `${next.protocol}//${next.host}${next.pathname}`;
+    } catch {
+      // A missing or malformed Location still gets the generic message.
+    }
+    console.warn(
+      `[imports] ${describeUrl(url)} -> ${response.status} redirect to ${target} (not followed)`,
+    );
+    throw new Error(
+      `Source redirected to ${target}. Use that address in the connection settings.`,
     );
   }
   if (!response.ok) throw await sourceError(url, response);

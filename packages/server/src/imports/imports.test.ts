@@ -147,6 +147,28 @@ describe("source adapters", () => {
     );
     expect(cancelled).toBe(true);
   });
+  it("refuses redirects and names where the source pointed", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetch = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 308,
+          headers: {
+            location: "https://bookorbit.example/api/v1/auth/me?token=secret",
+          },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      sourceJson("http://bookorbit.example/api/v1/auth/me"),
+    ).rejects.toThrow(
+      "Source redirected to https://bookorbit.example/api/v1/auth/me. Use that address",
+    );
+    const init = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.redirect).toBe("manual");
+    expect(warn.mock.calls.flat().join("\n")).not.toContain("secret");
+    warn.mockRestore();
+  });
   it("sends a User-Agent but keeps a caller-provided one", async () => {
     const fetch = vi.fn(async () => Response.json([]));
     vi.stubGlobal("fetch", fetch);
