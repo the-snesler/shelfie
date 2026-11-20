@@ -77,7 +77,7 @@ describe("tv-first-air-date migration", () => {
 
 describe("person-metadata migration", () => {
   it("creates the cache and expires only the detail tier", async () => {
-    await runMigrations(database, 22);
+    await runMigrations(database, 23);
     await sql`INSERT INTO movie_metadata (tmdb_id, name, fetched_at, detail_fetched_at) VALUES (1, 'Movie', 500, 400)`.execute(
       database,
     );
@@ -85,7 +85,7 @@ describe("person-metadata migration", () => {
       database,
     );
 
-    await runMigrations(database, 23);
+    await runMigrations(database, 24);
 
     for (const table of ["movie_metadata", "tv_metadata"] as const) {
       expect(
