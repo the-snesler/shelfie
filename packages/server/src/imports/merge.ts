@@ -19,16 +19,6 @@ const PROGRESS_ADVANCES: Partial<Record<ItemStatus, ItemStatus[]>> = {
   paused: ["finished"],
 };
 
-function withFallbackDate(
-  completedDates: string[],
-  status: ItemStatus,
-  fallback: string | undefined,
-): string[] {
-  return fallback && status === "finished" && completedDates.length === 0
-    ? [fallback]
-    : completedDates;
-}
-
 /** Periodic imports are additive: preserve deliberate local edits and tombstones. */
 export function mergeImportedItem(
   incoming: ImportedItem,
@@ -48,11 +38,7 @@ export function mergeImportedItem(
       platforms: incoming.platforms ?? [],
       rating: incoming.rating ?? null,
       excitement: null,
-      completedDates: withFallbackDate(
-        incoming.completedDates ?? [],
-        incoming.status,
-        incoming.fallbackCompletedDate,
-      ),
+      completedDates: incoming.completedDates ?? [],
       notes: "",
       watchedEpisodes: incoming.watchedEpisodes ?? {},
       activity: [],
@@ -116,11 +102,6 @@ export function mergeImportedItem(
       incoming.progressValue,
     );
   }
-  merged.completedDates = withFallbackDate(
-    merged.completedDates,
-    merged.status,
-    incoming.fallbackCompletedDate,
-  );
   if (canonicalDocKey(merged) === canonicalDocKey(current)) return null;
   return libraryItemDocSchema.parse({
     ...merged,

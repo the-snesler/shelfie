@@ -409,9 +409,14 @@ async function fetchTrakt(
   };
 }
 
-/** Accepts the KOReader sync URL BookOrbit shows as well as the server root. */
+/**
+ * The server root, also accepting a pasted API, KOReader sync or docs URL
+ * (`…/api/v1`, `…/api/v1/koreader`, `…/api/docs`).
+ */
 export function bookOrbitRoot(baseUrl: string): string {
-  return baseUrl.replace(/\/+$/, "").replace(/\/api\/v1\/koreader$/, "");
+  return baseUrl
+    .replace(/\/+$/, "")
+    .replace(/\/api(?:\/v1(?:\/koreader)?|\/docs(?:-json)?)?$/, "");
 }
 
 const BOOKORBIT_STATUSES: Record<string, ItemStatus> = {
@@ -424,13 +429,72 @@ const BOOKORBIT_STATUSES: Record<string, ItemStatus> = {
   skimmed: "finished",
   abandoned: "dropped",
 };
+/** Read outcomes that count as finishing the book. */
+const BOOKORBIT_FINISHED_OUTCOMES = new Set(["completed", "skimmed"]);
+/** BookOrbit's maximum page size for both the book query and reading history. */
+const BOOKORBIT_PAGE_SIZE = 200;
+const BOOKORBIT_MAX_PAGES = 10_000 / BOOKORBIT_PAGE_SIZE;
 /** Consecutive Goodreads failures before a run stops matching new books. */
 const MAX_LOOKUP_FAILURES = 3;
 
+/** BookOrbit sometimes stores a Goodreads URL slug ("68494.Perdido_Street_Station"). */
+function goodreadsLegacyId(value: unknown): number | null {
+  const id = numericId(/^\d+/.exec(String(value ?? ""))?.[0]);
+  return id ? Number(id) : null;
+}
+
 /**
- * Reads BookOrbit through the catalog its KOReader plugin uses. KOReader sync
- * credentials do not expire, unlike web-session bearer tokens. The catalog has
- * no Goodreads IDs, so books are matched through `deps.books`.
+ * Finish days per BookOrbit book from its reading history. Reads without
+ * any reading session were marked read by hand, often in bulk when a
+ * library was set up, so their day records the marking rather than the
+ * finish and is left out.
+ */
+async function bookOrbitFinishDays(
+  api: string,
+  headers: Record<string, string>,
+  deps: SourceDependencies,
+): Promise<Map<string, string[]>> {
+  const days = new Map<string, string[]>();
+  for (let page = 0; ; page++) {
+    if (page === BOOKORBIT_MAX_PAGES)
+      throw new Error("BookOrbit reading history exceeds 10,000 reads.");
+    const { data } = await deps.request(
+      `${api}/reading-history?offset=${page * BOOKORBIT_PAGE_SIZE}&limit=${BOOKORBIT_PAGE_SIZE}`,
+      { headers },
+    );
+    const response = object(data);
+    if (!Array.isArray(response.items))
+      throw new Error("BookOrbit returned an invalid reading history page.");
+    for (const raw of response.items) {
+      const read = object(raw);
+      const bookId = numericId(read.bookId);
+      const ended = day(read.endedOn);
+      if (
+        !bookId ||
+        !ended ||
+        !BOOKORBIT_FINISHED_OUTCOMES.has(String(read.outcome)) ||
+        !(Number(read.sessions) > 0)
+      )
+        continue;
+      // Two reads can end the same day (a reread finished on another device).
+      const known = days.get(bookId) ?? [];
+      if (!known.includes(ended)) days.set(bookId, [...known, ended]);
+    }
+    if (
+      response.items.length < BOOKORBIT_PAGE_SIZE ||
+      (typeof response.total === "number" &&
+        (page + 1) * BOOKORBIT_PAGE_SIZE >= response.total)
+    )
+      return days;
+  }
+}
+
+/**
+ * Reads BookOrbit through its official API with a user API key: the book
+ * query for status, progress and rating, and reading history for finish
+ * days. Books carry no Goodreads id in the list, so new books are matched
+ * through `deps.books`, loading a book's detail (its Goodreads id and ISBN)
+ * only when it has no saved match.
  */
 async function fetchBookOrbit(
   config: SourceConfig,
@@ -438,22 +502,32 @@ async function fetchBookOrbit(
 ): Promise<SourceData> {
   const matcher = deps.books;
   if (!matcher) throw new Error("BookOrbit import needs a Goodreads matcher.");
-  const catalog = `${bookOrbitRoot(config.baseUrl)}/api/v1/koreader/plugin/catalog`;
+  const api = `${bookOrbitRoot(config.baseUrl)}/api/v1`;
   const headers = {
-    "x-auth-user": config.account,
-    "x-auth-key": config.apiKey,
+    authorization: `Bearer ${config.apiKey}`,
     accept: "application/json",
   };
+  // Checks the key before paging the library and names the account.
+  const me = object((await deps.request(`${api}/auth/me`, { headers })).data);
+  const account = typeof me.username === "string" ? me.username : "";
+  const finishDays = await bookOrbitFinishDays(api, headers, deps);
   const items: ImportedItem[] = [];
+  const seen = new Set<string>();
   let skipped = 0;
   let unmatched = 0;
   let pending = 0;
   let failures = 0;
-  for (let page = 1; page <= 100; page++) {
-    const { data } = await deps.request(
-      `${catalog}/books?page=${page}&size=100&sort=title&order=asc`,
-      { headers },
-    );
+  for (let page = 0; ; page++) {
+    if (page === BOOKORBIT_MAX_PAGES)
+      throw new Error("BookOrbit import exceeds the 10,000-item limit.");
+    const { data } = await deps.request(`${api}/books/query`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      // Undocumented: BookOrbit ignores top-level page/size keys.
+      body: JSON.stringify({
+        pagination: { page, size: BOOKORBIT_PAGE_SIZE },
+      }),
+    });
     const response = object(data);
     if (!Array.isArray(response.items))
       throw new Error("BookOrbit returned an invalid books page.");
@@ -465,20 +539,15 @@ async function fetchBookOrbit(
         skipped++;
         continue;
       }
+      // Pages are ordered by title, so an edit mid-run can repeat a book.
+      if (seen.has(externalId)) continue;
+      seen.add(externalId);
       const authors = Array.isArray(card.authors)
         ? card.authors.filter(
             (name): name is string => typeof name === "string",
           )
         : [];
       const book = { externalId, title, authors };
-      let detail: JsonObject | undefined;
-      const loadDetail = async (): Promise<JsonObject> => {
-        detail ??= object(
-          (await deps.request(`${catalog}/books/${externalId}`, { headers }))
-            .data,
-        );
-        return detail;
-      };
       let match: BookMatch | undefined;
       if (failures >= MAX_LOOKUP_FAILURES) {
         // Matched books still import while Goodreads is unavailable.
@@ -486,10 +555,15 @@ async function fetchBookOrbit(
       } else {
         try {
           match = await matcher.match(book, async () => {
-            const found = await loadDetail();
-            const isbn = found.isbn13 ?? found.isbn10;
+            const detail = object(
+              (await deps.request(`${api}/books/${externalId}`, { headers }))
+                .data,
+            );
+            const isbn = detail.isbn13 ?? detail.isbn10 ?? card.isbn13;
             return {
-              goodreadsId: null,
+              goodreadsId: goodreadsLegacyId(
+                object(detail.providerIds).goodreads,
+              ),
               isbn: typeof isbn === "string" ? isbn : null,
             };
           });
@@ -509,39 +583,33 @@ async function fetchBookOrbit(
         else unmatched++;
         continue;
       }
-      // 0% is BookOrbit's default for books never opened, not logged progress.
+      // Books never opened have no progress (null) rather than 0%.
       const rounded =
-        typeof card.progressPercentage === "number"
-          ? Math.min(100, Math.round(card.progressPercentage))
+        typeof card.readingProgress === "number"
+          ? Math.min(100, Math.round(card.readingProgress))
           : 0;
       const progress = rounded > 0 ? rounded : null;
+      const readStatus = object(card.readStatus).status;
       const status =
-        BOOKORBIT_STATUSES[String(card.readStatus)] ??
+        BOOKORBIT_STATUSES[String(readStatus)] ??
         (progress ? "active" : "backlogged");
-      const lastRead = day(card.lastReadAt);
-      // Personal ratings are only on the detail response; unread books are
-      // left out so a routine run does not fetch the whole catalog.
-      const tracked = card.readStatus != null && card.readStatus !== "unread";
+      const completedDates = finishDays.get(externalId);
       items.push({
         mediaType: "book",
         sourceId: String(goodreadsId),
         status,
-        rating: tracked ? rating((await loadDetail()).rating) : undefined,
+        rating: rating(card.rating),
         progressFormat: "percent",
         progressValue: progress,
-        ...(status === "finished" && lastRead
-          ? { fallbackCompletedDate: lastRead }
-          : {}),
+        ...(completedDates ? { completedDates } : {}),
       });
     }
     if (
-      response.items.length < 100 ||
-      response.hasNext === false ||
-      (typeof response.total === "number" && page * 100 >= response.total)
+      response.items.length < BOOKORBIT_PAGE_SIZE ||
+      (typeof response.total === "number" &&
+        (page + 1) * BOOKORBIT_PAGE_SIZE >= response.total)
     )
       break;
-    if (page === 100)
-      throw new Error("BookOrbit import exceeds the 10,000-item limit.");
   }
   const warnings: string[] = [];
   if (unmatched)
@@ -550,7 +618,12 @@ async function fetchBookOrbit(
     );
   if (pending)
     warnings.push(
-      `${pending} BookOrbit books could not be matched because Goodreads search failed. They will be retried on the next run.`,
+      `${pending} BookOrbit books could not be matched because Goodreads lookups failed. They will be retried on the next run.`,
     );
-  return { items, skipped: skipped + unmatched + pending, warnings };
+  return {
+    items,
+    skipped: skipped + unmatched + pending,
+    warnings,
+    ...(account ? { account } : {}),
+  };
 }

@@ -8,7 +8,6 @@ import {
   type ImportConnectionInput,
   type ReplicatedLibraryItem,
 } from "@shelfie/shared";
-import { createHash } from "node:crypto";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import type { Database, ImportConnectionsTable } from "../db/types.js";
@@ -47,13 +46,6 @@ const defaultTvProgress: TvProgressHook = (database, itemIds) =>
     itemIds,
     refreshLimit: IMPORT_TV_REFRESH_LIMIT,
   });
-
-/** KOReader sends md5(password) as its key; BookOrbit accepts either form. */
-function koreaderKey(value: string): string {
-  return /^[0-9a-f]{32}$/i.test(value)
-    ? value.toLowerCase()
-    : createHash("md5").update(value).digest("hex");
-}
 
 const inputSchema = z
   .object({
@@ -225,15 +217,19 @@ export class ImportService {
         url.password ||
         url.search ||
         url.hash ||
-        !row.account ||
         !row.api_key
       )
-        throw new Error(
-          "BookOrbit needs an HTTP(S) server URL and KOReader sync username and password.",
-        );
+        throw new Error("BookOrbit needs an HTTP(S) server URL and API key.");
       row.base_url = bookOrbitRoot(row.base_url);
-      if (parsed.apiKey) row.api_key = koreaderKey(parsed.apiKey);
-      // Bearer tokens from the earlier BookOrbit adapter are no longer used.
+      // Pasting the whole header value is a common slip.
+      if (parsed.apiKey) row.api_key = parsed.apiKey.replace(/^Bearer\s+/i, "");
+      // The account is the key's user, reported by the next import; keep it
+      // only while the server and key are unchanged.
+      row.account =
+        parsed.apiKey || row.base_url !== current.base_url
+          ? ""
+          : current.account;
+      // Bearer tokens from earlier BookOrbit adapters are no longer used.
       row.access_token = "";
     }
     await this.database
@@ -345,6 +341,7 @@ export class ImportService {
           running: 0,
           last_result: JSON.stringify(result),
           last_error: null,
+          ...(data.account ? { account: data.account.slice(0, 200) } : {}),
         })
         .where("source", "=", source)
         .execute();

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import BetterSqlite3 from "better-sqlite3";
 import { Hono } from "hono";
 import { Kysely, SqliteDialect } from "kysely";
@@ -361,51 +360,96 @@ describe("GoodreadsBookMatcher", () => {
   });
 });
 
-describe("BookOrbit KOReader catalog adapter", () => {
+describe("BookOrbit API adapter", () => {
   const config = {
-    account: "reader",
+    account: "",
     baseUrl: "https://bookorbit.example",
     apiKey: FAKE_KEY,
     accessToken: "",
   };
+  /** Shaped like a `POST /api/v1/books/query` item, trimmed to what is read. */
   const card = (id: number, extra: Record<string, unknown> = {}) => ({
     id,
+    libraryId: 5,
+    status: "present",
     title: `Book ${id}`,
     authors: ["Author"],
-    progressPercentage: 0,
-    readStatus: "unread",
-    lastReadAt: null,
+    rating: null,
+    readingProgress: null,
+    readStatus: null,
+    isbn13: null,
+    ...extra,
+  });
+  const readStatus = (status: string) => ({
+    status,
+    source: "auto",
+    startedAt: "2026-10-15T00:00:00.000Z",
+    finishedAt: null,
+    updatedAt: "2026-10-30T22:04:55.856Z",
+  });
+  /** Shaped like a `GET /api/v1/reading-history` item. */
+  const read = (bookId: number, extra: Record<string, unknown> = {}) => ({
+    id: bookId * 10,
+    bookId,
+    startedOn: "2026-11-06",
+    endedOn: "2026-11-11",
+    outcome: "completed",
+    readNumber: 1,
+    sessions: 17,
+    sources: ["kobo"],
+    rating: null,
     ...extra,
   });
 
   function setup(
     pages: unknown[][],
     matches: Record<string, BookMatch | Error>,
-    details: Record<string, unknown> = {},
+    {
+      details = {},
+      history = [],
+    }: { details?: Record<string, unknown>; history?: unknown[] } = {},
   ) {
     const request: SourceDependencies["request"] = vi.fn(async (url, init) => {
       const headers = new Headers(init?.headers);
-      expect(headers.get("x-auth-user")).toBe("reader");
-      expect(headers.get("x-auth-key")).toBe(FAKE_KEY);
-      expect(headers.get("authorization")).toBeNull();
+      expect(headers.get("authorization")).toBe(`Bearer ${FAKE_KEY}`);
+      expect(headers.get("x-auth-key")).toBeNull();
       const path = new URL(String(url));
-      expect(path.pathname.startsWith("/api/v1/koreader/plugin/catalog/")).toBe(
-        true,
-      );
-      const page = path.searchParams.get("page");
-      if (page)
+      if (path.pathname === "/api/v1/auth/me")
+        return response({ id: 1, username: "reader" });
+      if (path.pathname === "/api/v1/reading-history") {
+        const offset = Number(path.searchParams.get("offset"));
+        const limit = Number(path.searchParams.get("limit"));
+        expect(limit).toBe(200);
         return response({
-          items: pages[Number(page) - 1] ?? [],
-          total: pages.flat().length,
-          hasNext: Number(page) < pages.length,
+          offset,
+          limit,
+          total: history.length,
+          items: history.slice(offset, offset + limit),
         });
-      return response(details[path.pathname.split("/").pop()!] ?? {});
+      }
+      if (path.pathname === "/api/v1/books/query") {
+        expect(init?.method).toBe("POST");
+        expect(headers.get("content-type")).toBe("application/json");
+        const { pagination } = JSON.parse(String(init?.body));
+        expect(pagination.size).toBe(200);
+        return response({
+          items: pages[pagination.page] ?? [],
+          total: pages.flat().length,
+          page: pagination.page,
+          size: pagination.size,
+        });
+      }
+      const id = /^\/api\/v1\/books\/(\d+)$/.exec(path.pathname)?.[1];
+      if (id) return response(details[id] ?? {});
+      throw new Error(`unexpected request ${path.pathname}`);
     });
+    const hints: Record<string, unknown> = {};
     const books: BookMatcher = {
-      match: vi.fn(async (book, isbn) => {
+      match: vi.fn(async (book, loadHints) => {
         const match = matches[book.externalId];
         if (match instanceof Error) throw match;
-        if (match.method === "isbn") await isbn();
+        if (match.method !== "manual")
+          hints[book.externalId] = await loadHints();
         return match;
       }),
       known: vi.fn(async (book) => {
@@ -413,37 +457,53 @@ describe("BookOrbit KOReader catalog adapter", () => {
         return match instanceof Error ? undefined : match;
       }),
     };
-    return { request, books };
+    return { request, books, hints };
   }
 
-  it("maps status, progress, ratings and last-read finish days across pages", async () => {
+  it("maps status, progress, ratings and finish days across pages", async () => {
     const pages = [
       [
         card(1, {
-          readStatus: "read",
-          progressPercentage: 100,
-          lastReadAt: "2026-11-01T15:53:57.000Z",
+          readStatus: readStatus("read"),
+          readingProgress: 100,
+          rating: 4,
         }),
-        ...Array.from({ length: 99 }, (_, i) => card(100 + i)),
+        ...Array.from({ length: 199 }, (_, i) => card(100 + i)),
       ],
-      [card(2, { readStatus: "reading", progressPercentage: 42.4 })],
+      [
+        card(2, {
+          readStatus: readStatus("reading"),
+          readingProgress: 42.4,
+        }),
+        card(3, { readStatus: readStatus("on_hold"), readingProgress: 0.13 }),
+        card(4, { readingProgress: 7 }),
+      ],
     ];
     const matches: Record<string, BookMatch> = {
-      "1": { goodreadsId: 11, method: "title" },
-      "2": { goodreadsId: 22, method: "isbn" },
+      "1": { goodreadsId: 11, method: "source" },
+      "2": { goodreadsId: 22, method: "title" },
+      "3": { goodreadsId: 33, method: "manual" },
+      "4": { goodreadsId: 44, method: "manual" },
     };
-    for (let i = 0; i < 99; i++)
-      matches[String(100 + i)] = { goodreadsId: 1000 + i, method: "title" };
+    for (let i = 0; i < 199; i++)
+      matches[String(100 + i)] = { goodreadsId: 1000 + i, method: "manual" };
     const { request, books } = setup(pages, matches, {
-      "1": { rating: 4 },
-      "2": { isbn13: "9780000000002", rating: null },
+      history: [
+        // A reread: both finishes count.
+        read(1, { endedOn: "2026-10-15", readNumber: 2 }),
+        read(1, { endedOn: "2026-10-14", sources: ["web"], sessions: 1 }),
+        read(1, { endedOn: "2026-10-14", sources: ["kobo"], readNumber: 3 }),
+        read(2, { outcome: "abandoned", endedOn: "2026-10-01" }),
+        read(3, { outcome: "skimmed", endedOn: "2026-09-01" }),
+      ],
     });
     const data = await fetchSource("bookorbit", config, {
       request,
       steamId: vi.fn(),
       books,
     });
-    expect(data.items).toHaveLength(101);
+    expect(data.account).toBe("reader");
+    expect(data.items).toHaveLength(203);
     expect(data.items[0]).toEqual({
       mediaType: "book",
       sourceId: "11",
@@ -451,33 +511,155 @@ describe("BookOrbit KOReader catalog adapter", () => {
       rating: 4,
       progressFormat: "percent",
       progressValue: 100,
-      fallbackCompletedDate: "2026-11-01",
+      completedDates: ["2026-10-15", "2026-10-14"],
     });
-    expect(data.items[1]).toMatchObject({
+    expect(data.items[1]).toEqual({
+      mediaType: "book",
       sourceId: "1000",
       status: "backlogged",
-      progressValue: null,
       rating: undefined,
+      progressFormat: "percent",
+      progressValue: null,
     });
-    expect(data.items[100]).toMatchObject({
+    // An abandoned past attempt neither drops the book nor dates it.
+    expect(data.items[200]).toEqual({
+      mediaType: "book",
       sourceId: "22",
       status: "active",
+      rating: undefined,
+      progressFormat: "percent",
       progressValue: 42,
     });
-    // One detail request per tracked book, shared by ISBN and rating.
-    const detailCalls = vi
-      .mocked(request)
-      .mock.calls.filter(([url]) => /\/books\/\d+$/.test(String(url)));
-    expect(detailCalls.map(([url]) => String(url))).toEqual([
-      "https://bookorbit.example/api/v1/koreader/plugin/catalog/books/1",
-      "https://bookorbit.example/api/v1/koreader/plugin/catalog/books/2",
+    // Status comes from the book, not from past reads; under 0.5% is none.
+    expect(data.items[201]).toMatchObject({
+      sourceId: "33",
+      status: "paused",
+      progressValue: null,
+      completedDates: ["2026-09-01"],
+    });
+    // Unread with progress reads as active.
+    expect(data.items[202]).toMatchObject({ sourceId: "44", status: "active" });
+    expect(
+      vi
+        .mocked(request)
+        .mock.calls.map(([url]) => new URL(String(url)).pathname)
+        .filter((path) => path !== "/api/v1/books/query"),
+    ).toEqual([
+      "/api/v1/auth/me",
+      "/api/v1/reading-history",
+      // Details only for the books matched afresh.
+      "/api/v1/books/1",
+      "/api/v1/books/2",
     ]);
   });
 
-  it("skips ignored books quietly, warns about unmatched ones, and stops searching after repeated failures", async () => {
+  it("leaves out finish days of reads marked by hand without sessions", async () => {
+    const { request, books } = setup(
+      [[card(1, { readStatus: { ...readStatus("read"), source: "manual" } })]],
+      { "1": { goodreadsId: 11, method: "manual" } },
+      {
+        history: [
+          read(1, {
+            startedOn: null,
+            endedOn: "2026-10-14",
+            sessions: 0,
+            sources: [],
+          }),
+        ],
+      },
+    );
+    const data = await fetchSource("bookorbit", config, {
+      request,
+      steamId: vi.fn(),
+      books,
+    });
+    expect(data.items).toEqual([
+      expect.objectContaining({ status: "finished" }),
+    ]);
+    expect(data.items[0].completedDates).toBeUndefined();
+  });
+
+  it("pages reading history by offset", async () => {
+    const history = Array.from({ length: 201 }, (_, i) =>
+      read(1, { id: i, endedOn: i === 200 ? "2026-11-02" : "2026-11-01" }),
+    );
+    const { request, books } = setup(
+      [[card(1, { readStatus: readStatus("read") })]],
+      { "1": { goodreadsId: 11, method: "manual" } },
+      { history },
+    );
+    const data = await fetchSource("bookorbit", config, {
+      request,
+      steamId: vi.fn(),
+      books,
+    });
+    expect(new Set(data.items[0].completedDates)).toEqual(
+      new Set(["2026-11-01", "2026-11-02"]),
+    );
+    expect(
+      vi
+        .mocked(request)
+        .mock.calls.map(([url]) => String(url))
+        .filter((url) => url.includes("reading-history")),
+    ).toEqual([
+      "https://bookorbit.example/api/v1/reading-history?offset=0&limit=200",
+      "https://bookorbit.example/api/v1/reading-history?offset=200&limit=200",
+    ]);
+  });
+
+  it("loads Goodreads id and ISBN hints from the book detail", async () => {
+    const { request, books, hints } = setup(
+      [[card(1), card(2, { isbn13: "9780000000002" }), card(3)]],
+      {
+        "1": { goodreadsId: 11, method: "source" },
+        "2": { goodreadsId: 22, method: "isbn" },
+        "3": { goodreadsId: 33, method: "title" },
+      },
+      {
+        details: {
+          "1": {
+            isbn13: "9781529052015",
+            isbn10: "1529052017",
+            providerIds: { goodreads: "63055241", hardcover: "x" },
+          },
+          // List-only ISBN, no Goodreads id.
+          "2": { isbn13: null, providerIds: { goodreads: null } },
+          // A Goodreads URL slug.
+          "3": {
+            isbn10: "0345459407",
+            providerIds: { goodreads: "68494.Perdido_Street_Station" },
+          },
+        },
+      },
+    );
+    await fetchSource("bookorbit", config, {
+      request,
+      steamId: vi.fn(),
+      books,
+    });
+    expect(hints).toEqual({
+      "1": { goodreadsId: 63055241, isbn: "9781529052015" },
+      "2": { goodreadsId: null, isbn: "9780000000002" },
+      "3": { goodreadsId: 68494, isbn: "0345459407" },
+    });
+  });
+
+  it("skips repeated books, ignored books quietly, warns about unmatched ones, and stops matching after repeated failures", async () => {
     const failure = new GoodreadsLookupError("down");
     const { request, books } = setup(
-      [[card(1), card(2), card(3), card(4), card(5), card(6), card(7)]],
+      [
+        [
+          card(1),
+          card(2),
+          card(3),
+          card(4),
+          card(5),
+          card(6),
+          card(7),
+          card(7),
+          { id: "x", title: "" },
+        ],
+      ],
       {
         "1": { goodreadsId: null, method: "ignored" },
         "2": { goodreadsId: null, method: "none" },
@@ -494,7 +676,7 @@ describe("BookOrbit KOReader catalog adapter", () => {
       books,
     });
     expect(data.items.map((item) => item.sourceId)).toEqual(["77"]);
-    expect(data.skipped).toBe(6);
+    expect(data.skipped).toBe(7);
     expect(data.warnings).toEqual([
       expect.stringContaining("1 BookOrbit books have no Goodreads match"),
       expect.stringContaining("4 BookOrbit books could not be matched"),
@@ -511,6 +693,27 @@ describe("BookOrbit KOReader catalog adapter", () => {
     await expect(
       fetchSource("bookorbit", config, { request, steamId: vi.fn(), books }),
     ).rejects.toThrow("database is locked");
+  });
+
+  it("checks the key before reading the library", async () => {
+    const request = vi.fn(async () => {
+      throw new Error("Source request failed (401).");
+    });
+    await expect(
+      fetchSource(
+        "bookorbit",
+        { ...config, baseUrl: "https://bookorbit.example/api/v1/" },
+        {
+          request,
+          steamId: vi.fn(),
+          books: { match: vi.fn(), known: vi.fn() },
+        },
+      ),
+    ).rejects.toThrow("401");
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(String((request.mock.calls[0] as unknown[])[0])).toBe(
+      "https://bookorbit.example/api/v1/auth/me",
+    );
   });
 });
 
@@ -541,22 +744,17 @@ describe("book import merge", () => {
     ).toBeNull();
     expect(
       mergeImportedItem(
-        {
-          ...base,
-          status: "finished",
-          progressValue: 100,
-          fallbackCompletedDate: "2026-11-01",
-        },
+        { ...base, status: "finished", progressValue: 100 },
         { ...reading, status: "dropped" },
         4,
       ),
-    ).toMatchObject({ status: "dropped", completedDates: [] });
+    ).toMatchObject({ status: "dropped" });
     const finished = mergeImportedItem(
       {
         ...base,
         status: "finished",
         progressValue: 100,
-        fallbackCompletedDate: "2026-11-01",
+        completedDates: ["2026-11-01"],
       },
       reading,
       5,
@@ -575,59 +773,72 @@ describe("book import merge", () => {
       ),
     ).toBeNull();
   });
-  it("backfills the last-read day only when a finished book has no dates", () => {
-    const incoming = {
-      ...base,
-      status: "finished" as const,
-      fallbackCompletedDate: "2026-11-01",
-    };
-    expect(mergeImportedItem(incoming, null, 1)?.completedDates).toEqual([
-      "2026-11-01",
-    ]);
-    const dated = {
-      ...mergeImportedItem(incoming, null, 1)!,
-      completedDates: ["2025-01-01"],
-    };
-    expect(mergeImportedItem(incoming, dated, 2)).toBeNull();
+  it("adds reread finishes to existing completion dates", () => {
+    const first = mergeImportedItem(
+      { ...base, status: "finished", completedDates: ["2025-01-01"] },
+      null,
+      1,
+    )!;
+    expect(
+      mergeImportedItem(
+        {
+          ...base,
+          status: "finished",
+          completedDates: ["2026-11-01", "2025-01-01"],
+        },
+        first,
+        2,
+      )?.completedDates,
+    ).toEqual(["2025-01-01", "2026-11-01"]);
   });
 });
 
 describe("BookOrbit connection settings and links", () => {
-  it("hashes a plain KOReader password, accepts the sync URL, and drops old tokens", async () => {
+  it("saves a URL and API key, accepting pasted API URLs and headers", async () => {
     const db = await database();
     const service = new ImportService(db, vi.fn());
-    const apiKey = async () =>
-      (
-        await db
-          .selectFrom("import_connections")
-          .select("api_key")
-          .executeTakeFirstOrThrow()
-      ).api_key;
+    const saved = () =>
+      db
+        .selectFrom("import_connections")
+        .select(["base_url", "api_key", "account", "access_token"])
+        .executeTakeFirstOrThrow();
     await service.save("bookorbit", {
       enabled: false,
       schedule: "",
-      account: "reader",
-      baseUrl: "https://bookorbit.example/api/v1/koreader/",
-      apiKey: "plain password",
+      account: "",
+      baseUrl: "https://bookorbit.example/api/v1/",
+      apiKey: `Bearer ${FAKE_KEY}`,
       accessToken: "old-bearer",
     });
-    expect(
-      await db
-        .selectFrom("import_connections")
-        .select(["base_url", "access_token"])
-        .executeTakeFirstOrThrow(),
-    ).toEqual({ base_url: "https://bookorbit.example", access_token: "" });
-    expect(await apiKey()).toBe(
-      createHash("md5").update("plain password").digest("hex"),
-    );
+    expect(await saved()).toEqual({
+      base_url: "https://bookorbit.example",
+      api_key: FAKE_KEY,
+      account: "",
+      access_token: "",
+    });
+    await db
+      .updateTable("import_connections")
+      .set({ account: "reader" })
+      .execute();
+    // Unchanged server and key keep the account the last import reported.
+    await service.save("bookorbit", {
+      enabled: true,
+      schedule: "0 3 * * *",
+      account: "",
+      baseUrl: "https://bookorbit.example/api/docs",
+    });
+    expect(await saved()).toMatchObject({
+      base_url: "https://bookorbit.example",
+      account: "reader",
+    });
     await service.save("bookorbit", {
       enabled: false,
       schedule: "",
       account: "reader",
-      baseUrl: "https://bookorbit.example",
-      apiKey: FAKE_KEY.toUpperCase(),
+      baseUrl: "https://other.example",
     });
-    expect(await apiKey()).toBe(FAKE_KEY);
+    expect(await saved()).toMatchObject({ account: "" });
+    await service.disconnect("bookorbit");
     await expect(
       service.save("bookorbit", {
         enabled: false,
@@ -635,27 +846,69 @@ describe("BookOrbit connection settings and links", () => {
         account: "",
         baseUrl: "https://bookorbit.example",
       }),
-    ).rejects.toThrow("KOReader");
+    ).rejects.toThrow("API key");
   });
 
-  it("pauses an old bearer-token connection when migrating", async () => {
-    const db = await database(15);
+  it("records the account an import reports", async () => {
+    const db = await database();
+    const service = new ImportService(db, async () => ({
+      items: [],
+      skipped: 0,
+      warnings: [],
+      account: "reader",
+    }));
+    await service.save("bookorbit", {
+      enabled: false,
+      schedule: "",
+      account: "",
+      baseUrl: "https://bookorbit.example",
+      apiKey: FAKE_KEY,
+    });
+    await service.run("bookorbit");
+    expect(
+      (await service.list()).find((row) => row.source === "bookorbit"),
+    ).toMatchObject({ account: "reader", lastError: null });
+  });
+
+  it("pauses a KOReader-credential connection and retries unmatched books when migrating", async () => {
+    const db = await database(22);
     await db
       .insertInto("import_connections")
       .values({
         source: "bookorbit",
         enabled: 1,
         schedule: "0 3 * * *",
-        account: "",
+        account: "reader",
         base_url: "https://bookorbit.example",
-        api_key: "",
-        access_token: "expired-bearer",
+        api_key: "0123456789abcdef0123456789abcdef",
+        access_token: "",
         running: 0,
         last_slot: null,
         last_run_at: null,
         last_error: null,
         last_result: null,
       })
+      .execute();
+    const link = (
+      external_id: string,
+      method: string,
+      goodreads_id: number | null,
+    ) => ({
+      source: "bookorbit",
+      external_id,
+      title: "T",
+      authors: "[]",
+      goodreads_id,
+      method,
+      checked_at: 5,
+    });
+    await db
+      .insertInto("import_book_links")
+      .values([
+        link("1", "none", null),
+        link("2", "title", 9),
+        link("3", "manual", 8),
+      ])
       .execute();
     await runMigrations(db);
     const service = new ImportService(db, vi.fn());
@@ -664,20 +917,21 @@ describe("BookOrbit connection settings and links", () => {
     ).toMatchObject({
       enabled: false,
       schedule: "",
-      hasAccessToken: false,
-      lastError: expect.stringContaining("KOReader"),
-    });
-    await service.save("bookorbit", {
-      enabled: false,
-      schedule: "",
-      account: "reader",
-      baseUrl: "https://bookorbit.example",
-      apiKey: FAKE_KEY,
+      account: "",
+      hasApiKey: false,
+      lastError: expect.stringContaining("API key"),
     });
     expect(
-      (await service.list()).find((row) => row.source === "bookorbit")
-        ?.lastError,
-    ).toBeNull();
+      await db
+        .selectFrom("import_book_links")
+        .select(["external_id", "method", "goodreads_id", "checked_at"])
+        .orderBy("external_id")
+        .execute(),
+    ).toEqual([
+      { external_id: "1", method: "none", goodreads_id: null, checked_at: 0 },
+      { external_id: "2", method: "title", goodreads_id: 9, checked_at: 5 },
+      { external_id: "3", method: "manual", goodreads_id: 8, checked_at: 5 },
+    ]);
   });
 
   it("lists, links, ignores and resets matches over HTTP; disconnect forgets them", async () => {
