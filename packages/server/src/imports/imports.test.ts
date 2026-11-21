@@ -2,16 +2,22 @@ import BetterSqlite3 from "better-sqlite3";
 import { Hono } from "hono";
 import { Kysely, SqliteDialect } from "kysely";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ReplicatedLibraryItem } from "@shelfie/shared";
+import {
+  DEFAULT_IMPORT_POLICY,
+  type ItemStatus,
+  type ReplicatedLibraryItem,
+} from "@shelfie/shared";
 import { runMigrations } from "../db/migrations.js";
 import type { Database } from "../db/types.js";
 import { initSequence } from "../db/sequence.js";
-import { libraryItemDocToRow } from "../sync/row.js";
+import { libraryItemDocToRow, libraryItemRowToDoc } from "../sync/row.js";
 import { parseCron } from "./cron.js";
 import { mergeImportedItem } from "./merge.js";
+import { entryFilter } from "./policy.js";
 import { ImportService } from "./service.js";
 import { fetchSource, sourceJson, type SourceDependencies } from "./sources.js";
 import { registerImportRoutes } from "./routes.js";
+import type { ImportedItem } from "./types.js";
 
 const databases: Kysely<Database>[] = [];
 afterEach(async () => {
@@ -557,5 +563,216 @@ describe("persisted import jobs", () => {
         accessToken: "token",
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe("import policies", () => {
+  const game = (status: "backlogged" | "paused" | "active", hours = 1) => ({
+    mediaType: "game" as const,
+    sourceId: "7",
+    title: "Game 7",
+    status,
+    progressFormat: "hours" as const,
+    progressValue: hours,
+  });
+  const everything = {
+    ...DEFAULT_IMPORT_POLICY,
+    buckets: {
+      completed: true,
+      inProgress: true,
+      backlog: true,
+      wishlist: true,
+      dropped: true,
+    },
+  };
+  async function steam(items: () => ImportedItem[]) {
+    const db = await database();
+    const service = new ImportService(db, async () => ({
+      items: items(),
+      skipped: 0,
+      warnings: [],
+    }));
+    await service.save("steam", {
+      enabled: false,
+      schedule: "",
+      account: "76561198000000000",
+      baseUrl: "",
+      apiKey: "secret",
+    });
+    const library = async () =>
+      (await db.selectFrom("library_items").selectAll().execute()).map(
+        libraryItemRowToDoc,
+      );
+    const setStatus = (status: ItemStatus) =>
+      db.updateTable("library_items").set({ status }).execute();
+    return { db, service, library, setStatus };
+  }
+
+  it("imports only finished and in-progress entries by default", async () => {
+    const { service, library } = await steam(() => [
+      game("backlogged"),
+      { ...game("active"), sourceId: "8" },
+    ]);
+    expect(await service.run("steam")).toMatchObject({
+      added: 1,
+      filtered: 1,
+    });
+    expect((await library()).map((doc) => doc.id)).toEqual(["game:8"]);
+  });
+
+  it("filters before IGDB lookups and by last activity", async () => {
+    const steamId = vi.fn(async (app: number) => app);
+    const request: SourceDependencies["request"] = vi.fn(async () =>
+      response({
+        response: {
+          games: [
+            { appid: 1, name: "Unplayed" },
+            {
+              appid: 2,
+              name: "Old",
+              playtime_forever: 60,
+              rtime_last_played: Date.UTC(2019, 0, 1) / 1000,
+            },
+            {
+              appid: 3,
+              name: "Recent",
+              playtime_forever: 60,
+              rtime_last_played: Date.UTC(2026, 9, 1) / 1000,
+            },
+          ],
+        },
+      }),
+    );
+    const data = await fetchSource(
+      "steam",
+      config,
+      { request, steamId },
+      entryFilter("steam", { ...DEFAULT_IMPORT_POLICY, since: "2020-01-01" }),
+    );
+    expect(data.items).toEqual([
+      expect.objectContaining({
+        sourceId: "3",
+        title: "Recent",
+        activityDay: "2026-10-01",
+        status: "paused",
+      }),
+    ]);
+    expect(data.filtered).toBe(2);
+    expect(steamId).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds new items and updates existing ones only when allowed", async () => {
+    let incoming = [game("active", 1)];
+    const { service, library } = await steam(() => incoming);
+    await service.save("steam", {
+      enabled: false,
+      schedule: "",
+      account: "76561198000000000",
+      baseUrl: "",
+      policy: { ...everything, addNew: false },
+    });
+    expect(await service.run("steam")).toMatchObject({ added: 0, filtered: 1 });
+    await service.save("steam", {
+      enabled: false,
+      schedule: "",
+      account: "76561198000000000",
+      baseUrl: "",
+      policy: { ...everything, updateExisting: false },
+    });
+    expect(await service.run("steam")).toMatchObject({ added: 1 });
+    incoming = [game("active", 5)];
+    expect(await service.run("steam")).toMatchObject({
+      updated: 0,
+      filtered: 1,
+    });
+    expect((await library())[0].progressValue).toBe(1);
+  });
+
+  it("moves statuses only when the source's status changes, or never", async () => {
+    let incoming = [game("paused")];
+    const { service, library, setStatus } = await steam(() => incoming);
+    await service.save("steam", {
+      enabled: false,
+      schedule: "",
+      account: "76561198000000000",
+      baseUrl: "",
+      policy: everything,
+    });
+    await service.run("steam");
+    // A status chosen by hand survives re-imports reporting the same state...
+    await setStatus("backlogged");
+    await service.run("steam");
+    expect((await library())[0].status).toBe("backlogged");
+    // ...until the source moves on.
+    incoming = [game("active", 2)];
+    await service.run("steam");
+    expect((await library())[0].status).toBe("active");
+
+    await service.save("steam", {
+      enabled: false,
+      schedule: "",
+      account: "76561198000000000",
+      baseUrl: "",
+      policy: { ...everything, updateStatuses: false },
+    });
+    await setStatus("backlogged");
+    incoming = [game("paused", 3)];
+    await service.run("steam");
+    expect((await library())[0]).toMatchObject({
+      status: "backlogged",
+      progressValue: 3,
+    });
+  });
+
+  it("follows saved defaults unless a source has its own policy", async () => {
+    const { service, library } = await steam(() => [game("backlogged")]);
+    const app = new Hono();
+    registerImportRoutes(app, service);
+    expect(await (await app.request("/api/imports/defaults")).json()).toEqual(
+      DEFAULT_IMPORT_POLICY,
+    );
+    const put = (body: unknown) =>
+      app.request("/api/imports/defaults", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    expect((await put({ ...everything, since: "2026-02-30" })).status).toBe(
+      400,
+    );
+    expect((await put(everything)).status).toBe(200);
+    expect(await service.run("steam")).toMatchObject({ added: 1 });
+    await service.save("steam", {
+      enabled: false,
+      schedule: "",
+      account: "76561198000000000",
+      baseUrl: "",
+      policy: { ...everything, updateExisting: false },
+    });
+    expect(
+      (await service.list()).find((c) => c.source === "steam")?.policy,
+    ).toMatchObject({ updateExisting: false });
+    expect(await service.run("steam")).toMatchObject({ filtered: 1 });
+    expect(await library()).toHaveLength(1);
+  });
+
+  it("previews counts and titles per bucket without writing", async () => {
+    const { db, service, library } = await steam(() => [
+      game("backlogged"),
+      { ...game("active"), sourceId: "8", title: "Game 8" },
+    ]);
+    await service.preview("steam");
+    const [, , steamRow] = await service.list();
+    expect(steamRow.lastPreview).toMatchObject({
+      added: { inProgress: { count: 1, samples: ["Game 8"] } },
+      updated: {},
+      filtered: 1,
+    });
+    expect(await library()).toEqual([]);
+    expect(await db.selectFrom("import_items").selectAll().execute()).toEqual(
+      [],
+    );
+    await service.run("steam");
+    expect((await service.list())[2].lastPreview).toBeNull();
   });
 });

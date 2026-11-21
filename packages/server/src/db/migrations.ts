@@ -629,6 +629,36 @@ const migrations: Migration[] = [
         .execute();
     },
   },
+  {
+    id: 26,
+    name: "import-policies",
+    async up(db) {
+      // NULL policy follows the import defaults, which start as the code's
+      // DEFAULT_IMPORT_POLICY (no row in import_settings). Existing
+      // connections therefore switch to the new defaults.
+      await db.schema
+        .alterTable("import_connections")
+        .addColumn("policy", "text")
+        .execute();
+      await db.schema
+        .alterTable("import_connections")
+        .addColumn("last_preview", "text")
+        .execute();
+      await db.schema
+        .createTable("import_settings")
+        .addColumn("id", "text", (c) => c.primaryKey())
+        .addColumn("policy", "text", (c) => c.notNull())
+        .execute();
+      await db.schema
+        .createTable("import_items")
+        .addColumn("source", "text", (c) => c.notNull())
+        .addColumn("item_id", "text", (c) => c.notNull())
+        .addColumn("status", "text", (c) => c.notNull())
+        .addColumn("seen_at", "integer", (c) => c.notNull())
+        .addPrimaryKeyConstraint("import_items_pk", ["source", "item_id"])
+        .execute();
+    },
+  },
 ];
 
 /**
