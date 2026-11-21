@@ -96,7 +96,7 @@ function collection(): SyncCollection<ReplicatedLibraryItem> {
 
 function doc(id = "2"): ReplicatedLibraryItem {
   return mergeImportedItem(
-    { mediaType: "movie", sourceId: id, status: "backlogged" },
+    { mediaType: "movie", sourceId: id, status: "finished" },
     null,
     100,
   )!;
@@ -122,7 +122,7 @@ describe("serialized collection writes", () => {
       items: Array<{
         mediaType: "movie";
         sourceId: string;
-        status: "backlogged";
+        status: "finished";
       }>;
       skipped: number;
       warnings: string[];
@@ -153,7 +153,7 @@ describe("serialized collection writes", () => {
       // Without the shared queue, this transaction acquires the connection
       // before the push's upsert and assigns a higher sequence first.
       source.resolve({
-        items: [{ mediaType: "movie", sourceId: "1", status: "backlogged" }],
+        items: [{ mediaType: "movie", sourceId: "1", status: "finished" }],
         skipped: 0,
         warnings: [],
       });
@@ -243,8 +243,8 @@ describe("serialized collection writes", () => {
   it("releases the write queue after an import transaction rolls back", async () => {
     const service = await importService(async () => ({
       items: [
-        { mediaType: "movie", sourceId: "1", status: "backlogged" },
-        { mediaType: "movie", sourceId: "invalid", status: "backlogged" },
+        { mediaType: "movie", sourceId: "1", status: "finished" },
+        { mediaType: "movie", sourceId: "invalid", status: "finished" },
       ],
       skipped: 0,
       warnings: [],

@@ -1,10 +1,19 @@
-import type {
-  ImportConnection,
-  ImportConnectionInput,
-  ImportSource,
+import {
+  IMPORT_BUCKETS,
+  IMPORT_SOURCE_CAPABILITIES,
+  type ImportConnection,
+  type ImportConnectionInput,
+  type ImportPolicy,
+  type ImportPreview,
+  type ImportSource,
 } from "@shelfie/shared";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { BookMatches } from "./BookMatches";
+import {
+  BUCKET_HINTS,
+  BUCKET_LABELS,
+  ImportPolicyFields,
+} from "./ImportPolicyFields";
 import { buttonClass, inputClass, request } from "./importRequest";
 
 const LABELS: Record<ImportSource, string> = {
@@ -17,7 +26,22 @@ export function ImportSources() {
   const [connections, setConnections] = useState<ImportConnection[] | null>(
     null,
   );
+  const [defaults, setDefaults] = useState<ImportPolicy | null>(null);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    request<ImportPolicy>("/api/imports/defaults").then(
+      (policy) => {
+        if (active) setDefaults(policy);
+      },
+      () => {
+        if (active) setError("Could not load import defaults.");
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     async function refresh() {
@@ -45,9 +69,9 @@ export function ImportSources() {
         Import sources
       </h2>
       <p className="mt-3 text-sm text-muted">
-        Connect a source for one-time or scheduled imports. Imports add missing
-        items and fill missing ratings, watch history, and progress. Your
-        existing statuses, notes, and removed items are preserved.
+        Connect a source for one-time or scheduled imports. Choose below what
+        imports bring in; each source can follow these defaults or use its own.
+        Your notes and removed items are always preserved.
       </p>
       <p className="mt-2 text-xs text-muted">
         Schedules use five-field cron in UTC, for example <code>0 3 * * *</code>{" "}
@@ -62,28 +86,151 @@ export function ImportSources() {
       {!connections && !error && (
         <p className="mt-3 text-sm text-muted">Loading sources…</p>
       )}
-      {connections?.map((connection) => (
-        <SourceForm
-          key={connection.source}
-          connection={connection}
-          update={(row) =>
+      {defaults && (
+        <ImportDefaults
+          defaults={defaults}
+          saved={(policy) => {
+            setDefaults(policy);
+            // The server dropped previews made under the old defaults.
             setConnections(
               (rows) =>
-                rows?.map((old) => (old.source === row.source ? row : old)) ??
-                null,
-            )
-          }
+                rows?.map((row) =>
+                  row.policy ? row : { ...row, lastPreview: null },
+                ) ?? null,
+            );
+          }}
         />
-      ))}
+      )}
+      {defaults &&
+        connections?.map((connection) => (
+          <SourceForm
+            key={connection.source}
+            defaults={defaults}
+            connection={connection}
+            update={(row) =>
+              setConnections(
+                (rows) =>
+                  rows?.map((old) => (old.source === row.source ? row : old)) ??
+                  null,
+              )
+            }
+          />
+        ))}
     </section>
+  );
+}
+
+function ImportDefaults({
+  defaults,
+  saved,
+}: {
+  defaults: ImportPolicy;
+  saved: (policy: ImportPolicy) => void;
+}) {
+  const [policy, setPolicy] = useState(defaults);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      saved(
+        await request<ImportPolicy>("/api/imports/defaults", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(policy),
+        }),
+      );
+      setMessage("Defaults saved. They apply from the next import.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not save defaults.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <details className="mt-5 rounded-lg border border-divider p-4">
+      <summary className="cursor-pointer text-sm font-medium text-ink">
+        What to import · {policySummary(defaults)}
+      </summary>
+      <p className="mt-3 text-xs text-muted">
+        Defaults for every source without its own settings.
+      </p>
+      <form className="mt-4" onSubmit={(event) => void save(event)}>
+        <fieldset disabled={busy} className="flex flex-col gap-3">
+          <ImportPolicyFields policy={policy} onChange={setPolicy} />
+          <div>
+            <button className={buttonClass} type="submit">
+              Save defaults
+            </button>
+          </div>
+        </fieldset>
+      </form>
+      <div aria-live="polite">
+        {message && <p className="mt-3 text-sm text-accent">{message}</p>}
+        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      </div>
+    </details>
+  );
+}
+
+function policySummary(policy: ImportPolicy): string {
+  const buckets = IMPORT_BUCKETS.filter((bucket) => policy.buckets[bucket]);
+  return buckets.length
+    ? buckets.map((bucket) => BUCKET_LABELS[bucket].toLowerCase()).join(", ")
+    : "nothing";
+}
+
+function PreviewSummary({ preview }: { preview: ImportPreview }) {
+  const groups = (
+    verb: string,
+    byBucket: ImportPreview["added"],
+  ): ReactNode[] =>
+    IMPORT_BUCKETS.flatMap((bucket) => {
+      const group = byBucket[bucket];
+      if (!group) return [];
+      const more = group.count - group.samples.length;
+      return [
+        <span
+          key={`${verb}-${bucket}`}
+          className="cursor-help underline decoration-dotted"
+          title={
+            group.samples.join("\n") + (more > 0 ? `\n…and ${more} more` : "")
+          }
+        >
+          {verb} {group.count} {BUCKET_LABELS[bucket].toLowerCase()}
+        </span>,
+      ];
+    });
+  const parts = [
+    ...groups("add", preview.added),
+    ...groups("update", preview.updated),
+  ];
+  return (
+    <p className="mt-2 text-sm text-muted">
+      Preview ({new Date(preview.at).toLocaleString()}):{" "}
+      {parts.length
+        ? parts.flatMap((part, index) => (index ? [" · ", part] : [part]))
+        : "no changes"}{" "}
+      · {preview.filtered} left out · {preview.skipped} unchanged or skipped
+    </p>
   );
 }
 
 function SourceForm({
   connection,
+  defaults,
   update,
 }: {
   connection: ImportConnection;
+  defaults: ImportPolicy;
   update: (row: ImportConnection) => void;
 }) {
   const [enabled, setEnabled] = useState(connection.enabled);
@@ -92,6 +239,7 @@ function SourceForm({
   const [baseUrl, setBaseUrl] = useState(connection.baseUrl);
   const [apiKey, setApiKey] = useState("");
   const [accessToken, setAccessToken] = useState("");
+  const [policy, setPolicy] = useState<ImportPolicy | null>(connection.policy);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +257,7 @@ function SourceForm({
       baseUrl,
       ...(apiKey ? { apiKey } : {}),
       ...(accessToken ? { accessToken } : {}),
+      policy,
     };
     try {
       update(
@@ -130,14 +279,22 @@ function SourceForm({
     }
   }
 
-  async function run() {
+  async function start(action: "run" | "preview") {
     setBusy(true);
     setError(null);
     setMessage(null);
     try {
-      await request(`/api/imports/${source}/run`, { method: "POST" });
-      update({ ...connection, running: true });
-      setMessage("Import started. This page updates while it runs.");
+      await request(`/api/imports/${source}/${action}`, { method: "POST" });
+      update(
+        action === "run"
+          ? { ...connection, running: true }
+          : { ...connection, previewing: true },
+      );
+      setMessage(
+        action === "run"
+          ? "Import started. This page updates while it runs."
+          : "Preview started. Nothing is imported; this page updates when it's ready.",
+      );
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not start import.",
@@ -161,11 +318,15 @@ function SourceForm({
         baseUrl: "",
         hasApiKey: false,
         hasAccessToken: false,
+        policy: null,
         running: false,
+        previewing: false,
         lastError: null,
         lastResult: null,
+        lastPreview: null,
         lastRunAt: null,
       });
+      setPolicy(null);
       setEnabled(false);
       setAccount("");
       setBaseUrl("");
@@ -193,9 +354,11 @@ function SourceForm({
         {LABELS[source]}
         {connection.running
           ? " · Importing…"
-          : connection.enabled
-            ? " · Scheduled"
-            : ""}
+          : connection.previewing
+            ? " · Previewing…"
+            : connection.enabled
+              ? " · Scheduled"
+              : ""}
       </summary>
       <p className="mt-3 text-xs text-muted">
         {source === "steam"
@@ -206,7 +369,7 @@ function SourceForm({
       </p>
       <form className="mt-4" onSubmit={(event) => void save(event)}>
         <fieldset
-          disabled={busy || connection.running}
+          disabled={busy || connection.running || connection.previewing}
           className="flex flex-col gap-3"
         >
           {source === "bookorbit" && (
@@ -271,6 +434,35 @@ function SourceForm({
               />
             </label>
           )}
+          <fieldset className="flex flex-col gap-3 rounded border border-divider p-3">
+            <legend className="px-1 text-sm text-muted">What to import</legend>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={!policy}
+                onChange={(event) =>
+                  setPolicy(
+                    event.currentTarget.checked
+                      ? null
+                      : structuredClone(defaults),
+                  )
+                }
+              />
+              Use the import defaults ({policySummary(defaults)})
+            </label>
+            {policy && (
+              <ImportPolicyFields
+                policy={policy}
+                onChange={setPolicy}
+                buckets={IMPORT_SOURCE_CAPABILITIES[source].buckets}
+                mediaTypes={IMPORT_SOURCE_CAPABILITIES[source].mediaTypes}
+                hints={BUCKET_HINTS[source]}
+              />
+            )}
+            <p className="text-xs text-muted">
+              Changes apply after you save the source.
+            </p>
+          </fieldset>
           <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
@@ -298,7 +490,15 @@ function SourceForm({
               className={buttonClass}
               type="button"
               disabled={!connection.hasApiKey && !connection.hasAccessToken}
-              onClick={() => void run()}
+              onClick={() => void start("preview")}
+            >
+              Preview
+            </button>
+            <button
+              className={buttonClass}
+              type="button"
+              disabled={!connection.hasApiKey && !connection.hasAccessToken}
+              onClick={() => void start("run")}
             >
               Import now
             </button>
@@ -328,7 +528,13 @@ function SourceForm({
         <p className="mt-2 text-sm text-muted">
           {connection.lastResult.added} added · {connection.lastResult.updated}{" "}
           updated · {connection.lastResult.skipped} skipped
+          {connection.lastResult.filtered
+            ? ` · ${connection.lastResult.filtered} left out`
+            : ""}
         </p>
+      )}
+      {connection.lastPreview && (
+        <PreviewSummary preview={connection.lastPreview} />
       )}
       {connection.lastResult?.warnings.map((warning) => (
         <p key={warning} className="mt-2 text-xs text-muted">

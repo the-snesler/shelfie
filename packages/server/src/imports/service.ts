@@ -1,8 +1,14 @@
 import {
+  DEFAULT_IMPORT_POLICY,
   IMPORT_SOURCES,
+  importBucket,
   type BookLinkSource,
   type ImportBookLink,
+  type ImportBucket,
   type ImportConnection,
+  type ImportPolicy,
+  type ImportPreview,
+  type ImportPreviewGroup,
   type ImportSource,
   type ImportResult,
   type ImportConnectionInput,
@@ -24,12 +30,19 @@ import {
   setBookLink,
 } from "./bookLinks.js";
 import { mergeImportedItem } from "./merge.js";
-import { bookOrbitRoot, fetchSource, sourceDefaults } from "./sources.js";
-import type { SourceConfig, SourceData } from "./types.js";
+import { entryFilter, importPolicySchema, readPolicy } from "./policy.js";
+import { IMPORT_ADAPTERS, fetchSource, sourceDefaults } from "./sources.js";
+import type {
+  EntryFilter,
+  ImportedItem,
+  SourceConfig,
+  SourceData,
+} from "./types.js";
 
 export type SourceLoader = (
   source: ImportSource,
   config: SourceConfig,
+  wants: EntryFilter,
 ) => Promise<SourceData>;
 
 /** Runs after a successful import with the imported TV item ids. */
@@ -55,8 +68,34 @@ const inputSchema = z
     baseUrl: z.string().trim().max(2000),
     apiKey: z.string().trim().max(2000).optional(),
     accessToken: z.string().trim().max(4000).optional(),
+    policy: importPolicySchema.nullable().optional(),
   })
   .strict();
+
+const DEFAULTS_ID = "default";
+const PREVIEW_SAMPLES = 8;
+
+/** `import_connections.running`: which job holds the source. */
+const IDLE = 0;
+const IMPORTING = 1;
+const PREVIEWING = 2;
+type JobState = typeof IMPORTING | typeof PREVIEWING;
+
+/** What applying a source's items under a policy does, before writing. */
+interface ImportPlan {
+  /** Keyed by item id: two source entries can resolve to the same title. */
+  writes: Map<
+    string,
+    { doc: ReplicatedLibraryItem; existed: boolean; item: ImportedItem }
+  >;
+  /** The source status of every item the policy let through, for the ledger. */
+  seen: Map<string, string>;
+  /** Items already up to date, or deleted in the library. */
+  unchanged: number;
+  filtered: number;
+  /** TV items in the library after the import, for the progress check. */
+  tvIds: Set<string>;
+}
 
 export function publicConnection(
   row: ImportConnectionsTable,
@@ -69,11 +108,16 @@ export function publicConnection(
     baseUrl: row.base_url,
     hasApiKey: !!row.api_key,
     hasAccessToken: !!row.access_token,
-    running: row.running === 1,
+    policy: readPolicy(row.policy),
+    running: row.running === IMPORTING,
+    previewing: row.running === PREVIEWING,
     lastRunAt: row.last_run_at,
     lastError: row.last_error,
     lastResult: row.last_result
       ? (JSON.parse(row.last_result) as ImportResult)
+      : null,
+    lastPreview: row.last_preview
+      ? (JSON.parse(row.last_preview) as ImportPreview)
       : null,
   };
 }
@@ -87,12 +131,103 @@ function emptyConnection(source: ImportSource): ImportConnectionsTable {
     base_url: "",
     api_key: "",
     access_token: "",
-    running: 0,
+    running: IDLE,
     last_slot: null,
     last_run_at: null,
     last_error: null,
     last_result: null,
+    policy: null,
+    last_preview: null,
   };
+}
+
+/**
+ * Applies the policy to a source's items against the library. Reads only:
+ * the caller writes the plan inside its transaction, or summarizes it.
+ */
+async function planImport(
+  db: Kysely<Database>,
+  source: ImportSource,
+  items: ImportedItem[],
+  policy: ImportPolicy,
+  now: number,
+): Promise<ImportPlan> {
+  const wants = entryFilter(source, policy);
+  const ledger = new Map(
+    (
+      await db
+        .selectFrom("import_items")
+        .select(["item_id", "status"])
+        .where("source", "=", source)
+        .execute()
+    ).map((row) => [row.item_id, row.status]),
+  );
+  const plan: ImportPlan = {
+    writes: new Map(),
+    seen: new Map(),
+    unchanged: 0,
+    filtered: 0,
+    tvIds: new Set(),
+  };
+  for (const item of items) {
+    if (!wants(item)) {
+      plan.filtered++;
+      continue;
+    }
+    const id = `${item.mediaType}:${item.sourceId}`;
+    const pending = plan.writes.get(id);
+    const row = pending
+      ? undefined
+      : await db
+          .selectFrom("library_items")
+          .selectAll()
+          .where("id", "=", id)
+          .executeTakeFirst();
+    const current = pending?.doc ?? (row ? libraryItemRowToDoc(row) : null);
+    if (current?._deleted) {
+      plan.unchanged++;
+      continue;
+    }
+    if (current ? !policy.updateExisting : !policy.addNew) {
+      plan.filtered++;
+      continue;
+    }
+    const doc = mergeImportedItem(item, current, now, {
+      // Edge-triggered: only a status change in the source moves the item,
+      // so a status set by hand sticks until the source moves on.
+      updateStatus: policy.updateStatuses && ledger.get(id) !== item.status,
+    });
+    plan.seen.set(id, item.status);
+    if (item.mediaType === "tv") plan.tvIds.add(id);
+    if (!doc) {
+      plan.unchanged++;
+      continue;
+    }
+    plan.writes.set(id, {
+      doc,
+      existed: pending ? pending.existed : !!current,
+      item,
+    });
+  }
+  return plan;
+}
+
+function previewGroups(
+  plan: ImportPlan,
+  existed: boolean,
+): Partial<Record<ImportBucket, ImportPreviewGroup>> {
+  const groups: Partial<Record<ImportBucket, ImportPreviewGroup>> = {};
+  for (const write of plan.writes.values()) {
+    if (write.existed !== existed) continue;
+    const group = (groups[importBucket(write.item.status)] ??= {
+      count: 0,
+      samples: [],
+    });
+    group.count++;
+    if (group.samples.length < PREVIEW_SAMPLES)
+      group.samples.push(write.item.title ?? write.doc.id);
+  }
+  return groups;
 }
 
 export class ImportService {
@@ -108,12 +243,17 @@ export class ImportService {
   ) {
     this.loadSource =
       loadSource ??
-      ((source, config) =>
-        fetchSource(source, config, {
-          ...sourceDefaults,
-          // A fresh matcher per run reloads links and the library index.
-          books: new GoodreadsBookMatcher(database, "bookorbit"),
-        }));
+      ((source, config, wants) =>
+        fetchSource(
+          source,
+          config,
+          {
+            ...sourceDefaults,
+            // A fresh matcher per run reloads links and the library index.
+            books: new GoodreadsBookMatcher(database, "bookorbit"),
+          },
+          wants,
+        ));
   }
 
   get isRunning(): boolean {
@@ -136,6 +276,10 @@ export class ImportService {
       // Matches belong to one source server; a new connection starts fresh.
       await trx
         .deleteFrom("import_book_links")
+        .where("source", "=", source)
+        .execute();
+      await trx
+        .deleteFrom("import_items")
         .where("source", "=", source)
         .execute();
     });
@@ -170,6 +314,35 @@ export class ImportService {
     );
   }
 
+  /** The policy every source without its own follows. */
+  async defaults(): Promise<ImportPolicy> {
+    const row = await this.database
+      .selectFrom("import_settings")
+      .select("policy")
+      .where("id", "=", DEFAULTS_ID)
+      .executeTakeFirst();
+    return readPolicy(row?.policy ?? null) ?? DEFAULT_IMPORT_POLICY;
+  }
+
+  async saveDefaults(input: unknown): Promise<ImportPolicy> {
+    const policy = importPolicySchema.parse(input);
+    const value = { id: DEFAULTS_ID, policy: JSON.stringify(policy) };
+    await this.database.transaction().execute(async (trx) => {
+      await trx
+        .insertInto("import_settings")
+        .values(value)
+        .onConflict((oc) => oc.column("id").doUpdateSet(value))
+        .execute();
+      // Previews of sources following the defaults no longer apply.
+      await trx
+        .updateTable("import_connections")
+        .set({ last_preview: null })
+        .where("policy", "is", null)
+        .execute();
+    });
+    return policy;
+  }
+
   async save(
     source: ImportSource,
     input: ImportConnectionInput,
@@ -182,56 +355,41 @@ export class ImportService {
         .selectAll()
         .where("source", "=", source)
         .executeTakeFirst()) ?? emptyConnection(source);
-    if (current.running)
+    if (current.running !== IDLE)
       throw new Error(
         "Wait for the current import to finish before changing this connection.",
       );
+    const config = IMPORT_ADAPTERS[source].normalizeConfig(
+      {
+        account: parsed.account,
+        baseUrl: parsed.baseUrl.replace(/\/+$/, ""),
+        apiKey: parsed.apiKey ?? current.api_key,
+        accessToken: parsed.accessToken ?? current.access_token,
+      },
+      {
+        account: current.account,
+        baseUrl: current.base_url,
+        apiKey: current.api_key,
+        accessToken: current.access_token,
+      },
+    );
     const row = {
       ...current,
       enabled: parsed.enabled ? 1 : 0,
       schedule: parsed.schedule,
-      account: parsed.account,
-      base_url: parsed.baseUrl.replace(/\/+$/, ""),
-      api_key: parsed.apiKey ?? current.api_key,
-      access_token: parsed.accessToken ?? current.access_token,
-      // An error from the previous settings no longer describes this connection.
+      account: config.account,
+      base_url: config.baseUrl,
+      api_key: config.apiKey,
+      access_token: config.accessToken,
+      policy:
+        parsed.policy === undefined
+          ? current.policy
+          : parsed.policy && JSON.stringify(parsed.policy),
+      // An error or preview from the previous settings no longer describes
+      // this connection.
       last_error: null,
+      last_preview: null,
     };
-    if (source === "steam" && (!/^\d{17}$/.test(row.account) || !row.api_key))
-      throw new Error("Steam needs a 17-digit SteamID64 and Web API key.");
-    if (
-      source === "trakt" &&
-      (!/^[a-zA-Z0-9_-]+$/.test(row.account) || !row.api_key)
-    )
-      throw new Error("Trakt needs a profile slug and API client ID.");
-    if (source === "bookorbit") {
-      let url: URL;
-      try {
-        url = new URL(bookOrbitRoot(row.base_url));
-      } catch (error) {
-        throw new Error("Enter the BookOrbit server URL.", { cause: error });
-      }
-      if (
-        !["http:", "https:"].includes(url.protocol) ||
-        url.username ||
-        url.password ||
-        url.search ||
-        url.hash ||
-        !row.api_key
-      )
-        throw new Error("BookOrbit needs an HTTP(S) server URL and API key.");
-      row.base_url = bookOrbitRoot(row.base_url);
-      // Pasting the whole header value is a common slip.
-      if (parsed.apiKey) row.api_key = parsed.apiKey.replace(/^Bearer\s+/i, "");
-      // The account is the key's user, reported by the next import; keep it
-      // only while the server and key are unchanged.
-      row.account =
-        parsed.apiKey || row.base_url !== current.base_url
-          ? ""
-          : current.account;
-      // Bearer tokens from earlier BookOrbit adapters are no longer used.
-      row.access_token = "";
-    }
     await this.database
       .insertInto("import_connections")
       .values(row)
@@ -241,68 +399,29 @@ export class ImportService {
   }
 
   /** Claims synchronously in SQLite; only one source job runs at a time. */
-  async run(source: ImportSource, slot?: number): Promise<ImportResult> {
-    if (this.stopping) throw new Error("Server is shutting down.");
-    if (this.busy) throw new Error("Another import is already running.");
-    this.busy = true;
-    let claimed = false;
-    try {
-      const query = this.database
-        .updateTable("import_connections")
-        .set({
-          running: 1,
-          last_run_at: Date.now(),
-          last_error: null,
-          ...(slot === undefined ? {} : { last_slot: slot }),
-        })
-        .where("source", "=", source)
-        .where("running", "=", 0);
-      const claim = await query.executeTakeFirst();
-      if (Number(claim.numUpdatedRows) !== 1)
-        throw new Error(
-          "Save the source connection first, or wait for its running import.",
-        );
-      claimed = true;
-      const row = await this.database
-        .selectFrom("import_connections")
-        .selectAll()
-        .where("source", "=", source)
-        .executeTakeFirstOrThrow();
-      const data = await this.loadSource(source, {
-        account: row.account,
-        baseUrl: row.base_url,
-        apiKey: row.api_key,
-        accessToken: row.access_token,
-      });
+  run(source: ImportSource, slot?: number): Promise<ImportResult> {
+    return this.job(source, IMPORTING, slot, async (data, policy) => {
       const result: ImportResult = {
         added: 0,
         updated: 0,
         skipped: data.skipped,
+        filtered: data.filtered ?? 0,
         warnings: data.warnings.slice(0, 20),
       };
       const written: ReplicatedLibraryItem[] = [];
       let latestSeq = 0;
+      let tvIds: string[] = [];
       // Fetching sources stays outside the write queue. Only the library
       // transaction and its checkpoint publication serialize with client pushes.
       await withCollectionWriteLock("library_items", async () => {
         // One transaction: malformed rows cannot leave a partially imported library.
         await this.database.transaction().execute(async (trx) => {
-          for (const item of data.items) {
-            const id = `${item.mediaType}:${item.sourceId}`;
-            const existing = await trx
-              .selectFrom("library_items")
-              .selectAll()
-              .where("id", "=", id)
-              .executeTakeFirst();
-            const doc = mergeImportedItem(
-              item,
-              existing ? libraryItemRowToDoc(existing) : null,
-              Date.now(),
-            );
-            if (!doc) {
-              result.skipped++;
-              continue;
-            }
+          const now = Date.now();
+          const plan = await planImport(trx, source, data.items, policy, now);
+          result.skipped += plan.unchanged;
+          result.filtered = (result.filtered ?? 0) + plan.filtered;
+          tvIds = [...plan.tvIds];
+          for (const { doc, existed } of plan.writes.values()) {
             const seq = nextRev("library_items");
             const record = libraryItemDocToRow(doc, seq);
             await trx
@@ -310,10 +429,23 @@ export class ImportService {
               .values(record)
               .onConflict((oc) => oc.column("id").doUpdateSet(record))
               .execute();
-            if (existing) result.updated++;
+            if (existed) result.updated++;
             else result.added++;
             written.push(doc);
             latestSeq = seq;
+          }
+          for (const [itemId, status] of plan.seen) {
+            const seen = { source, item_id: itemId, status, seen_at: now };
+            await trx
+              .insertInto("import_items")
+              .values(seen)
+              .onConflict((oc) =>
+                oc.columns(["source", "item_id"]).doUpdateSet({
+                  status,
+                  seen_at: now,
+                }),
+              )
+              .execute();
           }
         });
         if (written.length)
@@ -325,9 +457,6 @@ export class ImportService {
       // Imported episode history only says "watching"; finish shows whose
       // season is over now rather than at the next hourly pass. Best effort:
       // the import itself already succeeded.
-      const tvIds = data.items
-        .filter((item) => item.mediaType === "tv")
-        .map((item) => `tv:${item.sourceId}`);
       if (tvIds.length)
         await this.tvProgress(this.database, tvIds).catch((error: unknown) =>
           console.error(
@@ -335,29 +464,113 @@ export class ImportService {
             error instanceof Error ? error.message : error,
           ),
         );
+      return {
+        value: result,
+        // The library changed under any earlier preview.
+        fields: { last_result: JSON.stringify(result), last_preview: null },
+      };
+    });
+  }
+
+  /** Runs the source and the policy without writing; stored as `lastPreview`. */
+  preview(source: ImportSource): Promise<ImportPreview> {
+    return this.job(source, PREVIEWING, undefined, async (data, policy) => {
+      const plan = await planImport(
+        this.database,
+        source,
+        data.items,
+        policy,
+        Date.now(),
+      );
+      const preview: ImportPreview = {
+        at: Date.now(),
+        added: previewGroups(plan, false),
+        updated: previewGroups(plan, true),
+        filtered: (data.filtered ?? 0) + plan.filtered,
+        skipped: data.skipped + plan.unchanged,
+        warnings: data.warnings.slice(0, 20),
+      };
+      return {
+        value: preview,
+        fields: { last_preview: JSON.stringify(preview) },
+      };
+    });
+  }
+
+  /**
+   * Claims the source, loads it under its effective policy, and hands the
+   * data to `work`, recording the outcome on the connection.
+   */
+  private async job<T>(
+    source: ImportSource,
+    state: JobState,
+    slot: number | undefined,
+    work: (
+      data: SourceData,
+      policy: ImportPolicy,
+    ) => Promise<{ value: T; fields: Partial<ImportConnectionsTable> }>,
+  ): Promise<T> {
+    if (this.stopping) throw new Error("Server is shutting down.");
+    if (this.busy) throw new Error("Another import is already running.");
+    this.busy = true;
+    let claimed = false;
+    try {
+      const claim = await this.database
+        .updateTable("import_connections")
+        .set({
+          running: state,
+          last_error: null,
+          ...(state === IMPORTING ? { last_run_at: Date.now() } : {}),
+          ...(slot === undefined ? {} : { last_slot: slot }),
+        })
+        .where("source", "=", source)
+        .where("running", "=", IDLE)
+        .executeTakeFirst();
+      if (Number(claim.numUpdatedRows) !== 1)
+        throw new Error(
+          "Save the source connection first, or wait for its running import.",
+        );
+      claimed = true;
+      const row = await this.database
+        .selectFrom("import_connections")
+        .selectAll()
+        .where("source", "=", source)
+        .executeTakeFirstOrThrow();
+      const policy = readPolicy(row.policy) ?? (await this.defaults());
+      const data = await this.loadSource(
+        source,
+        {
+          account: row.account,
+          baseUrl: row.base_url,
+          apiKey: row.api_key,
+          accessToken: row.access_token,
+        },
+        entryFilter(source, policy),
+      );
+      const { value, fields } = await work(data, policy);
       await this.database
         .updateTable("import_connections")
         .set({
-          running: 0,
-          last_result: JSON.stringify(result),
+          ...fields,
+          running: IDLE,
           last_error: null,
           ...(data.account ? { account: data.account.slice(0, 200) } : {}),
         })
         .where("source", "=", source)
         .execute();
-      return result;
+      return value;
     } catch (error) {
       // Stored errors are deliberately terse; the log carries the detail
       // (source responses are logged in full by `sourceJson`).
       if (claimed) {
         console.error(
-          `[imports] ${source} import failed:`,
+          `[imports] ${source} ${state === PREVIEWING ? "preview" : "import"} failed:`,
           error instanceof Error ? (error.stack ?? error.message) : error,
         );
         await this.database
           .updateTable("import_connections")
           .set({
-            running: 0,
+            running: IDLE,
             last_error:
               error instanceof Error &&
               /^(Steam|Trakt|BookOrbit|Source|IGDB)/.test(error.message)
@@ -381,7 +594,7 @@ export class ImportService {
       .selectFrom("import_connections")
       .selectAll()
       .where("enabled", "=", 1)
-      .where("running", "=", 0)
+      .where("running", "=", IDLE)
       .execute();
     for (const row of rows) {
       if (
@@ -398,11 +611,11 @@ export class ImportService {
     await this.database
       .updateTable("import_connections")
       .set({
-        running: 0,
+        running: IDLE,
         last_error:
           "Import interrupted by a server restart. Run it again or wait for the next scheduled time.",
       })
-      .where("running", "=", 1)
+      .where("running", "!=", IDLE)
       .execute();
   }
 }

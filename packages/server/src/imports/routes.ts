@@ -14,6 +14,19 @@ const linkInput = z
 
 export function registerImportRoutes(app: Hono, service: ImportService): void {
   app.get("/api/imports", async (c) => c.json(await service.list()));
+  // Before `/api/imports/:source`, which would otherwise claim "defaults".
+  app.get("/api/imports/defaults", async (c) =>
+    c.json(await service.defaults()),
+  );
+  app.put("/api/imports/defaults", async (c) => {
+    try {
+      return c.json(
+        await service.saveDefaults(await c.req.json().catch(() => null)),
+      );
+    } catch {
+      return c.json({ error: "Invalid import defaults" }, 400);
+    }
+  });
   app.get("/api/imports/:source/links", async (c) => {
     const source = c.req.param("source");
     if (!isLinkSource(source))
@@ -74,18 +87,23 @@ export function registerImportRoutes(app: Hono, service: ImportService): void {
       );
     }
   });
-  app.post("/api/imports/:source/run", async (c) => {
-    const source = c.req.param("source");
-    if (!isSource(source))
-      return c.json({ error: "Unknown import source" }, 404);
-    const state = (await service.list()).find((row) => row.source === source);
-    if (!state || state.running || service.isRunning)
-      return c.json({ error: "An import is already running" }, 409);
-    if (!(state.hasApiKey || state.hasAccessToken))
-      return c.json({ error: "Save a source connection first" }, 400);
-    void service.run(source).catch(() => {});
-    return c.json({ accepted: true }, 202);
-  });
+  for (const action of ["run", "preview"] as const)
+    app.post(`/api/imports/:source/${action}`, async (c) => {
+      const source = c.req.param("source");
+      if (!isSource(source))
+        return c.json({ error: "Unknown import source" }, 404);
+      const state = (await service.list()).find((row) => row.source === source);
+      if (!state || state.running || state.previewing || service.isRunning)
+        return c.json({ error: "An import is already running" }, 409);
+      if (!(state.hasApiKey || state.hasAccessToken))
+        return c.json({ error: "Save a source connection first" }, 400);
+      // Both can take minutes (throttled IGDB and Goodreads lookups), so
+      // they run in the background; the connection reports the outcome.
+      void (
+        action === "run" ? service.run(source) : service.preview(source)
+      ).catch(() => {});
+      return c.json({ accepted: true }, 202);
+    });
 }
 
 function isLinkSource(value: string): value is BookLinkSource {

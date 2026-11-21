@@ -1,4 +1,5 @@
 import {
+  IMPORT_SOURCE_CAPABILITIES,
   episodeKey,
   type ImportSource,
   type ItemStatus,
@@ -9,7 +10,13 @@ import {
   type BookMatch,
   type BookMatcher,
 } from "./bookLinks.js";
-import type { ImportedItem, SourceConfig, SourceData } from "./types.js";
+import type {
+  EntryFilter,
+  ImportAdapter,
+  ImportedItem,
+  SourceConfig,
+  SourceData,
+} from "./types.js";
 
 type JsonObject = Record<string, unknown>;
 const object = (value: unknown): JsonObject =>
@@ -31,6 +38,10 @@ function day(value: unknown): string | undefined {
     parsed.toISOString().slice(0, 10) === iso
     ? iso
     : undefined;
+}
+/** The later of two optional ISO days. */
+function latestDay(a: string | undefined, b: string | undefined) {
+  return a && b ? (a > b ? a : b) : (a ?? b);
 }
 function rating(value: unknown, divisor = 1): number | undefined {
   return typeof value === "number" && value > 0 && value / divisor <= 5
@@ -217,19 +228,20 @@ export const sourceDefaults: SourceDependencies = {
   steamId: findGameIdBySteamAppId,
 };
 
-export async function fetchSource(
+/** `wants` defaults to accepting everything; the service passes the policy. */
+export function fetchSource(
   source: ImportSource,
   config: SourceConfig,
   deps = sourceDefaults,
+  wants: EntryFilter = () => true,
 ): Promise<SourceData> {
-  if (source === "steam") return fetchSteam(config, deps);
-  if (source === "bookorbit") return fetchBookOrbit(config, deps);
-  return fetchTrakt(config, deps);
+  return IMPORT_ADAPTERS[source].fetch(config, deps, wants);
 }
 
 async function fetchSteam(
   config: SourceConfig,
   deps: SourceDependencies,
+  wants: EntryFilter,
 ): Promise<SourceData> {
   const url = new URL(
     "https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/",
@@ -251,29 +263,43 @@ async function fetchSteam(
     throw new Error("Steam library exceeds the 10,000-item limit.");
   const items: ImportedItem[] = [];
   let skipped = 0;
+  let filtered = 0;
   for (const raw of response.games) {
     const game = object(raw);
+    const minutes =
+      typeof game.playtime_forever === "number"
+        ? Math.max(0, game.playtime_forever)
+        : 0;
+    const status: ItemStatus =
+      Number(game.playtime_2weeks) > 0
+        ? "active"
+        : minutes > 0
+          ? "paused"
+          : "backlogged";
+    const lastPlayed = Number(game.rtime_last_played);
+    const activityDay =
+      Number.isSafeInteger(lastPlayed) && lastPlayed > 0
+        ? new Date(lastPlayed * 1000).toISOString().slice(0, 10)
+        : undefined;
+    // Before the IGDB lookup: a large library is mostly unplayed games.
+    if (!wants({ mediaType: "game", status, activityDay })) {
+      filtered++;
+      continue;
+    }
     const app = numericId(game.appid);
     const id = app ? await deps.steamId(Number(app)) : null;
     if (!id) {
       skipped++;
       continue;
     }
-    const minutes =
-      typeof game.playtime_forever === "number"
-        ? Math.max(0, game.playtime_forever)
-        : 0;
     items.push({
       mediaType: "game",
       sourceId: String(id),
+      ...(typeof game.name === "string" ? { title: game.name } : {}),
+      ...(activityDay ? { activityDay } : {}),
       platforms: ["PC (Microsoft Windows)"],
       storefront: "steam",
-      status:
-        Number(game.playtime_2weeks) > 0
-          ? "active"
-          : minutes > 0
-            ? "paused"
-            : "backlogged",
+      status,
       progressFormat: "hours",
       progressValue: Math.round((minutes / 60) * 100) / 100,
     });
@@ -281,6 +307,7 @@ async function fetchSteam(
   return {
     items,
     skipped,
+    filtered,
     warnings: skipped
       ? [`${skipped} Steam apps had no exact IGDB match and were skipped.`]
       : [],
@@ -323,8 +350,11 @@ async function fetchTrakt(
   const items = new Map<string, ImportedItem>();
   let missingIds = 0;
   let partRatings = 0;
-  // History wins over watchlist state. Ratings add missing items as planned.
-  for (const kind of ["watchlist", "ratings", "history"] as const) {
+  let unwatchedRatings = 0;
+  // History wins over watchlist state. Ratings come last and only rate
+  // titles already found: like Trakt, a rating alone is neither a watch nor
+  // a plan.
+  for (const kind of ["watchlist", "history", "ratings"] as const) {
     for await (const data of pages(kind)) {
       for (const raw of data) {
         const entry = object(raw);
@@ -348,17 +378,29 @@ async function fetchTrakt(
           continue;
         }
         const key = `${mediaType}:${id}`;
+        if (kind === "ratings" && !items.has(key)) {
+          unwatchedRatings++;
+          continue;
+        }
         // Movies and TV plan with "backlogged" (Watchlist); they never expose
         // "wishlisted" (client `STATUSES_BY_MEDIA`).
-        const item = items.get(key) ?? {
+        const item: ImportedItem = items.get(key) ?? {
           mediaType,
           sourceId: id,
           status: "backlogged",
+          ...(typeof catalog.title === "string"
+            ? { title: catalog.title }
+            : {}),
         };
+        if (kind === "watchlist") {
+          const listed = day(entry.listed_at);
+          if (listed) item.activityDay = latestDay(item.activityDay, listed);
+        }
         const score = rating(entry.rating, 2);
         if (score) item.rating = score;
         if (kind === "history") {
           const watched = day(entry.watched_at);
+          if (watched) item.activityDay = latestDay(item.activityDay, watched);
           if (mediaType === "movie") {
             item.status = "finished";
             item.completedDates = [
@@ -403,9 +445,13 @@ async function fetchTrakt(
     warnings.push(
       `${partRatings} episode or season ratings were skipped; Shelfie rates whole titles.`,
     );
+  if (unwatchedRatings)
+    warnings.push(
+      `${unwatchedRatings} Trakt ratings were skipped because the title is neither watched nor on your watchlist.`,
+    );
   return {
     items: [...items.values()],
-    skipped: missingIds + partRatings,
+    skipped: missingIds + partRatings + unwatchedRatings,
     warnings,
   };
 }
@@ -500,6 +546,7 @@ async function bookOrbitFinishDays(
 async function fetchBookOrbit(
   config: SourceConfig,
   deps: SourceDependencies,
+  wants: EntryFilter,
 ): Promise<SourceData> {
   const matcher = deps.books;
   if (!matcher) throw new Error("BookOrbit import needs a Goodreads matcher.");
@@ -515,6 +562,7 @@ async function fetchBookOrbit(
   const items: ImportedItem[] = [];
   const seen = new Set<string>();
   let skipped = 0;
+  let filtered = 0;
   let unmatched = 0;
   let pending = 0;
   let failures = 0;
@@ -548,6 +596,26 @@ async function fetchBookOrbit(
             (name): name is string => typeof name === "string",
           )
         : [];
+      // Books never opened have no progress (null) rather than 0%.
+      const rounded =
+        typeof card.readingProgress === "number"
+          ? Math.min(100, Math.round(card.readingProgress))
+          : 0;
+      const progress = rounded > 0 ? rounded : null;
+      const readStatus = object(card.readStatus);
+      const status =
+        BOOKORBIT_STATUSES[String(readStatus.status)] ??
+        (progress ? "active" : "backlogged");
+      const completedDates = finishDays.get(externalId);
+      const activityDay = latestDay(
+        completedDates?.toSorted().at(-1),
+        day(readStatus.updatedAt),
+      );
+      // Before matching: Goodreads lookups are throttled to one a second.
+      if (!wants({ mediaType: "book", status, activityDay })) {
+        filtered++;
+        continue;
+      }
       const book = { externalId, title, authors };
       let match: BookMatch | undefined;
       if (failures >= MAX_LOOKUP_FAILURES) {
@@ -584,20 +652,11 @@ async function fetchBookOrbit(
         else unmatched++;
         continue;
       }
-      // Books never opened have no progress (null) rather than 0%.
-      const rounded =
-        typeof card.readingProgress === "number"
-          ? Math.min(100, Math.round(card.readingProgress))
-          : 0;
-      const progress = rounded > 0 ? rounded : null;
-      const readStatus = object(card.readStatus).status;
-      const status =
-        BOOKORBIT_STATUSES[String(readStatus)] ??
-        (progress ? "active" : "backlogged");
-      const completedDates = finishDays.get(externalId);
       items.push({
         mediaType: "book",
         sourceId: String(goodreadsId),
+        title,
+        ...(activityDay ? { activityDay } : {}),
         status,
         rating: rating(card.rating),
         progressFormat: "percent",
@@ -624,7 +683,67 @@ async function fetchBookOrbit(
   return {
     items,
     skipped: skipped + unmatched + pending,
+    filtered,
     warnings,
     ...(account ? { account } : {}),
   };
 }
+
+export const IMPORT_ADAPTERS: {
+  [S in ImportSource]: ImportAdapter<SourceDependencies>;
+} = {
+  steam: {
+    capabilities: IMPORT_SOURCE_CAPABILITIES.steam,
+    normalizeConfig(next) {
+      if (!/^\d{17}$/.test(next.account) || !next.apiKey)
+        throw new Error("Steam needs a 17-digit SteamID64 and Web API key.");
+      return next;
+    },
+    fetch: fetchSteam,
+  },
+  trakt: {
+    capabilities: IMPORT_SOURCE_CAPABILITIES.trakt,
+    normalizeConfig(next) {
+      if (!/^[a-zA-Z0-9_-]+$/.test(next.account) || !next.apiKey)
+        throw new Error("Trakt needs a profile slug and API client ID.");
+      return next;
+    },
+    fetch: fetchTrakt,
+  },
+  bookorbit: {
+    capabilities: IMPORT_SOURCE_CAPABILITIES.bookorbit,
+    normalizeConfig(next, previous) {
+      let url: URL;
+      try {
+        url = new URL(bookOrbitRoot(next.baseUrl));
+      } catch (error) {
+        throw new Error("Enter the BookOrbit server URL.", { cause: error });
+      }
+      if (
+        !["http:", "https:"].includes(url.protocol) ||
+        url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        !next.apiKey
+      )
+        throw new Error("BookOrbit needs an HTTP(S) server URL and API key.");
+      const baseUrl = bookOrbitRoot(next.baseUrl);
+      // Pasting the whole header value is a common slip.
+      const apiKey = next.apiKey.replace(/^Bearer\s+/i, "");
+      return {
+        baseUrl,
+        apiKey,
+        // The account is the key's user, reported by the next import; keep
+        // it only while the server and key are unchanged.
+        account:
+          apiKey !== previous.apiKey || baseUrl !== previous.baseUrl
+            ? ""
+            : previous.account,
+        // Bearer tokens from earlier BookOrbit adapters are no longer used.
+        accessToken: "",
+      };
+    },
+    fetch: fetchBookOrbit,
+  },
+};

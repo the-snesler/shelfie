@@ -8,22 +8,33 @@ import {
 import type { ImportedItem } from "./types.js";
 
 /**
- * Statuses an import may move forward as reading/watching progresses in the
- * source (books, and TV via episode history). Dropped, finished and completed
- * are never changed by an import.
+ * Statuses an import may move an existing item to when the item's status
+ * in the source changes. Only forward: dropped, finished and completed are
+ * never changed, and an active item is never paused (Steam reports "not
+ * played lately", not a choice to pause).
  */
-const PROGRESS_ADVANCES: Partial<Record<ItemStatus, ItemStatus[]>> = {
-  wishlisted: ["active", "finished"],
-  backlogged: ["active", "finished"],
-  active: ["finished"],
-  paused: ["finished"],
+const STATUS_ADVANCES: Partial<Record<ItemStatus, ItemStatus[]>> = {
+  wishlisted: ["backlogged", "active", "paused", "finished", "completed"],
+  backlogged: ["active", "paused", "finished", "completed"],
+  paused: ["active", "finished", "completed"],
+  active: ["finished", "completed"],
 };
+
+export interface MergeOptions {
+  /**
+   * Whether the source's status may move an existing item forward. The
+   * service passes true only when the policy allows it and the status in the
+   * source changed since the last import, so a manual status sticks.
+   */
+  updateStatus?: boolean;
+}
 
 /** Periodic imports are additive: preserve deliberate local edits and tombstones. */
 export function mergeImportedItem(
   incoming: ImportedItem,
   current: ReplicatedLibraryItem | null,
   now: number,
+  { updateStatus = true }: MergeOptions = {},
 ): ReplicatedLibraryItem | null {
   if (current?._deleted) return null;
   if (!current) {
@@ -55,11 +66,8 @@ export function mergeImportedItem(
     (current.mediaType === "movie" || current.mediaType === "tv")
       ? "backlogged"
       : current.status;
-  // Reading/episode progress comes from the source; movies and games keep
-  // local statuses.
   const status =
-    (incoming.mediaType === "book" || incoming.mediaType === "tv") &&
-    PROGRESS_ADVANCES[currentStatus]?.includes(incoming.status)
+    updateStatus && STATUS_ADVANCES[currentStatus]?.includes(incoming.status)
       ? incoming.status
       : currentStatus;
   const merged = {

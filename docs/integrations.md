@@ -87,13 +87,52 @@ appear in Settings. Disconnect removes saved credentials and the schedule,
 keeping imported library items.
 
 Imports are additive and repeatable. New items use source statuses and progress;
-existing items retain their status, notes, platforms, and nonempty rating, except
-that BookOrbit reading progress can move a book's status forward (see below).
-Completion dates and episode watches are merged, missing progress is filled
-when its unit matches, and Steam hours may increase. Soft-deleted items stay
-deleted. Imports never delete items missing from a source. Malformed mapped
-documents roll back the library transaction. Server writes use the normal
-library sequence cursor and notify connected clients through SSE.
+existing items keep their notes, platforms, and nonempty rating. Completion
+dates and episode watches are merged, missing progress is filled when its unit
+matches, and Steam hours and BookOrbit percent progress may increase.
+Soft-deleted items stay deleted. Imports never delete items missing from a
+source. Malformed mapped documents roll back the library transaction. Server
+writes use the normal library sequence cursor and notify connected clients
+through SSE.
+
+#### What to import
+
+An import policy decides which source entries a run considers. “What to
+import” in Settings holds the defaults; each source either follows them or
+saves its own. Changes apply from the next run.
+
+- **Buckets.** Every entry falls in one bucket by the status it maps to:
+  completed (finished, 100%), in progress (active, paused), backlog, wishlist,
+  or dropped. Entries in a disabled bucket are ignored entirely, neither added
+  nor updated. A source only offers the buckets it reports: Steam has in
+  progress (played) and backlog (never played); Trakt has completed (watched
+  movies), in progress (shows with history), and backlog (watchlist);
+  BookOrbit has all five. The defaults import completed and in-progress
+  entries only.
+- **Add new items** and **update existing items** are separate. With adding
+  off, a run only refreshes titles already in the library; with updating off,
+  it never touches them.
+- **Change statuses.** With updating on, a source may move an existing item's
+  status forward when the entry's status changes in the source: wishlisted to
+  backlogged, in progress or done; backlogged to in progress or done; paused to active or done;
+  active to done. Dropped, finished and completed items are never changed, and
+  an active item is never paused. The server-only `import_items` table keeps
+  the status each source last reported per item, so a status set by hand
+  sticks until the source's status changes. With this off, the source only
+  sets a new item's initial status.
+- **Since.** Entries whose latest activity (Steam last played, Trakt watch or
+  watchlist day, BookOrbit finish or status change) is before this day are
+  ignored. Undated entries, such as never-played games, always pass.
+- **Media types**, for sources that report more than one (Trakt).
+
+Adapters apply the policy before their expensive per-entry lookups, so a
+filtered Steam game costs no IGDB lookup and a filtered BookOrbit book no
+Goodreads search. Filtered entries are reported as “left out”.
+
+**Preview** runs the source and the policy without writing anything and shows
+how many items each bucket would add or update; hover a count for sample
+titles. A preview still saves BookOrbit book matches it makes. It is cleared
+when the source or the defaults change, or after the next import.
 
 Imports and client sync pushes serialize their collection writes so a pull
 checkpoint cannot skip an edit that is still waiting to commit. Source HTTP
@@ -125,13 +164,16 @@ version accepts an existing token and does not perform OAuth or automatic token
 refresh. Replace expired tokens in Settings.
 
 Movies and shows map through TMDB IDs. The adapter reads paginated watchlist,
-ratings, and history, maps movie watch dates to completion dates, and records
-episode watch dates on TV items. Episode and season ratings are skipped because
+history, and ratings, maps movie watch dates to completion dates, and records
+episode watch dates on TV items. Ratings only rate titles on the watchlist or
+in the history: like Trakt, Shelfie treats a rating alone as neither a watch
+nor a plan, so those titles are skipped with a warning. Episode and season ratings are skipped because
 Shelfie stores one show rating. Unsupported entries or missing TMDB IDs are
 reported as skipped, with separate warnings for each. Trakt's "date unknown"
 watches (reported as 1970-01-01) import without a date. Show history imports
 as watching; right after the import, the TV progress check below marks shows
-whose season is over as watched.
+whose season is over as watched. Because shows are classified before that
+check, Trakt shows count as in progress for the import policy.
 
 ### TV progress
 
@@ -214,10 +256,11 @@ automatic matching. Changes apply on the next import. A book already imported
 under an earlier match stays in your library; remove it there if it was wrong.
 Disconnecting BookOrbit also forgets its matches.
 
-BookOrbit progress moves Shelfie books forward: a wishlisted or backlogged book
-becomes reading or read, and a reading or paused book becomes read. Dropped
-and read books are never changed, and percent progress only increases.
-Completion dates are merged with the ones already in Shelfie.
+BookOrbit progress moves Shelfie books forward as described under “What to
+import”: a wishlisted or backlogged book becomes reading or read, and a
+reading or paused book becomes read. Dropped and read books are never changed,
+and percent progress only increases. Completion dates are merged with the ones
+already in Shelfie.
 
 Earlier versions connected with a web bearer token, then with KOReader sync
 credentials. Upgrading clears the old credential and pauses the schedule until
@@ -234,7 +277,8 @@ Owned games map by exact Steam app ID through IGDB's `external_games` endpoint.
 There is no fuzzy title match. Unmatched apps, including some tools and DLC,
 are skipped and counted. Never-played games import as backlogged; recent play
 imports as active; older play imports as paused. Playtime converts from minutes
-to hours. Playtime never implies a completed game.
+to hours. Playtime never implies a completed game. With status changes on, a
+backlogged game moves to playing once Steam reports play.
 
 ### Implementation references
 
