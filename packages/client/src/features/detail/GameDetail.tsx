@@ -8,7 +8,7 @@ import { GameCover } from "../games/GameCover";
 import {
   DETAIL_COVER_SCALE,
   gameCoverTransitionName,
-  selectPlatform,
+  selectGameCase,
 } from "../games/platforms";
 import { gameImageUrl } from "../../images";
 import { Lightbox } from "./Lightbox";
@@ -55,14 +55,15 @@ export default function GameDetail({ params }: Route.ComponentProps) {
               : (link?.coverUrl ?? null)
           }
           coverHash={meta ? meta.coverHash : link?.coverHash}
-          platform={
+          caseKey={
             meta
-              ? selectPlatform(
+              ? selectGameCase(
                   item?.platforms ?? [],
                   meta.platforms,
                   meta.platformReleaseDates,
+                  item?.storefront ?? null,
                 )
-              : (link?.platform ?? null)
+              : (link?.caseKey ?? null)
           }
           name={meta?.name ?? link?.name ?? "Loading…"}
           scale={DETAIL_COVER_SCALE}

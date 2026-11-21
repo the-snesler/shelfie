@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1136 1000" preserveAspectRatio="none">
+  <!-- Mockup overlay: placeholder art, replace with a final PNG at this aspect ratio (1.136, CD jewel case, ~2002–2005). -->
+  <defs>
+    <linearGradient id="hinge" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#cfd5dc" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#f4f6f8" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#9aa3ad" stop-opacity="0.9"/>
+    </linearGradient>
+    <pattern id="ridges" width="72" height="18" patternUnits="userSpaceOnUse">
+      <rect width="72" height="18" fill="url(#hinge)"/>
+      <rect y="15" width="72" height="3" fill="#7d8690" fill-opacity="0.45"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="72" height="1000" fill="url(#ridges)"/>
+  <rect x="72" y="0" width="1064" height="130" fill="#0d0d0f"/>
+  <rect x="72" y="130" width="1064" height="4" fill="#d8dde3"/>
+  <text x="110" y="96" font-family="Helvetica, Arial, sans-serif" font-size="80" font-weight="800" fill="#fff">PC</text>
+  <text x="235" y="96" font-family="Helvetica, Arial, sans-serif" font-size="80" font-weight="300" letter-spacing="3" fill="#fff">CD-ROM</text>
+</svg>

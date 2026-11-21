@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711 1000" preserveAspectRatio="none">
+  <!-- Mockup overlay: placeholder text strip for the STEAM storefront. Replace with a final PNG at this aspect ratio (0.711, DVD keep case). -->
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#171a21"/>
+      <stop offset="1" stop-color="#2a475e"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="711" height="125" fill="url(#g)"/>
+  <rect x="0" y="125" width="711" height="4" fill="#66c0f4"/>
+  <text x="34" y="92" font-family="Helvetica, Arial, sans-serif" font-size="84" font-weight="700" letter-spacing="1" fill="#ffffff">STEAM</text>
+</svg>

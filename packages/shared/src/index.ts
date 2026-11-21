@@ -8,6 +8,7 @@ export type {
   MediaType,
   MetaStatus,
   LogFormat,
+  Storefront,
 } from "./types.js";
 export {
   ITEM_STATUSES,
@@ -17,6 +18,7 @@ export {
   STATUS_META_GROUP,
   EXCITEMENT_MIN,
   EXCITEMENT_MAX,
+  STOREFRONTS,
   LOG_FORMATS,
   LOG_FORMATS_BY_MEDIA,
   defaultLogFormat,

@@ -14,6 +14,7 @@ const base: ReplicatedLibraryItem = {
   platforms: [],
   rating: null,
   excitement: null,
+  storefront: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: {},

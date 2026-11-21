@@ -61,6 +61,7 @@ const show = (
   platforms: [],
   rating: null,
   excitement: null,
+  storefront: null,
   completedDates: [],
   notes: "",
   watchedEpisodes: { s1e1: "2026-10-20", s1e2: "2026-11-02" },

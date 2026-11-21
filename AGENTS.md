@@ -43,7 +43,7 @@ packages/
 │       │   ├── demo/           guest-only demo shelf: DEMO_ITEMS plan + bundled demoCards.json fixture (scripts/demo-fixture.mjs), GuestEmptyShelf/GuestShelfNotice
 │       │   ├── lists/          automatic lists (/lists index + /lists/:id shelf/list view): predicate-defined, never stored or synced
 │       │   ├── media/          the shared item-editing layer: per-media status labels/subsets (status.ts), LogTarget + newLibraryItem (libraryActions.ts), StatusControl/LogPopover/LogModal/useLogPopover, MediaCover
-│       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates
+│       │   └── games/          game-only visuals: GameCover physical-case rendering + platform templates; `selectGameCase()` picks the template key (PC/DOS pick a big box, jewel case, DVD case or modern strip by PC release year)
 │       ├── routes.ts       react-router v7 (framework mode) route config: / , /search, /games/:slug, /movies/:id, /tv/:id, /books/:id, /people/:id, /logbook, /calendar, /lists, /lists/:listId, /recommendations, /settings, catch-all
 │       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly; coverPlaceholderStyle() decodes card ThumbHashes
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
@@ -213,7 +213,10 @@ images. Failed covers retry after a day.
 `LibraryItem`: `id` (`${mediaType}:${sourceId}`), `mediaType` (`game | movie
 | tv | book`), `sourceId` (IGDB / TMDB / Goodreads-legacy numeric id,
 stringified), `status`, `progressFormat`/`progressValue`, `platforms`
-(games only, else `[]`), `rating` (half-stars 0.5–5), `excitement`
+(games only, else `[]`), `storefront`
+(games only: the PC store it was bought on, from shared `STOREFRONTS`; when
+the cover's platform is the owner's PC/Mac/Linux/DOS copy it swaps the case
+for that store's strip, set by the Store picker and by Steam imports), `rating` (half-stars 0.5–5), `excitement`
 (int 1–4 or null: the planned-item "before" counterpart of rating, labelled
 in `media/status.ts`, kept but hidden outside the planned group, never
 written to `activity`), `completedDates`, `notes`, `watchedEpisodes`,

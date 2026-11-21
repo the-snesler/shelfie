@@ -34,7 +34,8 @@ const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
 // mediaType+query: what to search for. status/progressFormat/progressValue:
 // seeded library item state. excitement: planned-item level 1–4 (unset when
 // omitted), so the "Up next" list has members. watchedEpisodes: TV-only
-// episode key -> YYYY-MM-DD watch date.
+// episode key -> YYYY-MM-DD watch date. platforms/storefront: games only,
+// owned IGDB platforms and PC store (drives the cover's case strip).
 const SEEDS = [
   {
     mediaType: "game",
@@ -49,6 +50,8 @@ const SEEDS = [
     status: "completed",
     progressFormat: "percent",
     progressValue: 100,
+    platforms: ["PC (Microsoft Windows)"],
+    storefront: "steam",
   },
   {
     mediaType: "game",
@@ -72,6 +75,8 @@ const SEEDS = [
     status: "completed",
     progressFormat: "percent",
     progressValue: 100,
+    platforms: ["PC (Microsoft Windows)"],
+    storefront: "itch",
   },
   {
     mediaType: "game",
@@ -188,7 +193,8 @@ async function main() {
       status: seed.status,
       progressFormat: seed.progressFormat,
       progressValue: seed.progressValue,
-      platforms: [],
+      platforms: seed.platforms ?? [],
+      storefront: seed.storefront ?? null,
       rating: null,
       excitement: seed.excitement ?? null,
       completedDates: [],

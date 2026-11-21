@@ -4,6 +4,7 @@ import {
   libraryItemDocSchema,
   libraryItemMigrationStrategies,
   libraryItemSchema,
+  STOREFRONTS,
 } from "./index.js";
 import type { ReplicatedLibraryItem } from "./types.js";
 
@@ -20,6 +21,7 @@ const sample: ReplicatedLibraryItem = {
   platforms: ["PlayStation 5"],
   rating: 4.5,
   excitement: null,
+  storefront: null,
   completedDates: ["2024-01-02"],
   notes: "great",
   watchedEpisodes: {},
@@ -82,8 +84,8 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 8 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity/excitement migrations", () => {
-    expect(libraryItemSchema.version).toBe(8);
+  it("is at schema version 9 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity/excitement/storefront migrations", () => {
+    expect(libraryItemSchema.version).toBe(9);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
@@ -99,6 +101,16 @@ describe("library item contract", () => {
         null as never,
       ),
     ).toEqual({ id: "game:1", rating: 4, excitement: null });
+    expect(
+      libraryItemMigrationStrategies[9](
+        { id: "game:1", platforms: ["PC (Microsoft Windows)"] },
+        null as never,
+      ),
+    ).toEqual({
+      id: "game:1",
+      platforms: ["PC (Microsoft Windows)"],
+      storefront: null,
+    });
     const migrate1 = libraryItemMigrationStrategies[1] as (
       oldDoc: unknown,
     ) => unknown;
@@ -165,6 +177,17 @@ describe("library item contract", () => {
       minimum: 1,
       maximum: 4,
     });
+  });
+
+  it("keeps storefront a required nullable string in RxDB, enum-checked only by zod", () => {
+    expect(libraryItemSchema.required).toContain("storefront");
+    expect(libraryItemSchema.properties.storefront).toEqual({
+      type: ["string", "null"],
+      maxLength: 16,
+    });
+    for (const store of STOREFRONTS) {
+      expect(store.length).toBeLessThanOrEqual(16);
+    }
   });
 
   it("indexes status for the Library grid's finished-exclusion query", () => {

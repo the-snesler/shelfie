@@ -17,6 +17,7 @@ function item(id: string, overrides: Partial<LibraryItem> = {}): LibraryItem {
     platforms: [],
     rating: null,
     excitement: null,
+    storefront: null,
     completedDates: [],
     notes: "",
     watchedEpisodes: {},

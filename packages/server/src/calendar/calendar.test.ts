@@ -54,6 +54,7 @@ async function seed() {
           progressValue: null,
           rating: null,
           excitement: null,
+          storefront: null,
           notes: "PRIVATE NOTES",
           completedDates: ["2025-01-01"],
           watchedEpisodes: {},

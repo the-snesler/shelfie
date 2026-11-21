@@ -52,6 +52,23 @@ export const EXCITEMENT_MIN = 1;
 export const EXCITEMENT_MAX = 4;
 
 /** The kinds of media a library item can track. */
+/** PC digital storefronts a game can be owned on (`LibraryItem.storefront`).
+ *  Display labels live client-side. Like statuses, the list is enforced only
+ *  by zod, so adding a store never needs an RxDB schema bump. */
+export const STOREFRONTS = [
+  "steam",
+  "epic",
+  "gog",
+  "ea",
+  "ubisoft",
+  "battlenet",
+  "microsoft",
+  "itch",
+  "amazon",
+  "riot",
+] as const;
+export type Storefront = (typeof STOREFRONTS)[number];
+
 export const MEDIA_TYPES = ["game", "movie", "tv", "book"] as const;
 export type MediaType = (typeof MEDIA_TYPES)[number];
 
@@ -110,6 +127,11 @@ export interface LibraryItem {
   /** IGDB platform names the user owns this game on; the first entry drives
    *  cover rendering. Empty until the user records one. */
   platforms: string[];
+  /** Games only: the PC digital store the user owns this game on; drives the
+   *  store strip when the cover's platform is PC/Mac/Linux/DOS. Null when
+   *  unset (and always for other media). Deliberately not recorded in
+   *  `activity`. */
+  storefront: Storefront | null;
   /** Half-star rating, 0.5–5 in 0.5 steps; null when unrated. */
   rating: number | null;
   /** How keen the owner is to get to a planned item: integer 1 (no urgency)

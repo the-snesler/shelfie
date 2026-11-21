@@ -337,6 +337,7 @@ export function buildDemoItem(entry: DemoEntry, now: number): LibraryItem {
     platforms,
     rating: entry.rating ?? null,
     excitement: entry.excitement ?? null,
+    storefront: null,
     completedDates,
     notes: entry.notes ?? "",
     watchedEpisodes,
