@@ -323,8 +323,11 @@ async function fetchTrakt(
   const items = new Map<string, ImportedItem>();
   let missingIds = 0;
   let partRatings = 0;
-  // History wins over watchlist state. Ratings add missing items as planned.
-  for (const kind of ["watchlist", "ratings", "history"] as const) {
+  let unwatchedRatings = 0;
+  // History wins over watchlist state. Ratings come last and only rate
+  // titles already found: like Trakt, a rating alone is neither a watch nor
+  // a plan.
+  for (const kind of ["watchlist", "history", "ratings"] as const) {
     for await (const data of pages(kind)) {
       for (const raw of data) {
         const entry = object(raw);
@@ -348,6 +351,10 @@ async function fetchTrakt(
           continue;
         }
         const key = `${mediaType}:${id}`;
+        if (kind === "ratings" && !items.has(key)) {
+          unwatchedRatings++;
+          continue;
+        }
         // Movies and TV plan with "backlogged" (Watchlist); they never expose
         // "wishlisted" (client `STATUSES_BY_MEDIA`).
         const item = items.get(key) ?? {
@@ -403,9 +410,13 @@ async function fetchTrakt(
     warnings.push(
       `${partRatings} episode or season ratings were skipped; Shelfie rates whole titles.`,
     );
+  if (unwatchedRatings)
+    warnings.push(
+      `${unwatchedRatings} Trakt ratings were skipped because the title is neither watched nor on your watchlist.`,
+    );
   return {
     items: [...items.values()],
-    skipped: missingIds + partRatings,
+    skipped: missingIds + partRatings + unwatchedRatings,
     warnings,
   };
 }

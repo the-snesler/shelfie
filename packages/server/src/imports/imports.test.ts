@@ -280,7 +280,7 @@ describe("source adapters", () => {
     expect(result.skipped).toBe(1);
     expect(deps.steamId).toHaveBeenCalledWith(10);
   });
-  it("combines Trakt history, watchlist and ratings without turning episodes into completion dates", async () => {
+  it("combines Trakt history, watchlist and ratings, ignoring ratings of unwatched titles, without turning episodes into completion dates", async () => {
     const request: SourceDependencies["request"] = vi.fn(async (url) => {
       const path = new URL(url).pathname;
       if (path.endsWith("watchlist"))
@@ -290,6 +290,8 @@ describe("source adapters", () => {
           { type: "movie", movie: { ids: { tmdb: 1 } }, rating: 9 },
           { type: "show", show: { ids: { tmdb: 2 } }, rating: 8 },
           { type: "episode", show: { ids: { tmdb: 2 } }, rating: 1 },
+          // Rated but never watched or planned: ignored, as Trakt does.
+          { type: "movie", movie: { ids: { tmdb: 3 } }, rating: 6 },
         ]);
       return response([
         {
@@ -309,6 +311,7 @@ describe("source adapters", () => {
       request,
       steamId: vi.fn(),
     });
+    expect(result.items).toHaveLength(2);
     expect(result.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
