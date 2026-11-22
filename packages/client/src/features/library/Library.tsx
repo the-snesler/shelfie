@@ -282,7 +282,7 @@ export default function Library() {
               (g === "planned" || g === "wishlist") && plannedSort === "manual";
             return (
               <section key={g} className="flex flex-col">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 mb-1">
                   <h2 className="font-display text-xl font-medium text-ink">
                     {SECTION_LABELS[g]}
                     <span className="ml-2 text-sm font-normal text-faint">
