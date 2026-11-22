@@ -1,5 +1,5 @@
 import type { LibraryItem, MediaType } from "@shelfie/shared";
-import { parseEpisodeKey } from "@shelfie/shared";
+import { isInstant, momentDay, parseEpisodeKey } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";
@@ -16,9 +16,10 @@ import { parseMediaType } from "../lists/listViewState";
 import { MediaFilter } from "../lists/MediaFilter";
 import { MediaCover } from "../media/MediaCover";
 import {
-  feedRows,
+  compareLogEntries,
   type FeedEntry,
   type FeedRow,
+  feedRows,
   type LogEntry,
 } from "./logbookFeed";
 import type { CardMeta } from "../media/useLibraryData";
@@ -108,8 +109,21 @@ function monthLabel(month: string): string {
   return MONTH_FORMAT.format(new Date(`${month}-01T00:00:00`));
 }
 
+const ENTRY_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 function entryDateLabel(date: string): string {
   return ENTRY_DATE_FORMAT.format(new Date(`${date}T00:00:00`));
+}
+
+/** The day, plus the time when the moment has one. */
+function entryMomentLabel(date: string, moment: string): string {
+  const day = entryDateLabel(date);
+  return isInstant(moment)
+    ? `${day} · ${ENTRY_TIME_FORMAT.format(new Date(moment))}`
+    : day;
 }
 
 /** Feed entries are rebuilt whenever any library item changes, so compare
@@ -125,6 +139,7 @@ function sameRow(
     prev.card === next.card &&
     a.item === b.item &&
     a.date === b.date &&
+    a.moment === b.moment &&
     a.kind === b.kind &&
     (a.kind !== "episodes" || (b.kind === "episodes" && a.label === b.label))
   );
@@ -152,7 +167,9 @@ const LogbookRow = memo(function LogbookRow({
           <LogbookCover item={item} card={card} name={name} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-faint">{entryDateLabel(date)}</p>
+          <p className="text-xs text-faint">
+            {entryMomentLabel(date, entry.moment)}
+          </p>
           <TruncatedText as="p" className="text-sm font-medium text-ink">
             {name}
           </TruncatedText>
@@ -387,7 +404,7 @@ export default function Logbook() {
     () =>
       items.filter(
         (item) =>
-          item.completedDates.length > 0 ||
+          item.completions.length > 0 ||
           (item.mediaType === "tv" &&
             Object.values(item.watchedEpisodes).some((date) => date !== "")),
       ),
@@ -407,22 +424,34 @@ export default function Logbook() {
     const completion: Extract<LogEntry<LibraryDoc>, { kind: "completion" }>[] =
       [];
     for (const item of items) {
-      for (const date of item.completedDates) {
-        completion.push({ kind: "completion", date, item });
+      for (const moment of item.completions) {
+        completion.push({
+          kind: "completion",
+          date: momentDay(moment),
+          moment,
+          item,
+        });
       }
     }
-    completion.sort((a, b) => b.date.localeCompare(a.date));
+    completion.sort(compareLogEntries);
 
     const feed: LogEntry<LibraryDoc>[] = [...completion];
     for (const item of items) {
       if (item.mediaType !== "tv") continue;
-      for (const [key, date] of Object.entries(item.watchedEpisodes)) {
-        if (date === "") continue;
+      for (const [key, moment] of Object.entries(item.watchedEpisodes)) {
+        if (moment === "") continue;
         const { season, episode } = parseEpisodeKey(key);
-        feed.push({ kind: "episode", date, item, season, episode });
+        feed.push({
+          kind: "episode",
+          date: momentDay(moment),
+          moment,
+          item,
+          season,
+          episode,
+        });
       }
     }
-    feed.sort((a, b) => b.date.localeCompare(a.date));
+    feed.sort(compareLogEntries);
 
     return { completionEntries: completion, feedEntries: feed };
   }, [items]);

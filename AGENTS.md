@@ -142,7 +142,7 @@ dated episodes across those cached catalogs + card next-episodes; it feeds
 the Calendar screen (`features/calendar/`), which merges it with release
 dates from the local caches (game `firstReleaseDate`, movie `releaseDate`,
 book `publicationDate` — cards store full ISO days, the UI derives years)
-and `completedDates`.
+and `completions` (placed on the viewer's local day).
 
 Client-side, only the **card** projection is persisted, into local-only
 (never-replicated) RxDB collections (`client/src/db/*Cards.ts`):
@@ -219,8 +219,26 @@ the cover's platform is the owner's PC/Mac/Linux/DOS copy it swaps the case
 for that store's strip, set by the Store picker and by Steam imports), `rating` (half-stars 0.5–5), `excitement`
 (int 1–4 or null: the planned-item "before" counterpart of rating, labelled
 in `media/status.ts`, kept but hidden outside the planned group, never
-written to `activity`), `completedDates`, `notes`, `watchedEpisodes`,
+written to `activity`), `completions`, `notes`, `watchedEpisodes`,
 `addedAt`/`updatedAt` (ms epoch).
+
+- **Completion and watch moments** (`shared/src/moments.ts`): each
+  `completions` entry and each `watchedEpisodes` value is a `Moment`, either
+  a UTC instant (`Date#toISOString()`) when the time is known or a bare
+  `YYYY-MM-DD` local day when only the day is (pre-v10 data, a picked day,
+  a release-date completion; episodes also allow `""` for unknown). **An
+  instant is when the user _finished_** the film, episode, book or game,
+  never when they started: a source that reports start times (Trakt's
+  `watched_at`) has the runtime added on import. For books and games the
+  start of the final session is meaningless and unknowable, so "finished"
+  is the one definition that works for every medium. Only the client turns
+  instants into days (`momentDay`, `momentSortKey`/`compareMoments` for
+  ordering), in the viewer's zone; server code must never derive a local
+  day from an instant (the server may think it is in UTC). The iCal feed
+  emits timed completions as timed events for the same reason. Imports
+  merge with `imports/merge.ts` `mergeCompletions`: a source instant
+  replaces a bare day it could fall on in some zone (`dayCouldHold`)
+  instead of duplicating it.
 
 - **Statuses are media-neutral canonical terms**: `wishlisted | backlogged |
 active | paused | dropped | finished | completed`. Per-media display

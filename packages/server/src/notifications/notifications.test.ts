@@ -74,7 +74,7 @@ async function seed(count = 1) {
             excitement: null,
             storefront: null,
             notes: "",
-            completedDates: ["2026-10-17"],
+            completions: ["2026-10-17"],
             watchedEpisodes: {},
             activity: [],
             addedAt: 1,

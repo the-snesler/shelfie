@@ -3,6 +3,8 @@ import type { ItemStatus } from "@shelfie/shared";
 export type LogCompletionPromptState = {
   status: ItemStatus;
   date: string;
+  /** Optional local "HH:mm" for a picked date; "" records the day alone. */
+  time: string;
   picking: boolean;
 } | null;
 
@@ -21,8 +23,8 @@ export function LogCompletionPrompt({
   onSelectToday: () => void;
   onSelectReleaseDate: () => void;
   onChooseOtherDate: (status: ItemStatus) => void;
-  onDateChange: (date: string) => void;
-  onCommitDate: (date: string) => void;
+  onDateChange: (date: string, time: string) => void;
+  onCommitDate: (date: string, time: string) => void;
   onCommitUnknown: () => void;
 }) {
   if (!prompt) return null;
@@ -64,16 +66,32 @@ export function LogCompletionPrompt({
       </div>
       {prompt.picking && (
         <>
-          <input
-            type="date"
-            value={prompt.date}
-            onChange={(event) => onDateChange(event.target.value)}
-            className="rounded bg-panel px-3 py-2 text-ink ring-1 ring-divider"
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              aria-label="Finish date"
+              value={prompt.date}
+              onChange={(event) =>
+                onDateChange(event.target.value, prompt.time)
+              }
+              className="min-w-0 flex-1 rounded bg-panel px-3 py-2 text-ink ring-1 ring-divider"
+            />
+            <input
+              type="time"
+              aria-label="Finish time (optional)"
+              title="Optional: when you finished"
+              value={prompt.time}
+              onChange={(event) =>
+                onDateChange(prompt.date, event.target.value)
+              }
+              className="rounded bg-panel px-3 py-2 text-ink ring-1 ring-divider"
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => onCommitDate(prompt.date)}
+              disabled={!prompt.date}
+              onClick={() => onCommitDate(prompt.date, prompt.time)}
               className="rounded bg-accent px-3 py-1 text-sm font-medium text-accent-ink"
             >
               Add date

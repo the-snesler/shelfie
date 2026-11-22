@@ -4,6 +4,7 @@ import {
   libraryItemDocSchema,
   libraryItemMigrationStrategies,
   libraryItemSchema,
+  MOMENT_MAX_LENGTH,
   STOREFRONTS,
 } from "./index.js";
 import type { ReplicatedLibraryItem } from "./types.js";
@@ -22,7 +23,7 @@ const sample: ReplicatedLibraryItem = {
   rating: 4.5,
   excitement: null,
   storefront: null,
-  completedDates: ["2024-01-02"],
+  completions: ["2024-01-02"],
   notes: "great",
   watchedEpisodes: {},
   activity: [],
@@ -38,7 +39,7 @@ const wishlistedSample: ReplicatedLibraryItem = {
   platforms: [],
   rating: null,
   excitement: 3,
-  completedDates: [],
+  completions: [],
   notes: "",
 };
 
@@ -84,8 +85,8 @@ describe("library item contract", () => {
     expect(libraryItemDocSchema.parse(tvSample)).toEqual(tvSample);
   });
 
-  it("is at schema version 9 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity/excitement/storefront migrations", () => {
-    expect(libraryItemSchema.version).toBe(9);
+  it("is at schema version 10 with platforms/rating/completions/notes/progress-format/multi-media/status-index/watched-episode-dates/activity/excitement/storefront/completion-moments migrations", () => {
+    expect(libraryItemSchema.version).toBe(10);
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("1");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("2");
     expect(Object.keys(libraryItemMigrationStrategies)).toContain("3");
@@ -168,6 +169,57 @@ describe("library item contract", () => {
     expect(
       migrate6({ id: "tv:1", watchedEpisodes: ["s1e1", "s1e2"] }),
     ).toMatchObject({ watchedEpisodes: { s1e1: "", s1e2: "" } });
+    expect(
+      libraryItemMigrationStrategies[10](
+        {
+          id: "movie:1",
+          completedDates: ["2024-01-02"],
+          activity: [
+            {
+              id: "a",
+              at: 1,
+              changes: { status: "finished", completedDates: ["2024-01-02"] },
+            },
+            { id: "b", at: 2, changes: { rating: 4 } },
+          ],
+        },
+        null as never,
+      ),
+    ).toEqual({
+      id: "movie:1",
+      completions: ["2024-01-02"],
+      activity: [
+        {
+          id: "a",
+          at: 1,
+          changes: { status: "finished", completions: ["2024-01-02"] },
+        },
+        { id: "b", at: 2, changes: { rating: 4 } },
+      ],
+    });
+  });
+
+  it("sizes every moment field in RxDB for a full instant", () => {
+    const instant = "2026-11-22T05:46:40.000Z";
+    expect(instant).toHaveLength(MOMENT_MAX_LENGTH);
+    const props = libraryItemSchema.properties;
+    expect(props.completions.items).toMatchObject({
+      maxLength: MOMENT_MAX_LENGTH,
+    });
+    expect(props.watchedEpisodes.additionalProperties).toMatchObject({
+      maxLength: MOMENT_MAX_LENGTH,
+    });
+    const changes = (
+      props.activity.items as {
+        properties: { changes: { properties: Record<string, object> } };
+      }
+    ).properties.changes.properties;
+    expect(changes.completions).toMatchObject({
+      items: { maxLength: MOMENT_MAX_LENGTH },
+    });
+    expect(changes.watchedEpisodes).toMatchObject({
+      additionalProperties: { maxLength: MOMENT_MAX_LENGTH },
+    });
   });
 
   it("keeps excitement a required nullable 1–4 integer in both schemas", () => {

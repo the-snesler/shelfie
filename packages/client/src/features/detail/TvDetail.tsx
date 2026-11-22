@@ -1,5 +1,5 @@
 import type { TvDetail as TvDetailDto, TvEpisode } from "@shelfie/shared";
-import { episodeKey } from "@shelfie/shared";
+import { episodeKey, instantMoment } from "@shelfie/shared";
 import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/TvDetail";
@@ -9,7 +9,6 @@ import {
   deriveEpisodeWatch,
   newLibraryItem,
   releaseDateFromYear,
-  todayLocalIsoDate,
 } from "../media/libraryActions";
 import {
   MediaCover,
@@ -58,7 +57,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       }));
     } else {
       const derived = deriveEpisodeWatch(
-        { watchedEpisodes: {}, status: "active", completedDates: [] },
+        { watchedEpisodes: {}, status: "active", completions: [] },
         card,
         updater,
       );
@@ -74,7 +73,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
       await db.library_items.insert({
         ...base,
         watchedEpisodes: derived.watchedEpisodes,
-        completedDates: derived.completedDates,
+        completions: derived.completions,
       });
     }
   }
@@ -86,17 +85,18 @@ export default function TvDetail({ params }: Route.ComponentProps) {
         const { [key]: _omit, ...rest } = current;
         return rest;
       }
-      return { ...current, [key]: todayLocalIsoDate() };
+      return { ...current, [key]: instantMoment() };
     });
   }
 
-  /** Marks `keys` watched (today, keeping existing dates) or unwatched. */
+  /** Marks `keys` watched (now, keeping existing watch moments) or
+   *  unwatched. */
   function setEpisodes(keys: string[], watched: boolean) {
     void applyWatched((current) => {
       const next = { ...current };
       if (watched) {
-        const today = todayLocalIsoDate();
-        for (const key of keys) next[key] ??= today;
+        const now = instantMoment();
+        for (const key of keys) next[key] ??= now;
       } else {
         for (const key of keys) delete next[key];
       }

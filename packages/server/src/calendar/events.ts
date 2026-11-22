@@ -1,3 +1,4 @@
+import { isInstant, type Moment } from "@shelfie/shared";
 import type { TvAiring, TvSeason } from "@shelfie/shared";
 import { sql, type Kysely } from "kysely";
 import type { Database } from "../db/types.js";
@@ -6,7 +7,11 @@ import { scheduleForShow } from "../tv/schedule.js";
 export interface CalendarEntry {
   /** Identity excludes the release date so calendar clients update reschedules. */
   key: string;
+  /** All-day events: the day. Timed events: the UTC day of `at`, used only
+   *  for range filtering and ordering. */
   date: string;
+  /** A UTC instant (a timed completion); absent for all-day events. */
+  at?: string;
   title: string;
   description: string;
   kind: "release" | "episode" | "completion";
@@ -92,11 +97,14 @@ export async function readCalendarEntries(
       if (isCalendarDay(entry.date) && entry.date >= from && entry.date <= to)
         entries.push(entry);
     };
-    const dates = JSON.parse(item.completed_dates) as string[];
-    for (const date of new Set(dates)) {
+    const completions = JSON.parse(item.completions) as Moment[];
+    for (const moment of new Set(completions)) {
+      // A timed completion stays timed: the calendar client places it in the
+      // viewer's zone, which the server doesn't know.
       add({
-        key: `${item.id}:completed:${date}`,
-        date,
+        key: `${item.id}:completed:${moment}`,
+        date: moment.slice(0, 10),
+        ...(isInstant(moment) ? { at: moment } : {}),
         title: `Completed: ${name}`,
         description: "Completed in Shelfie",
         kind: "completion",

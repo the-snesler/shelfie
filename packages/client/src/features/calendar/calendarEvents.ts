@@ -1,4 +1,5 @@
 import type { LibraryItem, TvScheduledEpisode } from "@shelfie/shared";
+import { momentDay } from "@shelfie/shared";
 import type { TvCardDoc } from "../../db/tvCards";
 import { cardReleaseDate } from "../media/release";
 import type { CardMeta } from "../media/useLibraryData";
@@ -44,7 +45,7 @@ export function episodeLabel(season: number, episodes: number[]): string {
 /**
  * Flattens the library into dated calendar events, sorted by day:
  *
- * - **completions** — every `completedDates` entry, any status;
+ * - **completions** — every `completions` entry on its local day, any status;
  * - **releases** — the card's game `firstReleaseDate`, movie `releaseDate`,
  *   or book `publicationDate`;
  * - **TV episodes** — the server's cached schedule (`/api/tv/schedule`),
@@ -63,8 +64,8 @@ export function buildCalendarEvents<TItem extends LibraryItem>(
 
   for (const item of items) {
     const card = cards.get(item.id);
-    for (const date of item.completedDates) {
-      events.push({ kind: "completion", date, item, card });
+    for (const moment of item.completions) {
+      events.push({ kind: "completion", date: momentDay(moment), item, card });
     }
     if (item.status === "dropped") continue;
     if (item.mediaType === "tv") {

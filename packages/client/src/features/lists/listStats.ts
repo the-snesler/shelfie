@@ -36,7 +36,7 @@ export function listStats(items: readonly LibraryItem[]): ListStats {
     ) {
       hoursLogged += item.progressValue;
     }
-    completions += item.completedDates.length;
+    completions += item.completions.length;
   }
   return {
     count: items.length,

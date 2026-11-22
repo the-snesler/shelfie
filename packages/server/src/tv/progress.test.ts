@@ -62,7 +62,7 @@ const show = (
   rating: null,
   excitement: null,
   storefront: null,
-  completedDates: [],
+  completions: [],
   notes: "",
   watchedEpisodes: { s1e1: "2026-10-20", s1e2: "2026-11-02" },
   activity: [],
@@ -77,7 +77,21 @@ describe("decideTvStatus", () => {
     expect(decideTvStatus(show(), card(last(2, "finale")), TODAY)).toEqual({
       state: "season-over",
       stateKey: "season-over@s1e2",
-      patch: { status: "finished", completedDates: ["2026-11-02"] },
+      patch: { status: "finished", completions: ["2026-11-02"] },
+    });
+  });
+  it("dates the completion by the moment the last episode was watched", () => {
+    const watched = show({
+      watchedEpisodes: {
+        s1e1: "2026-10-20",
+        s1e2: "2026-11-03T03:30:00.000Z",
+      },
+    });
+    expect(
+      decideTvStatus(watched, card(last(2, "finale")), TODAY)?.patch,
+    ).toEqual({
+      status: "finished",
+      completions: ["2026-11-03T03:30:00.000Z"],
     });
   });
   it("reopens a show marked Watched while still airing", () => {
@@ -94,7 +108,7 @@ describe("decideTvStatus", () => {
   it("reopens a finished show only for episodes aired after the watcher's last activity", () => {
     const finished = show({
       status: "finished",
-      completedDates: ["2026-11-03"],
+      completions: ["2026-11-03"],
     });
     expect(
       decideTvStatus(finished, card(last(3, "standard", "2026-11-09")), TODAY)
@@ -199,7 +213,7 @@ describe("runTvProgressPass", () => {
     ]);
     expect(await current()).toMatchObject({
       status: "finished",
-      completedDates: ["2026-11-02"],
+      completions: ["2026-11-02"],
     });
     // The user reopens it (say, to rewatch): same state, so no fight.
     await db.updateTable("library_items").set({ status: "active" }).execute();
@@ -212,7 +226,7 @@ describe("runTvProgressPass", () => {
       card(last(2, "finale")),
       show({
         status: "finished",
-        completedDates: ["2026-11-02"],
+        completions: ["2026-11-02"],
       }),
     );
     expect(await runTvProgressPass(db, { now: NOW })).toEqual([]);
@@ -229,7 +243,7 @@ describe("runTvProgressPass", () => {
     ]);
     expect(await current()).toMatchObject({
       status: "active",
-      completedDates: ["2026-11-02"],
+      completions: ["2026-11-02"],
     });
   });
 

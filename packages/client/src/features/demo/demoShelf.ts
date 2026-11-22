@@ -10,14 +10,13 @@ import type {
   MovieMetadata,
   TvMetadata,
 } from "@shelfie/shared";
-import { defaultLogFormat, episodeKey } from "@shelfie/shared";
+import { defaultLogFormat, episodeKey, instantMoment } from "@shelfie/shared";
 import { upsertBookCards } from "../../db/bookCards";
 import type { ShelfieDatabase } from "../../db/database";
 import { upsertCards } from "../../db/gameCards";
 import { upsertMovieCards } from "../../db/movieCards";
 import { skipGuestRefresh } from "../../db/refreshCards";
 import { upsertTvCards } from "../../db/tvCards";
-import { localIsoDate } from "../media/libraryActions";
 import cardsJson from "./demoCards.json";
 
 /** Card metadata captured by `scripts/demo-fixture.mjs`, so loading the demo
@@ -276,8 +275,8 @@ export function buildDemoItem(entry: DemoEntry, now: number): LibraryItem {
     entry.progressFormat ?? defaultLogFormat(entry.mediaType);
   const platforms = entry.platforms ?? [];
   const completedDays = entry.completedDaysAgo ?? [];
-  const completedDates = completedDays
-    .map((days) => localIsoDate(new Date(evening(now, days))))
+  const completions = completedDays
+    .map((days) => instantMoment(evening(now, days)))
     .sort();
 
   const activity: ItemActivity[] = [];
@@ -294,10 +293,12 @@ export function buildDemoItem(entry: DemoEntry, now: number): LibraryItem {
   for (const { season, count, startDaysAgo } of entry.episodes ?? []) {
     for (let night = 0; night * 2 < count; night++) {
       const at = evening(now, startDaysAgo - night);
-      const date = localIsoDate(new Date(at));
       const changes: Record<string, string> = {};
+      // Two episodes a night, the second finishing 45 minutes after the first.
       for (let ep = night * 2 + 1; ep <= Math.min(count, night * 2 + 2); ep++)
-        changes[episodeKey(season, ep)] = date;
+        changes[episodeKey(season, ep)] = instantMoment(
+          Math.min(at + ((ep - 1) % 2) * 45 * 60_000, now),
+        );
       Object.assign(watchedEpisodes, changes);
       // An episode watched on a non-active show starts watching it.
       record(at, {
@@ -318,7 +319,7 @@ export function buildDemoItem(entry: DemoEntry, now: number): LibraryItem {
     finalChanges.progressValue = entry.progressValue;
   }
   if (entry.rating !== undefined) finalChanges.rating = entry.rating;
-  if (completedDates.length > 0) finalChanges.completedDates = completedDates;
+  if (completions.length > 0) finalChanges.completions = completions;
   if (entry.notes) finalChanges.notes = entry.notes;
   if (Object.keys(finalChanges).length > 0) {
     const changedDaysAgo =
@@ -338,7 +339,7 @@ export function buildDemoItem(entry: DemoEntry, now: number): LibraryItem {
     rating: entry.rating ?? null,
     excitement: entry.excitement ?? null,
     storefront: null,
-    completedDates,
+    completions,
     notes: entry.notes ?? "",
     watchedEpisodes,
     activity,

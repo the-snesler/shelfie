@@ -17,7 +17,7 @@ const item: LibraryItem = {
   rating: 4.5,
   excitement: 2,
   storefront: null,
-  completedDates: ["2026-01-02"],
+  completions: ["2026-01-02"],
   notes: 'A note, with "quotes"\nand a newline.',
   watchedEpisodes: {},
   activity: [

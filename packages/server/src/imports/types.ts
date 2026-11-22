@@ -3,6 +3,7 @@ import type {
   ItemStatus,
   LogFormat,
   MediaType,
+  Moment,
   Storefront,
 } from "@shelfie/shared";
 
@@ -13,8 +14,11 @@ export interface ImportedItem {
   progressFormat?: LogFormat;
   progressValue?: number | null;
   rating?: number | null;
-  completedDates?: string[];
-  watchedEpisodes?: Record<string, string>;
+  /** When each completion finished (see shared `Moment`). Instants must
+   *  mark the end of the watch/read/play, not its start. */
+  completions?: Moment[];
+  /** Episode key → when it finished, as for `completions`; "" = unknown. */
+  watchedEpisodes?: Record<string, Moment | "">;
   platforms?: string[];
   storefront?: Storefront;
   /** The source's title, for previews and logs; never written to the library. */

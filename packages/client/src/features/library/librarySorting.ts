@@ -1,5 +1,10 @@
 import type { LibraryItem, MediaType, MetaStatus } from "@shelfie/shared";
-import { STATUS_META_GROUP } from "@shelfie/shared";
+import {
+  STATUS_META_GROUP,
+  latestMoment,
+  momentDay,
+  momentSortKey,
+} from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { GameCardDoc } from "../../db/gameCards";
@@ -55,13 +60,10 @@ function title(meta: CardMeta | undefined, fallback: string): string {
   );
 }
 
-/** Latest day an item was marked finished, or null when never. */
+/** Local day of the item's latest completion, or null when never. */
 export function lastCompletedDate(item: LibraryItem): string | null {
-  let latest: string | null = null;
-  for (const date of item.completedDates) {
-    if (latest == null || date > latest) latest = date;
-  }
-  return latest;
+  const latest = latestMoment(item.completions);
+  return latest === null ? null : momentDay(latest);
 }
 
 /** Progress used for sorting: TV episode ratio or logged percent/hours/pages
@@ -92,8 +94,11 @@ function sortKey(
       return item.rating;
     case "excitement":
       return item.excitement;
-    case "completed":
-      return lastCompletedDate(item);
+    // Local time within a day, so same-day finishes keep their order.
+    case "completed": {
+      const latest = latestMoment(item.completions);
+      return latest === null ? null : momentSortKey(latest);
+    }
     case "progress":
       return sortProgress(item, meta);
   }

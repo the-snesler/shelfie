@@ -8,6 +8,10 @@ import {
   STOREFRONTS,
 } from "./types.js";
 import type { ReplicatedLibraryItem } from "./types.js";
+import { MOMENT_PATTERN } from "./moments.js";
+
+const moment = z.string().regex(MOMENT_PATTERN);
+const EPISODE_KEY = /^s\d{1,3}e\d{1,4}$/;
 
 /**
  * Zod mirror of {@link ReplicatedLibraryItem} (document fields + `_deleted`).
@@ -30,12 +34,11 @@ const itemFields = z.object({
   updatedAt: z.number().positive(),
   platforms: z.array(z.string().min(1).max(64)).max(32),
   rating: z.number().min(0.5).max(5).multipleOf(0.5).nullable(),
-  completedDates: z
-    .array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/))
-    .max(100),
+  // Moments (instant or bare day, see moments.ts), one per completion.
+  completions: z.array(moment).max(100),
   notes: z.string().max(10000),
-  // TV episode keys ("s<season>e<episode>", see episodeKey()) → local
-  // YYYY-MM-DD watch date ("" = unknown); {} for every other media type.
+  // TV episode keys ("s<season>e<episode>", see episodeKey()) → the moment
+  // it was watched ("" = unknown); {} for every other media type.
   watchedEpisodes: z
     .record(z.string(), z.string())
     .refine(
@@ -43,9 +46,7 @@ const itemFields = z.object({
         Object.keys(r).length <= 10000 &&
         Object.entries(r).every(
           ([k, v]) =>
-            /^s\d{1,3}e\d{1,4}$/.test(k) &&
-            (v === "" ||
-              /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v)),
+            EPISODE_KEY.test(k) && (v === "" || MOMENT_PATTERN.test(v)),
         ),
       { message: "invalid watchedEpisodes" },
     ),
@@ -69,18 +70,15 @@ export const libraryItemDocSchema: z.ZodType<
               progressValue: true,
               platforms: true,
               rating: true,
-              completedDates: true,
+              completions: true,
               notes: true,
             })
             .partial()
             .extend({
               watchedEpisodes: z
                 .record(
-                  z.string().regex(/^s\d{1,3}e\d{1,4}$/),
-                  z
-                    .string()
-                    .regex(/^(|\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))$/)
-                    .nullable(),
+                  z.string().regex(EPISODE_KEY),
+                  z.union([moment, z.literal("")]).nullable(),
                 )
                 .optional(),
             })

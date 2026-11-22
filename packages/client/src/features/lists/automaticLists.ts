@@ -325,7 +325,7 @@ const SMART_LISTS: readonly AutoList[] = [
     icon: IconRepeat,
     label: (type) => (type ? REVISITED[type] : "Revisited"),
     description: (type) => `${noun(type)} you've finished more than once.`,
-    matches: (item) => item.completedDates.length > 1,
+    matches: (item) => item.completions.length > 1,
     defaultSort: "completed",
     defaultGrouping: "none",
   },

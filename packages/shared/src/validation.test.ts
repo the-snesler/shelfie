@@ -15,7 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   excitement: null,
   storefront: null,
-  completedDates: [],
+  completions: [],
   notes: "",
   watchedEpisodes: {},
   activity: [],
@@ -134,7 +134,12 @@ describe("libraryItemDocSchema watchedEpisodes", () => {
       ...base,
       id: "tv:1396",
       mediaType: "tv",
-      watchedEpisodes: { s1e1: "2024-01-02", s0e12: "", s10e999: "2020-12-31" },
+      watchedEpisodes: {
+        s1e1: "2024-01-02",
+        s1e2: "2024-01-03T02:41:00.000Z",
+        s0e12: "",
+        s10e999: "2020-12-31",
+      },
     };
     expect(libraryItemDocSchema.safeParse(doc).success).toBe(true);
   });
@@ -146,9 +151,11 @@ describe("libraryItemDocSchema watchedEpisodes", () => {
     }
   });
 
-  it("rejects malformed watch dates", () => {
-    const doc = { ...base, watchedEpisodes: { s1e1: "2024-13-40" } };
-    expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
+  it("rejects malformed watch moments", () => {
+    for (const moment of ["2024-13-40", "2024-01-03T02:41Z"]) {
+      const doc = { ...base, watchedEpisodes: { s1e1: moment } };
+      expect(libraryItemDocSchema.safeParse(doc).success).toBe(false);
+    }
   });
 });
 
@@ -238,27 +245,41 @@ describe("libraryItemDocSchema rating", () => {
   });
 });
 
-describe("libraryItemDocSchema completedDates", () => {
-  it("accepts a valid ISO calendar date list", () => {
+describe("libraryItemDocSchema completions", () => {
+  it("accepts bare days and canonical UTC instants", () => {
     expect(
       libraryItemDocSchema.safeParse({
         ...base,
-        completedDates: ["2024-12-31"],
+        completions: ["2024-12-31", "2024-12-31T23:59:59.999Z"],
       }).success,
     ).toBe(true);
+  });
+
+  it("rejects instants that aren't Date#toISOString output", () => {
+    for (const moment of [
+      "2024-12-31T23:59:59Z",
+      "2024-12-31T23:59:59.000+01:00",
+      "2024-12-31T24:00:00.000Z",
+      "2024-12-31 23:59:59.000Z",
+    ]) {
+      expect(
+        libraryItemDocSchema.safeParse({ ...base, completions: [moment] })
+          .success,
+      ).toBe(false);
+    }
   });
 
   it("rejects malformed dates", () => {
     expect(
       libraryItemDocSchema.safeParse({
         ...base,
-        completedDates: ["2024-13-01"],
+        completions: ["2024-13-01"],
       }).success,
     ).toBe(false);
     expect(
       libraryItemDocSchema.safeParse({
         ...base,
-        completedDates: ["12/31/2024"],
+        completions: ["12/31/2024"],
       }).success,
     ).toBe(false);
   });
@@ -285,7 +306,12 @@ describe("libraryItemDocSchema activity", () => {
         status: "finished",
         progressFormat: "percent",
         progressValue: 50,
-        watchedEpisodes: { s1e1: null },
+        completions: ["2026-01-01T20:00:00.000Z"],
+        watchedEpisodes: {
+          s1e1: null,
+          s1e2: "",
+          s1e3: "2026-01-01T20:00:00.000Z",
+        },
       },
     };
     expect(
@@ -296,6 +322,8 @@ describe("libraryItemDocSchema activity", () => {
       { ...event, changes: { status: "nope" } },
       { ...event, changes: { progressValue: -1 } },
       { ...event, changes: { watchedEpisodes: { bad: "2026-01-01" } } },
+      { ...event, changes: { watchedEpisodes: { s1e1: "yesterday" } } },
+      { ...event, changes: { completedDates: ["2026-01-01"] } },
     ]) {
       expect(
         libraryItemDocSchema.safeParse({ ...base, activity: [bad] }).success,

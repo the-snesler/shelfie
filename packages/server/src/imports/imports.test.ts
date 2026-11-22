@@ -12,10 +12,15 @@ import type { Database } from "../db/types.js";
 import { initSequence } from "../db/sequence.js";
 import { libraryItemDocToRow, libraryItemRowToDoc } from "../sync/row.js";
 import { parseCron } from "./cron.js";
-import { mergeImportedItem } from "./merge.js";
+import { mergeCompletions, mergeImportedItem } from "./merge.js";
 import { entryFilter } from "./policy.js";
 import { ImportService } from "./service.js";
-import { fetchSource, sourceJson, type SourceDependencies } from "./sources.js";
+import {
+  fetchSource,
+  sourceJson,
+  traktFinishedAt,
+  type SourceDependencies,
+} from "./sources.js";
 import { registerImportRoutes } from "./routes.js";
 import type { ImportedItem } from "./types.js";
 
@@ -43,7 +48,7 @@ const item = {
   mediaType: "movie" as const,
   sourceId: "1",
   status: "finished" as const,
-  completedDates: ["2026-10-15"],
+  completions: ["2026-10-15"],
 };
 const response = (data: unknown) => ({ data, headers: new Headers() });
 
@@ -76,7 +81,7 @@ describe("additive import merge", () => {
       status: "dropped",
       rating: 2,
       notes: "my note",
-      completedDates: ["2020-01-01"],
+      completions: ["2020-01-01"],
     };
     const merged = mergeImportedItem({ ...item, rating: 5 }, current, 200)!;
     expect(merged).toMatchObject({
@@ -85,12 +90,75 @@ describe("additive import merge", () => {
       notes: "my note",
       addedAt: 100,
       updatedAt: 200,
-      completedDates: ["2020-01-01", "2026-10-15"],
+      completions: ["2020-01-01", "2026-10-15"],
     });
     expect(mergeImportedItem(item, merged, 300)).toBeNull();
     expect(
       mergeImportedItem(item, { ...merged, _deleted: true }, 400),
     ).toBeNull();
+  });
+  it("sharpens a logged day into a timed completion instead of duplicating it", () => {
+    // Logged by hand on the 21st; Trakt has it ending 04:50Z on the 22nd.
+    const instant = "2026-11-22T04:50:00.000Z";
+    expect(mergeCompletions(["2026-11-21"], [instant])).toEqual([instant]);
+    // Earlier Trakt imports stored the UTC day of the start.
+    expect(mergeCompletions(["2026-11-22"], [instant])).toEqual([instant]);
+    // A day the instant can't fall on in any zone is another viewing.
+    expect(mergeCompletions(["2026-11-19"], [instant])).toEqual([
+      "2026-11-19",
+      instant,
+    ]);
+    // Each day absorbs one instant, so a same-day rewatch still counts.
+    const rewatch = "2026-11-22T07:00:00.000Z";
+    expect(mergeCompletions(["2026-11-21"], [instant, rewatch])).toEqual([
+      instant,
+      rewatch,
+    ]);
+    // A bare day from the source never duplicates a timed completion.
+    expect(mergeCompletions([instant], ["2026-11-21"])).toEqual([instant]);
+    expect(mergeCompletions([instant], [instant])).toEqual([instant]);
+  });
+  it("fills unknown or day-only episode watches with source instants", () => {
+    const show = {
+      mediaType: "tv" as const,
+      sourceId: "6",
+      status: "active" as const,
+    };
+    const current = mergeImportedItem(
+      {
+        ...show,
+        watchedEpisodes: {
+          s1e1: "",
+          s1e2: "2026-11-21",
+          s1e3: "2026-01-01",
+          s1e4: "2026-11-21T20:00:00.000Z",
+        },
+      },
+      null,
+      100,
+    )!;
+    const merged = mergeImportedItem(
+      {
+        ...show,
+        watchedEpisodes: {
+          s1e1: "2026-11-20T03:00:00.000Z",
+          s1e2: "2026-11-22T04:00:00.000Z",
+          s1e3: "2026-11-22T05:00:00.000Z",
+          s1e4: "2026-11-21T21:00:00.000Z",
+          s1e5: "",
+        },
+      },
+      current,
+      200,
+    )!;
+    expect(merged.watchedEpisodes).toEqual({
+      s1e1: "2026-11-20T03:00:00.000Z",
+      s1e2: "2026-11-22T04:00:00.000Z",
+      // The owner's own day or time wins over a conflicting source.
+      s1e3: "2026-01-01",
+      s1e4: "2026-11-21T20:00:00.000Z",
+      s1e5: "",
+    });
   });
   it("fills an unset storefront but never replaces the user's choice", () => {
     const game = {
@@ -302,14 +370,14 @@ describe("source adapters", () => {
       return response([
         {
           type: "movie",
-          movie: { ids: { tmdb: 1 } },
-          watched_at: "2026-10-15T22:00:00Z",
+          movie: { ids: { tmdb: 1 }, runtime: 130 },
+          watched_at: "2026-10-15T22:00:00.000Z",
         },
         {
           type: "episode",
-          show: { ids: { tmdb: 2 } },
-          episode: { season: 1, number: 3 },
-          watched_at: "2026-10-14T12:00:00Z",
+          show: { ids: { tmdb: 2 }, runtime: 60 },
+          episode: { season: 1, number: 3, runtime: 42 },
+          watched_at: "2026-10-14T12:00:00.000Z",
         },
       ]);
     });
@@ -324,16 +392,37 @@ describe("source adapters", () => {
           sourceId: "1",
           rating: 4.5,
           status: "finished",
-          completedDates: ["2026-10-15"],
+          // Trakt's watched_at is the start: the 130-minute film ended at
+          // 00:10Z, which is still the evening of the 15th in the Americas.
+          completions: ["2026-10-16T00:10:00.000Z"],
+          activityDay: "2026-10-16",
         }),
         expect.objectContaining({
           sourceId: "2",
           rating: 4,
           status: "active",
-          watchedEpisodes: { s1e3: "2026-10-14" },
+          // The episode's own runtime wins over the show's.
+          watchedEpisodes: { s1e3: "2026-10-14T12:42:00.000Z" },
         }),
       ]),
     );
+    const historyUrl = vi
+      .mocked(request)
+      .mock.calls.map(([url]) => new URL(url))
+      .find((url) => url.pathname.endsWith("history"));
+    expect(historyUrl?.searchParams.get("extended")).toBe("full");
+  });
+  it("turns Trakt watch starts into finish instants", () => {
+    const start = "2026-11-22T03:15:00.000Z";
+    expect(traktFinishedAt(start, 95)).toBe("2026-11-22T04:50:00.000Z");
+    // No usable runtime: the start is the best moment known.
+    expect(traktFinishedAt(start, null)).toBe(start);
+    expect(traktFinishedAt(start, 0)).toBe(start);
+    expect(traktFinishedAt("2026-11-22T03:15:00Z", 5)).toBe(
+      "2026-11-22T03:20:00.000Z",
+    );
+    expect(traktFinishedAt("1970-01-01T00:00:00.000Z", 95)).toBeUndefined();
+    expect(traktFinishedAt("not a date", 95)).toBeUndefined();
   });
   it("imports show history as watching, with unknown dates left blank, and explains skips", async () => {
     const request: SourceDependencies["request"] = vi.fn(async (url) => {
@@ -414,13 +503,13 @@ describe("source adapters", () => {
     };
     const active = mergeImportedItem(show, null, 100)!;
     const finished = mergeImportedItem(
-      { ...show, status: "finished", completedDates: ["2026-01-01"] },
+      { ...show, status: "finished", completions: ["2026-01-01"] },
       active,
       200,
     )!;
     expect(finished).toMatchObject({
       status: "finished",
-      completedDates: ["2026-01-01"],
+      completions: ["2026-01-01"],
     });
     expect(mergeImportedItem(show, finished, 300)).toBeNull();
     expect(
