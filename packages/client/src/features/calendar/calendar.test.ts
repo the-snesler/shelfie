@@ -16,7 +16,7 @@ function libraryItem(overrides: Partial<LibraryItem>): LibraryItem {
     rating: null,
     excitement: null,
     storefront: null,
-    completedDates: [],
+    completions: [],
     notes: "",
     watchedEpisodes: {},
     activity: [],
@@ -65,7 +65,7 @@ describe("episodeLabel", () => {
 
 describe("buildCalendarEvents", () => {
   const game = libraryItem({
-    completedDates: ["2026-10-02"],
+    completions: ["2026-10-02"],
   });
   const show = libraryItem({
     id: "tv:9",

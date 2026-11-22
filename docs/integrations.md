@@ -164,13 +164,19 @@ version accepts an existing token and does not perform OAuth or automatic token
 refresh. Replace expired tokens in Settings.
 
 Movies and shows map through TMDB IDs. The adapter reads paginated watchlist,
-history, and ratings, maps movie watch dates to completion dates, and records
-episode watch dates on TV items. Ratings only rate titles on the watchlist or
+history, and ratings, maps movie watches to completions, and records episode
+watches on TV items, each with its exact time. Trakt's `watched_at` is when
+the watch _started_, while Shelfie records when you _finished_, so history is
+requested with `extended=full` and the movie's or episode's runtime (falling
+back to the show's) is added; with no runtime the start time is kept. A
+re-import upgrades completions and episode watches that only had a day,
+including ones logged by hand, when the day matches, instead of adding
+duplicates. Ratings only rate titles on the watchlist or
 in the history: like Trakt, Shelfie treats a rating alone as neither a watch
 nor a plan, so those titles are skipped with a warning. Episode and season ratings are skipped because
 Shelfie stores one show rating. Unsupported entries or missing TMDB IDs are
 reported as skipped, with separate warnings for each. Trakt's "date unknown"
-watches (reported as 1970-01-01) import without a date. Show history imports
+watches (reported as 1970-01-01) import without a date or time. Show history imports
 as watching; right after the import, the TV progress check below marks shows
 whose season is over as watched. Because shows are classified before that
 check, Trakt shows count as in progress for the import policy.

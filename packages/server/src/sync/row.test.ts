@@ -15,7 +15,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   excitement: null,
   storefront: null,
-  completedDates: [],
+  completions: [],
   notes: "",
   watchedEpisodes: {},
   activity: [],
@@ -29,7 +29,7 @@ describe("libraryItemDocToRow / libraryItemRowToDoc", () => {
       platforms: ["PC", "Switch"],
       rating: 4.5,
       excitement: 3,
-      completedDates: ["2024-01-01", "2025-06-30"],
+      completions: ["2024-01-01", "2025-06-30"],
       notes: "great",
       activity: [
         {
@@ -71,7 +71,7 @@ describe("libraryItemDocToRow / libraryItemRowToDoc", () => {
     const doc: ReplicatedLibraryItem = {
       ...base,
       platforms: ["PC", "Switch"],
-      completedDates: ["2024-01-01"],
+      completions: ["2024-01-01"],
       watchedEpisodes: {
         s1e1: "2024-01-01",
         s1e2: "2024-01-02",
@@ -81,7 +81,7 @@ describe("libraryItemDocToRow / libraryItemRowToDoc", () => {
     const row = libraryItemDocToRow(doc, 42);
     expect(row.seq).toBe(42);
     expect(JSON.parse(row.platforms)).toEqual(doc.platforms);
-    expect(JSON.parse(row.completed_dates)).toEqual(doc.completedDates);
+    expect(JSON.parse(row.completions)).toEqual(doc.completions);
     expect(JSON.parse(row.watched_episodes)).toEqual(doc.watchedEpisodes);
   });
 });

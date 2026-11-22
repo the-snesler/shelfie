@@ -56,7 +56,7 @@ async function seed() {
           excitement: null,
           storefront: null,
           notes: "PRIVATE NOTES",
-          completedDates: ["2025-01-01"],
+          completions: ["2025-01-01"],
           watchedEpisodes: {},
           activity: [],
           addedAt: 1,
@@ -157,21 +157,21 @@ describe("private calendar subscription", () => {
           id: "tv:4",
           source_id: "4",
           media_type: "tv",
-          completed_dates: "[]",
+          completions: "[]",
         },
         {
           ...template,
           id: "movie:2",
           source_id: "2",
           media_type: "movie",
-          completed_dates: "[]",
+          completions: "[]",
         },
         {
           ...template,
           id: "book:3",
           source_id: "3",
           media_type: "book",
-          completed_dates: "[]",
+          completions: "[]",
         },
       ])
       .execute();
@@ -233,6 +233,23 @@ describe("iCalendar encoding", () => {
       ]).match(/UID:.+/)?.[0],
     );
     expect(first).toContain("DESCRIPTION:A\\nB");
+  });
+
+  it("renders a timed completion as an instant, not an all-day event", () => {
+    const ics = renderCalendar([
+      {
+        key: "movie:2:completed:2026-11-22T04:50:00.000Z",
+        date: "2026-11-22",
+        at: "2026-11-22T04:50:00.000Z",
+        title: "Completed: One",
+        description: "Completed in Shelfie",
+        kind: "completion",
+        updatedAt: 0,
+      },
+    ]);
+    expect(ics).toContain("DTSTART:20261122T045000Z\r\n");
+    expect(ics).not.toContain("VALUE=DATE");
+    expect(ics).not.toContain("DTEND");
   });
 
   it("rejects impossible calendar days", () => {

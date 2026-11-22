@@ -24,12 +24,14 @@ export interface LibraryItemsTable {
   excitement: number | null;
   /** Games only: PC storefront id (see STOREFRONTS); NULL when unset. */
   storefront: string | null;
-  /** JSON-encoded string[] of ISO YYYY-MM-DD completion dates. */
-  completed_dates: string;
+  /** JSON-encoded Moment[] (see shared moments.ts): UTC instants
+   *  ("2026-11-22T05:46:40.000Z") or, when only the day is known, bare
+   *  "YYYY-MM-DD" days. */
+  completions: string;
   /** Free-text notes; empty string when none. */
   notes: string;
-  /** JSON-encoded Record<episodeKey, YYYY-MM-DD watch date> (e.g.
-   *  {"s1e3":"2024-06-01"}); "{}" for non-TV items. */
+  /** JSON-encoded Record<episodeKey, Moment | ""> (e.g.
+   *  {"s1e3":"2024-06-01T21:40:00.000Z"}); "{}" for non-TV items. */
   watched_episodes: string;
   /** JSON-encoded ItemActivity[]. */
   activity: string;

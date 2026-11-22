@@ -37,7 +37,7 @@ function item(
     rating: null,
     excitement: null,
     storefront: null,
-    completedDates: [],
+    completions: [],
     notes: "",
     watchedEpisodes: {},
     activity: [],
@@ -61,12 +61,12 @@ describe("automatic lists", () => {
       status: "dropped",
       platforms: ["PC (Microsoft Windows)"],
     }),
-    item("game:2", { status: "finished", completedDates: ["2026-10-01"] }),
+    item("game:2", { status: "finished", completions: ["2026-10-01"] }),
     item("book:3", { status: "dropped" }),
     item("movie:4", {
       status: "finished",
       rating: 5,
-      completedDates: ["2020-01-01", "2024-03-02"],
+      completions: ["2020-01-01", "2024-03-02"],
     }),
     item("tv:5", { status: "active", updatedAt: NOW - 120 * DAY }),
     item("game:6", { status: "paused", platforms: ["Nintendo Switch"] }),
@@ -195,9 +195,9 @@ describe("compareLibraryItems", () => {
 
   it("sorts by latest completion, never-finished last", () => {
     const items = [
-      item("game:1", { completedDates: ["2025-01-01", "2026-06-01"] }),
+      item("game:1", { completions: ["2025-01-01", "2026-06-01"] }),
       item("game:2"),
-      item("game:3", { completedDates: ["2026-01-01"] }),
+      item("game:3", { completions: ["2026-01-01"] }),
     ];
     expect(sorted(items, "completed")).toEqual(["game:1", "game:3", "game:2"]);
   });
@@ -277,7 +277,7 @@ describe("listStats", () => {
       }),
       item("book:2", { rating: 3, progressFormat: "hours", progressValue: 2 }),
       item("book:3", { progressFormat: "pages", progressValue: 300 }),
-      item("movie:4", { completedDates: ["2026-01-01", "2026-02-01"] }),
+      item("movie:4", { completions: ["2026-01-01", "2026-02-01"] }),
     ]);
     expect(stats).toMatchObject({
       count: 4,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareLogEntries,
   episodeRangeLabel,
   feedRows,
   groupEpisodes,
@@ -16,7 +17,7 @@ function ep(
   season: number,
   episode: number,
 ): LogEntry<{ id: string }> {
-  return { kind: "episode", date, item, season, episode };
+  return { kind: "episode", date, moment: date, item, season, episode };
 }
 
 describe("episodeRangeLabel", () => {
@@ -56,7 +57,12 @@ describe("episodeRangeLabel", () => {
 describe("groupEpisodes", () => {
   it("collapses one show's episodes per day, sorted, at its first position", () => {
     const grouped = groupEpisodes([
-      { kind: "completion", date: "2026-03-02", item: movie },
+      {
+        kind: "completion",
+        date: "2026-03-02",
+        moment: "2026-03-02",
+        item: movie,
+      },
       ep(show, "2026-03-02", 1, 3),
       ep(other, "2026-03-02", 4, 1),
       ep(show, "2026-03-02", 1, 1),
@@ -87,8 +93,18 @@ describe("groupEpisodes", () => {
 describe("feedRows", () => {
   it("interleaves month headers with unique, stable keys", () => {
     const rows = feedRows([
-      { kind: "completion", date: "2026-03-02", item: movie },
-      { kind: "completion", date: "2026-03-02", item: movie },
+      {
+        kind: "completion",
+        date: "2026-03-02",
+        moment: "2026-03-02",
+        item: movie,
+      },
+      {
+        kind: "completion",
+        date: "2026-03-02",
+        moment: "2026-03-02",
+        item: movie,
+      },
       ep(show, "2026-03-02", 1, 1),
       ep(show, "2026-03-02", 1, 2),
       ep(show, "2026-02-27", 1, 3),
@@ -104,5 +120,19 @@ describe("feedRows", () => {
     expect(
       rows.filter((row) => row.kind === "month").map((row) => row.first),
     ).toEqual([true, false]);
+  });
+});
+
+describe("compareLogEntries", () => {
+  it("orders by time within a day, with day-only entries after timed ones", () => {
+    const at = (hours: number) =>
+      new Date(2026, 2, 2, hours, 0, 0).toISOString();
+    const moments = ["2026-03-01", at(9), "2026-03-02", at(23), at(14)];
+    expect(
+      moments
+        .map((moment) => ({ moment }))
+        .sort(compareLogEntries)
+        .map(({ moment }) => moment),
+    ).toEqual([at(23), at(14), at(9), "2026-03-02", "2026-03-01"]);
   });
 });

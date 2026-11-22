@@ -1,8 +1,13 @@
-import { LOG_FORMATS_BY_MEDIA, STATUS_META_GROUP } from "@shelfie/shared";
+import {
+  instantMoment,
+  LOG_FORMATS_BY_MEDIA,
+  STATUS_META_GROUP,
+} from "@shelfie/shared";
 import type {
   ItemStatus,
   LibraryItem,
   LogFormat,
+  Moment,
   Storefront,
 } from "@shelfie/shared";
 import { randomToken, type RxDocument } from "rxdb";
@@ -18,7 +23,10 @@ import {
   STATUSES_BY_MEDIA,
 } from "./status";
 import { LogCompletedDates } from "./LogCompletedDates";
-import { LogCompletionPrompt } from "./LogCompletionPrompt";
+import {
+  LogCompletionPrompt,
+  type LogCompletionPromptState,
+} from "./LogCompletionPrompt";
 import { LogExcitementSection } from "./LogExcitementSection";
 import { LogHeader } from "./LogHeader";
 import { LogNotesField } from "./LogNotesField";
@@ -51,11 +59,7 @@ export function LogModal({
   item: RxDocument<LibraryItem> | null;
   onClose: () => void;
 }) {
-  const [datePrompt, setDatePrompt] = useState<{
-    status: ItemStatus;
-    date: string;
-    picking: boolean;
-  } | null>(null);
+  const [datePrompt, setDatePrompt] = useState<LogCompletionPromptState>(null);
   // Progress edits stay local until the popup closes (unmounts), however it
   // closes: dismiss, the close button, or the trigger unmounting because a
   // status change moved the card. One write means one activity entry.
@@ -79,6 +83,7 @@ export function LogModal({
       setDatePrompt({
         status,
         date: todayLocalIsoDate(),
+        time: "",
         picking: false,
       });
       return;
@@ -116,11 +121,12 @@ export function LogModal({
   }
 
   /** Commits the pending status (set by handleStatusChange, held in
-   *  datePrompt.status) together with the chosen completion date in one
+   *  datePrompt.status) together with the chosen completion moment in one
    *  write — the status change and the answer to "when did you finish
-   *  it?" land atomically, only once the prompt is answered. `date` is
-   *  null for "Unknown date" (status set, no date recorded). */
-  async function commitCompletion(date: string | null) {
+   *  it?" land atomically, only once the prompt is answered. `date` is a
+   *  `Moment` (an instant for "Just now" or a picked time, else a bare day),
+   *  or null for "Unknown date" (status set, nothing recorded). */
+  async function commitCompletion(date: Moment | null) {
     const status = datePrompt?.status;
     if (!status) return;
     setDatePrompt(null);
@@ -133,16 +139,16 @@ export function LogModal({
       await doc.incrementalModify((current) => ({
         ...current,
         status,
-        completedDates:
-          date && !current.completedDates.includes(date)
-            ? [...current.completedDates, date]
-            : current.completedDates,
+        completions:
+          date && !current.completions.includes(date)
+            ? [...current.completions, date]
+            : current.completions,
         activity: [
           ...current.activity,
           {
             id: randomToken(24),
             at: Date.now(),
-            changes: { status, ...(date ? { completedDates: [date] } : {}) },
+            changes: { status, ...(date ? { completions: [date] } : {}) },
           },
         ],
         updatedAt: Date.now(),
@@ -151,7 +157,7 @@ export function LogModal({
       const base = newLibraryItem(target, status);
       await db.library_items.insert({
         ...base,
-        completedDates: date ? [date] : [],
+        completions: date ? [date] : [],
       });
     }
   }
@@ -160,7 +166,7 @@ export function LogModal({
     if (!item) return;
     void item.incrementalModify((docData) => ({
       ...docData,
-      completedDates: docData.completedDates.filter((d) => d !== date),
+      completions: docData.completions.filter((d) => d !== date),
       updatedAt: Date.now(),
     }));
   }
@@ -211,7 +217,7 @@ export function LogModal({
   const rating = (
     <LogRatingSection key="rating" item={item} onChange={handleRating} />
   );
-  const completedDates = (
+  const completionsSection = (
     <LogCompletedDates
       key="completed"
       item={item}
@@ -232,14 +238,14 @@ export function LogModal({
             item={item}
             onChange={handleExcitement}
           />,
-          completedDates,
+          completionsSection,
         ];
         break;
       case "in-progress":
-        contextual = [progress, rating, completedDates];
+        contextual = [progress, rating, completionsSection];
         break;
       case "finished":
-        contextual = [rating, completedDates, progress];
+        contextual = [rating, completionsSection, progress];
         break;
     }
   }
@@ -256,27 +262,34 @@ export function LogModal({
       <LogCompletionPrompt
         prompt={datePrompt}
         releaseDate={releaseDate ?? null}
-        onSelectToday={() => void commitCompletion(todayLocalIsoDate())}
+        onSelectToday={() => void commitCompletion(instantMoment())}
         onSelectReleaseDate={() => void commitCompletion(releaseDate ?? null)}
         onChooseOtherDate={(status) =>
           setDatePrompt({
             status: status as ItemStatus,
             date: todayLocalIsoDate(),
+            time: "",
             picking: true,
           })
         }
-        onDateChange={(date) =>
+        onDateChange={(date, time) =>
           setDatePrompt((current) =>
             current
               ? {
                   status: current.status,
                   date,
+                  time,
                   picking: true,
                 }
               : current,
           )
         }
-        onCommitDate={(date) => void commitCompletion(date)}
+        onCommitDate={(date, time) =>
+          // A local date and time read as one local instant.
+          void commitCompletion(
+            time ? instantMoment(new Date(`${date}T${time}`)) : date,
+          )
+        }
         onCommitUnknown={() => void commitCompletion(null)}
       />
       {item && (

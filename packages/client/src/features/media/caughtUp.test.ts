@@ -55,7 +55,7 @@ describe("deriveEpisodeWatch", () => {
   const start = {
     watchedEpisodes: { s1e1: "2026-10-29" },
     status: "active" as const,
-    completedDates: [],
+    completions: [],
   };
   const watchSecond = (current: Record<string, string>) => ({
     ...current,
@@ -65,7 +65,20 @@ describe("deriveEpisodeWatch", () => {
   it("finishes the show at the season finale", () => {
     expect(
       deriveEpisodeWatch(start, card(last("finale")), watchSecond),
-    ).toMatchObject({ status: "finished", completedDates: [TODAY] });
+    ).toMatchObject({
+      status: "finished",
+      completions: [new Date(`${TODAY}T12:00:00`).toISOString()],
+    });
+  });
+  it("records at most one season completion per local day", () => {
+    const finishedEarlier = {
+      ...start,
+      completions: [new Date(`${TODAY}T08:00:00`).toISOString()],
+    };
+    expect(
+      deriveEpisodeWatch(finishedEarlier, card(last("finale")), watchSecond)
+        .completions,
+    ).toEqual(finishedEarlier.completions);
   });
   it("stays watching when caught up on a show still airing", () => {
     expect(

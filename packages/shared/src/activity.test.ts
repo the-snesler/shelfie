@@ -13,7 +13,7 @@ const base: LibraryItem = {
   rating: null,
   excitement: null,
   storefront: null,
-  completedDates: [],
+  completions: [],
   notes: "",
   watchedEpisodes: {},
   activity: [],
@@ -35,13 +35,13 @@ describe("recordItemActivity", () => {
     const completed = {
       ...progress,
       status: "finished" as const,
-      completedDates: ["2020-01-01"],
+      completions: ["2020-01-01"],
     };
     recordItemActivity(completed, progress, 200, "completion");
     expect(completed.activity[1]).toEqual({
       id: "completion",
       at: 200,
-      changes: { status: "finished", completedDates: ["2020-01-01"] },
+      changes: { status: "finished", completions: ["2020-01-01"] },
     });
     expect(base.activity).toEqual([]);
   });
@@ -78,12 +78,12 @@ describe("recordItemActivity", () => {
     const previous = {
       ...base,
       status: "finished" as const,
-      completedDates: ["2026-01-01"],
+      completions: ["2026-01-01"],
     };
     const event = {
       id: "repeat",
       at: 200,
-      changes: { status: "finished" as const, completedDates: ["2026-01-01"] },
+      changes: { status: "finished" as const, completions: ["2026-01-01"] },
     };
     const next = { ...previous, activity: [event] };
     recordItemActivity(next, previous, 200, "automatic");

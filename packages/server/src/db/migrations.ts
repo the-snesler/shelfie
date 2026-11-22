@@ -1,3 +1,4 @@
+import { renameCompletedDates } from "@shelfie/shared";
 import type { Kysely } from "kysely";
 import { sql } from "kysely";
 import type { Database } from "./types.js";
@@ -657,6 +658,32 @@ const migrations: Migration[] = [
         .addColumn("seen_at", "integer", (c) => c.notNull())
         .addPrimaryKeyConstraint("import_items_pk", ["source", "item_id"])
         .execute();
+    },
+  },
+  {
+    id: 27,
+    name: "library-item-completion-moments",
+    async up(db) {
+      // Completions (and watched episodes) may now be UTC instants as well as
+      // bare days, so `completed_dates` becomes `completions`. Existing days
+      // are valid moments and stay as they are. Activity entries name the
+      // field too; they are rewritten with the same helper as the client's
+      // RxDB migration 10, so both sides converge on identical documents.
+      // Like migration 8, a value remap rather than a user write: seq and
+      // updated_at stay put.
+      await sql`ALTER TABLE library_items RENAME COLUMN completed_dates TO completions`.execute(
+        db,
+      );
+      const rows = await sql<{ id: string; activity: string }>`
+        SELECT id, activity FROM library_items
+        WHERE activity LIKE '%"completedDates"%'`.execute(db);
+      for (const row of rows.rows) {
+        const { activity } = renameCompletedDates({
+          activity: JSON.parse(row.activity) as unknown,
+        });
+        await sql`UPDATE library_items SET activity = ${JSON.stringify(activity)}
+          WHERE id = ${row.id}`.execute(db);
+      }
     },
   },
 ];

@@ -1,6 +1,11 @@
 import BetterSqlite3 from "better-sqlite3";
 import { Kysely, SqliteDialect, sql } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  libraryItemMigrationStrategies,
+  type ReplicatedLibraryItem,
+} from "@shelfie/shared";
+import { libraryItemRowToDoc } from "../sync/row.js";
 import { runMigrations } from "./migrations.js";
 import type { Database } from "./types.js";
 
@@ -98,5 +103,46 @@ describe("person-metadata migration", () => {
     expect(
       await database.selectFrom("person_metadata").selectAll().execute(),
     ).toEqual([]);
+  });
+});
+
+describe("library-item-completion-moments migration", () => {
+  it("renames completed_dates in the column and in activity, as the client does", async () => {
+    await runMigrations(database, 26);
+    const activity = [
+      {
+        id: "a",
+        at: 1,
+        changes: { status: "finished", completedDates: ["2024-01-02"] },
+      },
+      { id: "b", at: 2, changes: { rating: 4 } },
+    ];
+    await sql`INSERT INTO library_items (id, media_type, source_id, status, progress_format, progress_value, added_at, updated_at, platforms, rating, excitement, storefront, completed_dates, notes, watched_episodes, activity, seq, deleted)
+      VALUES ('movie:1', 'movie', '1', 'finished', 'percent', NULL, 1, 5, '[]', 4, NULL, NULL, '["2024-01-02"]', '', '{}', ${JSON.stringify(activity)}, 7, 0)`.execute(
+      database,
+    );
+
+    await runMigrations(database, 27);
+
+    const row = await database
+      .selectFrom("library_items")
+      .selectAll()
+      .executeTakeFirstOrThrow();
+    // A value remap, not a write: replication state is untouched.
+    expect(row).toMatchObject({ seq: 7, updated_at: 5 });
+    const { _deleted, ...doc } = libraryItemRowToDoc(row);
+    expect(_deleted).toBe(false);
+    expect(doc.completions).toEqual(["2024-01-02"]);
+    // Same document the client's RxDB migration 10 produces from v9.
+    const legacy = {
+      ...doc,
+      completions: undefined,
+      completedDates: ["2024-01-02"],
+      activity,
+    };
+    delete legacy.completions;
+    expect(libraryItemMigrationStrategies[10](legacy, null as never)).toEqual(
+      doc satisfies Omit<ReplicatedLibraryItem, "_deleted">,
+    );
   });
 });

@@ -30,7 +30,24 @@ export {
   libraryItemConflictHandler,
   canonicalDocKey,
 } from "./conflict.js";
-export { libraryItemMigrationStrategies, libraryItemSchema } from "./schema.js";
+export {
+  libraryItemMigrationStrategies,
+  libraryItemSchema,
+  renameCompletedDates,
+} from "./schema.js";
+export {
+  MOMENT_MAX_LENGTH,
+  MOMENT_PATTERN,
+  compareMoments,
+  dayCouldHold,
+  instantMoment,
+  isInstant,
+  isMoment,
+  latestMoment,
+  momentDay,
+  momentSortKey,
+} from "./moments.js";
+export type { Moment } from "./moments.js";
 export { libraryItemDocSchema } from "./validation.js";
 export type {
   SearchResult,
@@ -62,7 +79,7 @@ export type {
 } from "./tv.js";
 export {
   TV_SEASON_GRACE_DAYS,
-  tvFinishedDay,
+  tvFinishedMoment,
   tvWatchState,
 } from "./tvProgress.js";
 export type { TvProgressCard, TvWatchState } from "./tvProgress.js";
