@@ -507,6 +507,9 @@ describe("BookOrbit API adapter", () => {
     expect(data.items[0]).toEqual({
       mediaType: "book",
       sourceId: "11",
+      title: "Book 1",
+      // The status change outdates the latest finish.
+      activityDay: "2026-10-30",
       status: "finished",
       rating: 4,
       progressFormat: "percent",
@@ -516,6 +519,7 @@ describe("BookOrbit API adapter", () => {
     expect(data.items[1]).toEqual({
       mediaType: "book",
       sourceId: "1000",
+      title: "Book 100",
       status: "backlogged",
       rating: undefined,
       progressFormat: "percent",
@@ -525,6 +529,8 @@ describe("BookOrbit API adapter", () => {
     expect(data.items[200]).toEqual({
       mediaType: "book",
       sourceId: "22",
+      title: "Book 2",
+      activityDay: "2026-10-30",
       status: "active",
       rating: undefined,
       progressFormat: "percent",

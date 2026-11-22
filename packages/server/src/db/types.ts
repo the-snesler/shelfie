@@ -260,6 +260,8 @@ export interface NotificationDeliveriesTable {
 export interface Database {
   import_connections: ImportConnectionsTable;
   import_book_links: ImportBookLinksTable;
+  import_settings: ImportSettingsTable;
+  import_items: ImportItemsTable;
   library_items: LibraryItemsTable;
   game_metadata: GameMetadataTable;
   movie_metadata: MovieMetadataTable;
@@ -329,6 +331,31 @@ export interface ImportConnectionsTable {
   last_run_at: number | null;
   last_error: string | null;
   last_result: string | null;
+  /** JSON ImportPolicy; NULL follows the import defaults. */
+  policy: string | null;
+  /** JSON ImportPreview from the last preview, cleared when settings change. */
+  last_preview: string | null;
+}
+
+/** Server-only import settings; the single row `default` holds the default policy. */
+export interface ImportSettingsTable {
+  id: string;
+  /** JSON ImportPolicy */
+  policy: string;
+}
+
+/**
+ * Server-only memory of what each source last reported per library item, so
+ * an import changes a status only when the source's status changes (like
+ * `tv_progress`), never repeatedly undoing a manual choice.
+ */
+export interface ImportItemsTable {
+  source: string;
+  /** library_items.id, e.g. "game:1942" */
+  item_id: string;
+  /** The ItemStatus the source last reported. */
+  status: string;
+  seen_at: number;
 }
 
 /** Server-only source book → Goodreads ID matches, cached across import runs. */
