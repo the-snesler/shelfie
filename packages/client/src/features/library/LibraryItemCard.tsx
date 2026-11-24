@@ -1,4 +1,4 @@
-import type { LibraryItem, MediaType, TvSeason } from "@shelfie/shared";
+import type { LibraryItem, TvSeason } from "@shelfie/shared";
 import { episodeKey, instantMoment } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
@@ -6,18 +6,15 @@ import { Link, useViewTransitionState } from "react-router";
 import IconPlus from "~icons/tabler/plus";
 import { AnimatePresence, motion } from "motion/react";
 import { Tooltip, TruncatedText } from "../../components/Tooltip";
-import { gameImageUrl, tmdbImageUrl } from "../../images";
-import type { BookCardDoc } from "../../db/bookCards";
+import { tmdbImageUrl } from "../../images";
 import type { ShelfieDatabase } from "../../db/database";
 import type { GameCardDoc } from "../../db/gameCards";
-import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { GameCover } from "../games/GameCover";
 import {
   gameCoverTransitionName,
   LIBRARY_COVER_SCALE,
   gameCoverWidth,
-  selectGameCase,
 } from "../games/platforms";
 import { LogPopover } from "../media/LogPopover";
 import {
@@ -40,15 +37,8 @@ import {
   upcomingEpisode,
 } from "./libraryCaptions";
 import type { CardMeta } from "./useLibraryData";
+import { libraryItemLink } from "./libraryItemLink";
 import { libraryProgressPercent } from "./libraryProgress";
-
-/** Route path segment (without the leading slash) each non-game media type
- *  lives under, e.g. tv -> "tv", movie -> "movies". */
-const HREF_SEGMENTS: Record<Exclude<MediaType, "game">, string> = {
-  movie: "movies",
-  tv: "tv",
-  book: "books",
-};
 
 /** Poster rendered height (2:3 at MEDIA_LIBRARY_COVER_WIDTH) and the 16:9
  *  still width matched to it — the still stands the same height as the poster. */
@@ -81,13 +71,8 @@ export function LibraryItemCard({
 }) {
   const gameMeta =
     item.mediaType === "game" ? (meta as GameCardDoc | undefined) : undefined;
-  const movieMeta =
-    item.mediaType === "movie" ? (meta as MovieCardDoc | undefined) : undefined;
   const tvMeta =
     item.mediaType === "tv" ? (meta as TvCardDoc | undefined) : undefined;
-  const bookMeta =
-    item.mediaType === "book" ? (meta as BookCardDoc | undefined) : undefined;
-  const posterMeta = movieMeta ?? tvMeta;
   const progress = showProgressBar ? libraryProgressPercent(item, meta) : null;
 
   const PROGRESS_RADIUS = 12;
@@ -107,48 +92,21 @@ export function LibraryItemCard({
       ? upcomingEpisode(nextUp, tvMeta, item.watchedEpisodes, today)
       : null;
 
-  const name =
-    gameMeta?.name ??
-    movieMeta?.name ??
-    tvMeta?.name ??
-    bookMeta?.name ??
-    item.sourceId;
-
-  const href =
-    item.mediaType === "game"
-      ? gameMeta?.slug
-        ? `/games/${encodeURIComponent(gameMeta.slug)}`
-        : null
-      : `/${HREF_SEGMENTS[item.mediaType]}/${encodeURIComponent(item.sourceId)}`;
+  const {
+    href,
+    name,
+    coverUrl: cover,
+    caseKey,
+    state: linkState,
+  } = libraryItemLink(item, meta);
 
   const isTransitioning = useViewTransitionState(href ?? "/__no_transition__");
-
-  const caseKey =
-    item.mediaType === "game"
-      ? selectGameCase(
-          item.platforms,
-          gameMeta?.platforms ?? [],
-          gameMeta?.platformReleaseDates ?? [],
-          item.storefront,
-        )
-      : null;
 
   const cardWidth = airedNext
     ? MEDIA_LIBRARY_COVER_WIDTH + TV_STILL_GAP + TV_STILL_WIDTH
     : item.mediaType === "game"
       ? gameCoverWidth(caseKey, LIBRARY_COVER_SCALE)
       : MEDIA_LIBRARY_COVER_WIDTH;
-
-  const cover =
-    item.mediaType === "game"
-      ? gameMeta?.coverImageId
-        ? gameImageUrl("t_cover_big", gameMeta.coverImageId)
-        : null
-      : item.mediaType === "book"
-        ? (bookMeta?.coverUrl ?? null)
-        : posterMeta?.posterPath
-          ? tmdbImageUrl(posterMeta.posterPath, "w342")
-          : null;
 
   const coverBox =
     item.mediaType === "game" ? (
@@ -238,12 +196,7 @@ export function LibraryItemCard({
           <Link
             to={href}
             viewTransition
-            state={{
-              coverUrl: cover,
-              coverHash: meta?.coverHash,
-              caseKey,
-              name,
-            }}
+            state={linkState}
             className="rounded text-left"
           >
             {coverBox}
@@ -257,12 +210,7 @@ export function LibraryItemCard({
           <Link
             to={href}
             viewTransition
-            state={{
-              coverUrl: cover,
-              coverHash: meta?.coverHash,
-              caseKey,
-              name,
-            }}
+            state={linkState}
             className="relative overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
             style={{ height: `${TV_STILL_HEIGHT}px`, aspectRatio: "16 / 9" }}
           >

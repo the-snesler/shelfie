@@ -16,6 +16,12 @@ import { META_STATUS_LABELS } from "../media/status";
 import { useToday } from "../media/useToday";
 import { cardCaption, releaseCaption } from "./libraryCaptions";
 import { LibraryItemCard } from "./LibraryItemCard";
+import { libraryItemLink } from "./libraryItemLink";
+import {
+  RandomPickButton,
+  useRandomPick,
+  type RandomPickCandidate,
+} from "./RandomPick";
 import {
   comparePlannedItems,
   compareUnreleasedItems,
@@ -198,6 +204,19 @@ export default function Library() {
     settings.separateWishlist,
   ]);
 
+  const plannedSectionRef = useRef<HTMLElement>(null);
+  // Anything in the Planned section the dice can land on: games need a
+  // cached card (for the slug) before they have a detail page to open.
+  const randomCandidates = useMemo(
+    () =>
+      (grouped.get("planned") ?? []).flatMap((item): RandomPickCandidate[] => {
+        const { href, state } = libraryItemLink(item, cards.get(item.id));
+        return href ? [{ id: item.id, href, state }] : [];
+      }),
+    [grouped, cards],
+  );
+  const randomPick = useRandomPick(plannedSectionRef, randomCandidates);
+
   function moveManualItem(overId: string) {
     const fromId = draggedId.current;
     if (!fromId || fromId === overId) return;
@@ -281,7 +300,11 @@ export default function Library() {
             const manualDrag =
               (g === "planned" || g === "wishlist") && plannedSort === "manual";
             return (
-              <section key={g} className="flex flex-col">
+              <section
+                key={g}
+                ref={g === "planned" ? plannedSectionRef : undefined}
+                className="flex flex-col"
+              >
                 <div className="flex items-center justify-between gap-4 mb-1">
                   <h2 className="font-display text-xl font-medium text-ink">
                     {SECTION_LABELS[g]}
@@ -290,6 +313,12 @@ export default function Library() {
                     </span>
                   </h2>
                   <div className="flex items-center gap-4">
+                    {g === "planned" && randomCandidates.length > 0 && (
+                      <RandomPickButton
+                        rolling={randomPick.rolling}
+                        onRoll={randomPick.roll}
+                      />
+                    )}
                     {g === "planned" && (
                       <label className="flex items-center gap-2 text-xs text-muted">
                         Sort
@@ -353,25 +382,30 @@ export default function Library() {
                           : undefined
                       }
                     >
-                      <LibraryItemCard
-                        db={db}
-                        item={item}
-                        meta={cards.get(item.id)}
-                        caption={
-                          g === "unreleased"
-                            ? releaseCaption(
-                                releaseState(item, cards.get(item.id), today),
-                                today,
-                              )
-                            : cardCaption(item, cards.get(item.id))
-                        }
-                        catalog={
-                          item.mediaType === "tv"
-                            ? tvCatalogs.get(item.id)
-                            : undefined
-                        }
-                        showProgressBar={settings.showProgressBars}
-                      />
+                      <div
+                        className="roulette-card"
+                        data-roulette-id={g === "planned" ? item.id : undefined}
+                      >
+                        <LibraryItemCard
+                          db={db}
+                          item={item}
+                          meta={cards.get(item.id)}
+                          caption={
+                            g === "unreleased"
+                              ? releaseCaption(
+                                  releaseState(item, cards.get(item.id), today),
+                                  today,
+                                )
+                              : cardCaption(item, cards.get(item.id))
+                          }
+                          catalog={
+                            item.mediaType === "tv"
+                              ? tvCatalogs.get(item.id)
+                              : undefined
+                          }
+                          showProgressBar={settings.showProgressBars}
+                        />
+                      </div>
                     </motion.div>
                   ))}
                   {collapsed.map((tile) => (
