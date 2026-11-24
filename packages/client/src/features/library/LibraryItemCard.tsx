@@ -31,6 +31,7 @@ import {
   todayLocalIsoDate,
 } from "../media/libraryActions";
 import { itemLogTarget } from "../media/logTarget";
+import { celebrate, celebrationOrigin, isCompletion } from "../media/celebrate";
 import { useLogPopover } from "../media/useLogPopover";
 import {
   airingLabel,
@@ -206,13 +207,17 @@ export function LibraryItemCard({
   async function markNextWatched() {
     if (!airedNext) return;
     const key = episodeKey(airedNext.season, airedNext.episode);
-    await item.incrementalModify((docData) => ({
-      ...docData,
-      ...deriveEpisodeWatch(docData, tvMeta, (current) =>
+    // Read before the write: finishing the season moves this card.
+    const origin = celebrationOrigin(document.activeElement);
+    let completed = false;
+    await item.incrementalModify((docData) => {
+      const derived = deriveEpisodeWatch(docData, tvMeta, (current) =>
         key in current ? current : { ...current, [key]: instantMoment() },
-      ),
-      updatedAt: Date.now(),
-    }));
+      );
+      completed = isCompletion(docData.status, derived.status);
+      return { ...docData, ...derived, updatedAt: Date.now() };
+    });
+    if (completed) celebrate(origin);
   }
 
   const logTarget = itemLogTarget(item, meta);
