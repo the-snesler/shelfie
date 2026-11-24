@@ -187,6 +187,43 @@
     transform-origin: bottom center;
   }
 
+  /*
+   * The planned shelf's random pick (features/library/RandomPick.tsx): while
+   * the section carries [data-roulette], every card dims except the one the
+   * spotlight is on ([data-lit]); the winner ([data-lit="win"]) pops higher.
+   * Cards grow from the shelf ledge, below the cover zone's bottom edge.
+   */
+  .roulette-card {
+    transform-origin: 50% var(--shelf-cover-h);
+    transition:
+      opacity 0.12s ease-out,
+      filter 0.12s ease-out,
+      transform 0.12s ease-out;
+  }
+
+  [data-roulette] .roulette-card:not([data-lit]) {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+  }
+
+  [data-roulette] .roulette-card[data-lit] {
+    transform: translateY(-6px) scale(1.06);
+    filter: drop-shadow(
+      0 0 10px color-mix(in oklch, var(--color-accent) 70%, transparent)
+    );
+  }
+
+  [data-roulette] .roulette-card[data-lit="win"] {
+    animation: roulette-win 0.55s cubic-bezier(0.3, 1.6, 0.5, 1) forwards;
+  }
+
+  /* Lift the lit card's grid cell so its glow paints over the neighbours
+   * that come after it in the DOM. */
+  [data-roulette] .shelf-rows > :has([data-lit]) {
+    position: relative;
+    z-index: 10;
+  }
+
   /* Plain movie/TV poster: same lift-off-the-shelf hover as cases get. */
   .poster {
     box-shadow: var(--content-base-shadow);
@@ -360,5 +397,15 @@
   /* Trigger the glare beam to slice across to the right side on hover */
   .video-game:hover::before {
     transform: translateX(75%) skewX(-15deg);
+  }
+}
+
+@keyframes roulette-win {
+  from {
+    transform: translateY(-6px) scale(1.06);
+  }
+  to {
+    transform: translateY(-12px) scale(1.15);
+    filter: drop-shadow(0 0 22px var(--color-accent));
   }
 }
