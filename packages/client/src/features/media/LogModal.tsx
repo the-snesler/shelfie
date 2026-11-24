@@ -12,6 +12,7 @@ import IconTrash from "~icons/tabler/trash";
 import type { ShelfieDatabase } from "../../db/database";
 import type { LogTarget } from "./libraryActions";
 import { newLibraryItem, todayLocalIsoDate } from "./libraryActions";
+import { celebrate, celebrationOrigin } from "./celebrate";
 import {
   COMPLETION_STATUSES,
   STATUS_LABELS,
@@ -123,6 +124,9 @@ export function LogModal({
   async function commitCompletion(date: string | null) {
     const status = datePrompt?.status;
     if (!status) return;
+    // Aim the confetti at the button that answered the prompt, read now
+    // because the write below can move or unmount this popover.
+    const origin = celebrationOrigin(document.activeElement);
     setDatePrompt(null);
     if (item) {
       const doc = await db.library_items
@@ -154,6 +158,7 @@ export function LogModal({
         completedDates: date ? [date] : [],
       });
     }
+    celebrate(origin);
   }
 
   function removeCompletionDate(date: string) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { OwnerSettings } from "@shelfie/shared";
-import { Navigate, Outlet, useLocation } from "react-router";
+import { Link, Navigate, Outlet, useLocation } from "react-router";
 import {
   clearAuthToken,
   getAuthStatus,
@@ -227,7 +227,9 @@ function BrowsingApp({
         >
           <IconMenu2 className="size-5" />
         </button>
-        <img src="/logo.svg" alt="Shelfie" className="h-8 w-auto" />
+        <Link to="/" aria-label="Home">
+          <img src="/logo.svg" alt="Shelfie" className="h-8 w-auto" />
+        </Link>
       </div>
       <Sidebar
         onLogout={onLogout}

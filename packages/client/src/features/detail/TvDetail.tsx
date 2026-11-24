@@ -17,6 +17,7 @@ import {
   mediaCoverTransitionName,
 } from "../media/MediaCover";
 import { StatusControl } from "../media/StatusControl";
+import { celebrate, celebrationOrigin, isCompletion } from "../media/celebrate";
 import { useDetailFetch } from "./useDetailFetch";
 import { DetailScreen } from "./DetailScreen";
 import { formatIsoDay, formatIsoDayRange } from "../media/dates";
@@ -50,12 +51,16 @@ export default function TvDetail({ params }: Route.ComponentProps) {
   ) {
     if (metaState.status !== "loaded") return;
     const card = metaState.meta;
+    // Read before the write: the toggled checkbox may re-render away.
+    const origin = celebrationOrigin(document.activeElement);
     if (item) {
-      await item.incrementalModify((docData) => ({
-        ...docData,
-        ...deriveEpisodeWatch(docData, card, updater),
-        updatedAt: Date.now(),
-      }));
+      let completed = false;
+      await item.incrementalModify((docData) => {
+        const derived = deriveEpisodeWatch(docData, card, updater);
+        completed = isCompletion(docData.status, derived.status);
+        return { ...docData, ...derived, updatedAt: Date.now() };
+      });
+      if (completed) celebrate(origin);
     } else {
       const derived = deriveEpisodeWatch(
         { watchedEpisodes: {}, status: "active", completedDates: [] },
@@ -76,6 +81,7 @@ export default function TvDetail({ params }: Route.ComponentProps) {
         watchedEpisodes: derived.watchedEpisodes,
         completedDates: derived.completedDates,
       });
+      if (isCompletion(null, derived.status)) celebrate(origin);
     }
   }
 
