@@ -1,4 +1,5 @@
 import type { MigrationStrategies, RxJsonSchema } from "rxdb";
+import { MOMENT_MAX_LENGTH } from "./moments.js";
 import type { LibraryItem } from "./types.js";
 
 /**
@@ -13,7 +14,7 @@ import type { LibraryItem } from "./types.js";
  */
 export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
   title: "library item schema",
-  version: 9,
+  version: 10,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -40,15 +41,15 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
       minimum: 1,
       maximum: 4,
     },
-    completedDates: {
+    completions: {
       type: "array",
-      items: { type: "string", maxLength: 10 },
+      items: { type: "string", maxLength: MOMENT_MAX_LENGTH },
       maxItems: 100,
     },
     notes: { type: "string", maxLength: 10000 },
     watchedEpisodes: {
       type: "object",
-      additionalProperties: { type: "string", maxLength: 10 },
+      additionalProperties: { type: "string", maxLength: MOMENT_MAX_LENGTH },
     },
     activity: {
       type: "array",
@@ -80,9 +81,9 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
                 maximum: 5,
                 multipleOf: 0.5,
               },
-              completedDates: {
+              completions: {
                 type: "array",
-                items: { type: "string", maxLength: 10 },
+                items: { type: "string", maxLength: MOMENT_MAX_LENGTH },
                 maxItems: 100,
               },
               notes: { type: "string", maxLength: 10000 },
@@ -90,7 +91,7 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
                 type: "object",
                 additionalProperties: {
                   type: ["string", "null"],
-                  maxLength: 10,
+                  maxLength: MOMENT_MAX_LENGTH,
                 },
               },
             },
@@ -125,7 +126,7 @@ export const libraryItemSchema: RxJsonSchema<LibraryItem> = {
     "storefront",
     "rating",
     "excitement",
-    "completedDates",
+    "completions",
     "notes",
     "addedAt",
     "updatedAt",
@@ -157,6 +158,10 @@ const LEGACY_STATUS_MAP: Record<string, string> = {
  * empty-string dates). Version 7 adds timestamped activity history.
  * Version 8 adds `excitement` (unset for every existing document).
  * Version 9 adds `storefront` (unset for every existing document).
+ * Version 10 renames `completedDates` to `completions` (in activity entries
+ * too) now that entries may be instants as well as days (see moments.ts);
+ * existing values are bare days, already valid moments, so they carry over
+ * unchanged. Mirrored by server migration 27.
  */
 export const libraryItemMigrationStrategies: MigrationStrategies = {
   1: (oldDoc) => ({ ...oldDoc, platforms: [] }),
@@ -187,4 +192,28 @@ export const libraryItemMigrationStrategies: MigrationStrategies = {
   7: (oldDoc) => ({ ...oldDoc, activity: [] }),
   8: (oldDoc) => ({ ...oldDoc, excitement: null }),
   9: (oldDoc) => ({ ...oldDoc, storefront: null }),
+  10: (oldDoc) => renameCompletedDates(oldDoc),
 };
+
+/**
+ * `completedDates` → `completions`, on the item and in every activity entry.
+ * Shared with server migration 27 so both sides produce identical documents.
+ */
+export function renameCompletedDates<
+  T extends { completedDates?: unknown; activity?: unknown },
+>(doc: T): Omit<T, "completedDates"> & { completions: unknown } {
+  const { completedDates, ...rest } = doc;
+  const activity = Array.isArray(doc.activity)
+    ? doc.activity.map((event: { changes?: Record<string, unknown> }) => {
+        if (!event.changes || !("completedDates" in event.changes))
+          return event;
+        const { completedDates: dates, ...changes } = event.changes;
+        return { ...event, changes: { ...changes, completions: dates } };
+      })
+    : doc.activity;
+  return {
+    ...rest,
+    completions: completedDates ?? [],
+    ...(activity === undefined ? {} : { activity }),
+  };
+}

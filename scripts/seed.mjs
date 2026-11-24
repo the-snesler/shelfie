@@ -197,7 +197,7 @@ async function main() {
       storefront: seed.storefront ?? null,
       rating: null,
       excitement: seed.excitement ?? null,
-      completedDates: [],
+      completions: [],
       notes: "",
       watchedEpisodes: seed.watchedEpisodes ?? {},
       activity: [],

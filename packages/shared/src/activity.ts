@@ -7,7 +7,7 @@ const FIELDS = [
   "progressValue",
   "platforms",
   "rating",
-  "completedDates",
+  "completions",
   "notes",
 ] as const;
 
@@ -67,7 +67,7 @@ export function recordItemActivity(
     }
     if (next.rating === null) delete changes.rating;
     if (!next.platforms.length) delete changes.platforms;
-    if (!next.completedDates.length) delete changes.completedDates;
+    if (!next.completions.length) delete changes.completions;
     if (!next.notes) delete changes.notes;
   }
   next.activity = mergeActivity(previous?.activity ?? [], next.activity);

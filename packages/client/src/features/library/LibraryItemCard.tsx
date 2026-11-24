@@ -1,5 +1,5 @@
 import type { LibraryItem, MediaType, TvSeason } from "@shelfie/shared";
-import { episodeKey } from "@shelfie/shared";
+import { episodeKey, instantMoment } from "@shelfie/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { Link, useViewTransitionState } from "react-router";
@@ -212,7 +212,7 @@ export function LibraryItemCard({
     let completed = false;
     await item.incrementalModify((docData) => {
       const derived = deriveEpisodeWatch(docData, tvMeta, (current) =>
-        key in current ? current : { ...current, [key]: todayLocalIsoDate() },
+        key in current ? current : { ...current, [key]: instantMoment() },
       );
       completed = isCompletion(docData.status, derived.status);
       return { ...docData, ...derived, updatedAt: Date.now() };

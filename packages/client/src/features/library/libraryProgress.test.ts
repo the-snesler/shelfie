@@ -13,7 +13,7 @@ const item: LibraryItem = {
   rating: null,
   excitement: null,
   storefront: null,
-  completedDates: [],
+  completions: [],
   notes: "",
   watchedEpisodes: {},
   activity: [],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TvAiring, TvLastAiring } from "./tv.js";
 import {
-  tvFinishedDay,
+  tvFinishedMoment,
   tvWatchState,
   type TvProgressCard,
 } from "./tvProgress.js";
@@ -82,21 +82,30 @@ describe("tvWatchState", () => {
   });
 });
 
-describe("tvFinishedDay", () => {
+describe("tvFinishedMoment", () => {
   it("prefers the latest aired episode's watch day", () => {
     expect(
-      tvFinishedDay({ ...both, s1e1: "2026-12-01" }, card(last("finale"))),
+      tvFinishedMoment({ ...both, s1e1: "2026-12-01" }, card(last("finale"))),
     ).toBe("2026-11-02");
   });
   it("falls back to the latest known regular watch day, else null", () => {
     expect(
-      tvFinishedDay(
+      tvFinishedMoment(
         { s1e1: "2026-10-25", s1e2: "", s0e1: "2026-12-25" },
         card(last("finale")),
       ),
     ).toBe("2026-10-25");
-    expect(tvFinishedDay({ s1e1: "", s1e2: "" }, card(last("finale")))).toBe(
+    expect(tvFinishedMoment({ s1e1: "", s1e2: "" }, card(last("finale")))).toBe(
       null,
     );
+  });
+  it("compares instants and days chronologically for the fallback", () => {
+    const late = new Date(2026, 9, 25, 23, 0).toISOString();
+    expect(
+      tvFinishedMoment(
+        { s1e1: late, s1e3: "2026-10-25" },
+        card(last("finale")),
+      ),
+    ).toBe(late);
   });
 });

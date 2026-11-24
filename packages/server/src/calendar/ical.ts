@@ -52,8 +52,13 @@ export function renderCalendar(entries: readonly CalendarEntry[]): string {
       `UID:${uid}@shelfie`,
       `DTSTAMP:${timestamp(entry.updatedAt)}`,
       `LAST-MODIFIED:${timestamp(entry.updatedAt)}`,
-      `DTSTART;VALUE=DATE:${entry.date.replace(/-/g, "")}`,
-      `DTEND;VALUE=DATE:${shiftDay(entry.date, 1).replace(/-/g, "")}`,
+      // A timed event with no DTEND is an instant (RFC 5545 §3.6.1).
+      ...(entry.at
+        ? [`DTSTART:${timestamp(Date.parse(entry.at))}`]
+        : [
+            `DTSTART;VALUE=DATE:${entry.date.replace(/-/g, "")}`,
+            `DTEND;VALUE=DATE:${shiftDay(entry.date, 1).replace(/-/g, "")}`,
+          ]),
       `SUMMARY:${escapeCalendarText(entry.title)}`,
       `DESCRIPTION:${escapeCalendarText(entry.description)}`,
       "TRANSP:TRANSPARENT",

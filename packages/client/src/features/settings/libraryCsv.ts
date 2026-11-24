@@ -1,6 +1,7 @@
 import {
   mergeActivity,
   libraryItemDocSchema,
+  renameCompletedDates,
   type LibraryItem,
 } from "@shelfie/shared";
 
@@ -13,7 +14,7 @@ const HEADERS = [
   "progressValue",
   "platforms",
   "rating",
-  "completedDates",
+  "completions",
   "notes",
   "watchedEpisodes",
   "addedAt",
@@ -26,6 +27,12 @@ const HEADERS = [
  *  `excitement`, and before `activity` too. Missing trailing columns import
  *  as their empty value. */
 const MIN_HEADER_COUNT = HEADERS.length - 3;
+
+/** Exports from before schema v10 name the `completions` column (and the
+ *  matching activity field) `completedDates`; the values are unchanged. */
+const LEGACY_HEADERS: Partial<Record<number, string>> = {
+  [HEADERS.indexOf("completions")]: "completedDates",
+};
 
 export interface PreparedImport {
   documents: LibraryItem[];
@@ -45,7 +52,7 @@ export function exportLibraryCsv(items: readonly LibraryItem[]): string {
       item.progressValue == null ? "" : String(item.progressValue),
       JSON.stringify(item.platforms),
       item.rating == null ? "" : String(item.rating),
-      JSON.stringify(item.completedDates),
+      JSON.stringify(item.completions),
       item.notes,
       JSON.stringify(item.watchedEpisodes),
       String(item.addedAt),
@@ -66,7 +73,10 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
     !headers ||
     headers.length < MIN_HEADER_COUNT ||
     headers.length > HEADERS.length ||
-    headers.some((cell, index) => cell !== HEADERS[index])
+    headers.some(
+      (cell, index) =>
+        cell !== HEADERS[index] && cell !== LEGACY_HEADERS[index],
+    )
   ) {
     throw new Error(`Expected header: ${HEADERS.join(",")}`);
   }
@@ -87,7 +97,7 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
       progressValue,
       platforms,
       rating,
-      completedDates,
+      completions,
       notes,
       watchedEpisodes,
       addedAt,
@@ -115,11 +125,13 @@ export function importLibraryCsv(csv: string): LibraryItem[] {
         rating: nullableNumber(rating),
         excitement: nullableNumber(excitement ?? ""),
         storefront: storefront || null,
-        completedDates: JSON.parse(completedDates),
+        completions: JSON.parse(completions),
         notes,
         watchedEpisodes: JSON.parse(watchedEpisodes),
         addedAt: requiredNumber(addedAt),
-        activity: activity ? JSON.parse(activity) : [],
+        activity: activity
+          ? renameCompletedDates({ activity: JSON.parse(activity) }).activity
+          : [],
         updatedAt: 1,
         _deleted: false,
       });

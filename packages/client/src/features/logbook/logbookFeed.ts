@@ -1,3 +1,5 @@
+import { compareMoments } from "@shelfie/shared";
+
 /** Logbook feed shaping: raw log entries (one per completion or watched
  *  episode) → the rows the windowed list renders. Pure, so it stays cheap to
  *  test; generic over the item so tests needn't build RxDB documents. */
@@ -11,21 +13,30 @@ export interface EpisodeRef {
   episode: number;
 }
 
-/** One logged event. Entries carry no card metadata: cards are looked up per
- *  row, so a card cache update re-renders only the rows whose card changed
- *  instead of rebuilding (and re-rendering) the whole feed. */
+/** One logged event. `moment` is when it happened as stored (an instant or a
+ *  bare day, see the shared `Moment`); `date` is its local day, which the
+ *  feed groups and labels by. Entries carry no card metadata: cards are
+ *  looked up per row, so a card cache update re-renders only the rows whose
+ *  card changed instead of rebuilding (and re-rendering) the whole feed. */
 export type LogEntry<TItem extends FeedItem> =
-  | { kind: "completion"; date: string; item: TItem }
-  | ({ kind: "episode"; date: string; item: TItem } & EpisodeRef);
+  | { kind: "completion"; date: string; moment: string; item: TItem }
+  | ({
+      kind: "episode";
+      date: string;
+      moment: string;
+      item: TItem;
+    } & EpisodeRef);
 
 /** What a feed row shows: a completion as-is, or every episode of one show
  *  watched on one day collapsed together (a binge day after a Trakt import
  *  can be dozens of episodes). */
 export type FeedEntry<TItem extends FeedItem> =
-  | { kind: "completion"; date: string; item: TItem }
+  | { kind: "completion"; date: string; moment: string; item: TItem }
   | {
       kind: "episodes";
       date: string;
+      /** The latest watch in the group (the first one in feed order). */
+      moment: string;
       item: TItem;
       /** Sorted by season, then episode. */
       episodes: EpisodeRef[];
@@ -64,7 +75,8 @@ function compareEpisodes(a: EpisodeRef, b: EpisodeRef): number {
 
 /** Collapses each show's episodes within a single day into one entry, placed
  *  where that show's first episode of the day was. Expects `entries` sorted
- *  by date (descending), so each day's entries are adjacent. */
+ *  newest first (see `compareLogEntries`), so each day's entries are
+ *  adjacent. */
 export function groupEpisodes<TItem extends FeedItem>(
   entries: readonly LogEntry<TItem>[],
 ): FeedEntry<TItem>[] {
@@ -89,6 +101,7 @@ export function groupEpisodes<TItem extends FeedItem>(
       const created: Group = {
         kind: "episodes",
         date: entry.date,
+        moment: entry.moment,
         item: entry.item,
         episodes: [ref],
         label: "",
@@ -103,6 +116,15 @@ export function groupEpisodes<TItem extends FeedItem>(
     entry.label = episodeRangeLabel(entry.episodes);
   }
   return out;
+}
+
+/** Newest first: by local time when known; a day-only entry sorts after the
+ *  timed ones of its day, since when that day it happened is unknown. */
+export function compareLogEntries(
+  a: { moment: string },
+  b: { moment: string },
+): number {
+  return -compareMoments(a.moment, b.moment);
 }
 
 /** Groups binge days, then interleaves a header at each month boundary.

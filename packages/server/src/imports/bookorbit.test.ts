@@ -514,7 +514,7 @@ describe("BookOrbit API adapter", () => {
       rating: 4,
       progressFormat: "percent",
       progressValue: 100,
-      completedDates: ["2026-10-15", "2026-10-14"],
+      completions: ["2026-10-15", "2026-10-14"],
     });
     expect(data.items[1]).toEqual({
       mediaType: "book",
@@ -541,7 +541,7 @@ describe("BookOrbit API adapter", () => {
       sourceId: "33",
       status: "paused",
       progressValue: null,
-      completedDates: ["2026-09-01"],
+      completions: ["2026-09-01"],
     });
     // Unread with progress reads as active.
     expect(data.items[202]).toMatchObject({ sourceId: "44", status: "active" });
@@ -582,7 +582,7 @@ describe("BookOrbit API adapter", () => {
     expect(data.items).toEqual([
       expect.objectContaining({ status: "finished" }),
     ]);
-    expect(data.items[0].completedDates).toBeUndefined();
+    expect(data.items[0].completions).toBeUndefined();
   });
 
   it("pages reading history by offset", async () => {
@@ -599,7 +599,7 @@ describe("BookOrbit API adapter", () => {
       steamId: vi.fn(),
       books,
     });
-    expect(new Set(data.items[0].completedDates)).toEqual(
+    expect(new Set(data.items[0].completions)).toEqual(
       new Set(["2026-11-01", "2026-11-02"]),
     );
     expect(
@@ -760,7 +760,7 @@ describe("book import merge", () => {
         ...base,
         status: "finished",
         progressValue: 100,
-        completedDates: ["2026-11-01"],
+        completions: ["2026-11-01"],
       },
       reading,
       5,
@@ -768,7 +768,7 @@ describe("book import merge", () => {
     expect(finished).toMatchObject({
       status: "finished",
       progressValue: 100,
-      completedDates: ["2026-11-01"],
+      completions: ["2026-11-01"],
     });
     // A reread in the source leaves the book finished in Shelfie.
     expect(
@@ -781,7 +781,7 @@ describe("book import merge", () => {
   });
   it("adds reread finishes to existing completion dates", () => {
     const first = mergeImportedItem(
-      { ...base, status: "finished", completedDates: ["2025-01-01"] },
+      { ...base, status: "finished", completions: ["2025-01-01"] },
       null,
       1,
     )!;
@@ -790,11 +790,11 @@ describe("book import merge", () => {
         {
           ...base,
           status: "finished",
-          completedDates: ["2026-11-01", "2025-01-01"],
+          completions: ["2026-11-01", "2025-01-01"],
         },
         first,
         2,
-      )?.completedDates,
+      )?.completions,
     ).toEqual(["2025-01-01", "2026-11-01"]);
   });
 });

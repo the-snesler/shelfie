@@ -80,7 +80,7 @@ async function own(
           excitement: null,
           storefront: null,
           notes: "",
-          completedDates: [],
+          completions: [],
           watchedEpisodes: {},
           activity: [],
           addedAt: 1,

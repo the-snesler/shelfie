@@ -1,7 +1,7 @@
 import {
   episodeKey,
   libraryItemDocSchema,
-  tvFinishedDay,
+  tvFinishedMoment,
   tvWatchState,
   type ItemStatus,
   type ReplicatedLibraryItem,
@@ -31,25 +31,31 @@ export interface TvProgressDecision {
   /** Remembered per item; the status only changes when this does. */
   stateKey: string;
   state: TvWatchState;
-  /** The status (and completion dates) to write, or null to leave it. */
-  patch: Pick<ReplicatedLibraryItem, "status" | "completedDates"> | null;
+  /** The status (and completions) to write, or null to leave it. */
+  patch: Pick<ReplicatedLibraryItem, "status" | "completions"> | null;
 }
 
-/** Latest day the watcher is known to have finished or watched anything. */
+/**
+ * Latest UTC day the watcher is known to have finished or watched anything.
+ * Only compared against TMDB air dates, which are days with no zone either,
+ * so the UTC day of an instant is close enough here.
+ */
 function lastWatchDay(item: ReplicatedLibraryItem): string | null {
   const days = [
-    ...item.completedDates,
+    ...item.completions,
     ...Object.entries(item.watchedEpisodes)
-      .filter(([key, day]) => day && !key.startsWith("s0e"))
-      .map(([, day]) => day),
-  ].sort();
+      .filter(([key, moment]) => moment && !key.startsWith("s0e"))
+      .map(([, moment]) => moment),
+  ]
+    .map((moment) => moment.slice(0, 10))
+    .sort();
   return days.at(-1) ?? null;
 }
 
 /**
  * The status the shared rule implies for a tracked show:
- * - active → finished once the season is over (completion date: the day
- *   the latest aired episode was watched);
+ * - active → finished once the season is over (completion: the moment the
+ *   latest aired episode was watched);
  * - finished → active when the show is caught-up-but-airing (it was marked
  *   Watched mid-season), or behind on an episode that aired after the
  *   watcher's last known activity (new episodes). Without any known day, a
@@ -67,13 +73,13 @@ export function decideTvStatus(
   const stateKey = `${state}@${episodeKey(last.seasonNumber, last.episodeNumber)}`;
   let patch: TvProgressDecision["patch"] = null;
   if (item.status === "active" && state === "season-over") {
-    const day = tvFinishedDay(item.watchedEpisodes, card);
+    const finished = tvFinishedMoment(item.watchedEpisodes, card);
     patch = {
       status: "finished",
-      completedDates:
-        day && !item.completedDates.includes(day)
-          ? [...item.completedDates, day].sort().slice(-100)
-          : item.completedDates,
+      completions:
+        finished && !item.completions.includes(finished)
+          ? [...item.completions, finished].sort().slice(-100)
+          : item.completions,
     };
   } else if (item.status === "finished") {
     const since = lastWatchDay(item);
@@ -81,7 +87,7 @@ export function decideTvStatus(
       state === "caught-up" ||
       (state === "behind" && since !== null && last.airDate > since)
     )
-      patch = { status: "active", completedDates: item.completedDates };
+      patch = { status: "active", completions: item.completions };
   }
   return { stateKey, state, patch };
 }

@@ -2,13 +2,28 @@ import type { ReactNode } from "react";
 import { Popover } from "@base-ui/react/popover";
 import IconHistory from "~icons/tabler/history";
 import type { ActivityChanges, LibraryItem } from "@shelfie/shared";
-import { parseEpisodeKey } from "@shelfie/shared";
+import {
+  isInstant,
+  momentDay,
+  momentSortKey,
+  parseEpisodeKey,
+} from "@shelfie/shared";
 import { STATUS_LABELS } from "../media/status";
 import {
   describeProgressLine,
   progressLines,
   type ProgressLine,
 } from "./activityProgress";
+
+/** A stored moment as text: the local day, plus the local time when known. */
+function formatMoment(moment: string): string {
+  if (!isInstant(moment)) return moment;
+  const time = new Date(moment).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${momentDay(moment)} ${time}`;
+}
 
 /** `progress` is this event's derived progress line (see `progressLines`);
  *  undefined when the event has none or a later correction undid it. */
@@ -34,10 +49,10 @@ function describeChanges(
         ? `Platforms: ${changes.platforms.join(", ")}`
         : "Removed platforms",
     );
-  if (changes.completedDates)
+  if (changes.completions)
     lines.push(
-      changes.completedDates.length
-        ? `Completion dates: ${changes.completedDates.join(", ")}`
+      changes.completions.length
+        ? `Completion dates: ${changes.completions.map(formatMoment).join(", ")}`
         : "Removed completion dates",
     );
   if (changes.notes !== undefined)
@@ -79,39 +94,70 @@ function describeEpisodes(
       first === last
         ? `S${season}E${first}`
         : `S${season}E${first}–S${season}E${last}`;
-    return `${date === null ? "Marked unwatched" : "Watched"} ${range}${date ? ` · ${date}` : ""}`;
+    return `${date === null ? "Marked unwatched" : "Watched"} ${range}${date ? ` · ${formatMoment(date)}` : ""}`;
   });
 }
 
-/** The item's activity, newest first: logged events, then legacy dates
- *  recorded before the activity log existed, then the add itself. */
-function activityEntries(item: LibraryItem) {
+/** One row of the timeline: a logged event, or a completion/watch that no
+ *  event records (imported, or recorded before the activity log existed). */
+type TimelineRow =
+  | { kind: "event"; key: string; at: number; lines: string[] }
+  | { kind: "moment"; key: string; moment: string; label: string };
+
+/** Local sort key for a row: logged events by when they were recorded,
+ *  unlogged moments by when they happened. */
+function rowSortKey(row: TimelineRow): string {
+  if (row.kind === "event")
+    return momentSortKey(new Date(row.at).toISOString());
+  return row.moment ? momentSortKey(row.moment) : "";
+}
+
+/** The item's activity, newest first: logged events interleaved with the
+ *  completions and watches no event records. The add itself comes last. */
+function activityEntries(item: LibraryItem): TimelineRow[] {
   // Each progress event carries its format at the time of the edit.
   const progress = progressLines(item.activity, item.progressFormat);
-  const events = item.activity
+  const events: TimelineRow[] = item.activity
     .map((event) => ({
-      event,
+      kind: "event" as const,
+      key: event.id,
+      at: event.at,
       lines: describeChanges(event.changes, item, progress.get(event.id)),
     }))
-    .filter(({ lines }) => lines.length > 0)
-    .reverse();
-  const recordedDates = new Set(
-    item.activity.flatMap((event) => event.changes.completedDates ?? []),
+    .filter(({ lines }) => lines.length > 0);
+  const recordedCompletions = new Set(
+    item.activity.flatMap((event) => event.changes.completions ?? []),
   );
   const recordedEpisodes = new Set(
     item.activity.flatMap((event) =>
       Object.keys(event.changes.watchedEpisodes ?? {}),
     ),
   );
-  const legacy = [
-    ...item.completedDates
-      .filter((date) => !recordedDates.has(date))
-      .map((date) => ({ date, label: "Completed" })),
+  const unlogged: TimelineRow[] = [
+    ...item.completions
+      .filter((moment) => !recordedCompletions.has(moment))
+      .map((moment, index) => ({
+        kind: "moment" as const,
+        key: `completion:${index}`,
+        moment,
+        label: "Completed",
+      })),
     ...Object.entries(item.watchedEpisodes)
       .filter(([key]) => !recordedEpisodes.has(key))
-      .map(([key, date]) => ({ date, label: `Watched ${key.toUpperCase()}` })),
-  ].sort((a, b) => b.date.localeCompare(a.date));
-  return { events, legacy };
+      .map(([key, moment]) => ({
+        kind: "moment" as const,
+        key: `episode:${key}`,
+        moment,
+        label: `Watched ${key.toUpperCase()}`,
+      })),
+  ];
+  // Stable sort keeps same-moment rows (a bulk episode mark) in order.
+  return [...events, ...unlogged]
+    .map((row, index) => ({ row, index, key: rowSortKey(row) }))
+    .sort((a, b) =>
+      a.key === b.key ? b.index - a.index : a.key < b.key ? 1 : -1,
+    )
+    .map(({ row }) => row);
 }
 
 /** Hero chip that opens the item's activity timeline in a popover. Hidden
@@ -122,8 +168,8 @@ export function ActivityButton({
   item: LibraryItem | null | undefined;
 }) {
   if (!item) return null;
-  const { events, legacy } = activityEntries(item);
-  const count = events.length + legacy.length + 1;
+  const rows = activityEntries(item);
+  const count = rows.length + 1;
 
   return (
     <Popover.Root>
@@ -139,23 +185,29 @@ export function ActivityButton({
               My activity
             </Popover.Title>
             <ol>
-              {events.map(({ event, lines }) => (
-                <TimelineEntry key={event.id} at={event.at}>
-                  {lines.map((line, index) => (
-                    <p
-                      key={index}
-                      className="text-sm whitespace-pre-wrap break-words text-ink"
-                    >
-                      {line}
-                    </p>
-                  ))}
-                </TimelineEntry>
-              ))}
-              {legacy.map(({ date, label }, index) => (
-                <TimelineEntry key={`legacy:${index}`} legacyDate={date}>
-                  <p className="text-sm text-ink">{label}</p>
-                </TimelineEntry>
-              ))}
+              {rows.map((row) =>
+                row.kind === "event" ? (
+                  <TimelineEntry key={row.key} at={row.at}>
+                    {row.lines.map((line, index) => (
+                      <p
+                        key={index}
+                        className="text-sm whitespace-pre-wrap break-words text-ink"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </TimelineEntry>
+                ) : (
+                  <TimelineEntry
+                    key={row.key}
+                    {...(row.moment && isInstant(row.moment)
+                      ? { at: Date.parse(row.moment) }
+                      : { legacyDate: row.moment })}
+                  >
+                    <p className="text-sm text-ink">{row.label}</p>
+                  </TimelineEntry>
+                ),
+              )}
               <TimelineEntry at={item.addedAt}>
                 <p className="text-sm text-ink">Added to library</p>
               </TimelineEntry>
@@ -170,7 +222,7 @@ export function ActivityButton({
 /** One node on the activity timeline: a dot on the accent rail, its
  *  timestamp, then the event's lines. The rail segment (`before:`) runs from
  *  this dot's center to the next one's and is dropped on the last entry.
- *  Legacy entries (`legacyDate`) only know a day, so they get a muted dot. */
+ *  Entries that only know a day (`legacyDate`) get a muted dot. */
 function TimelineEntry({
   at,
   legacyDate,

@@ -1,3 +1,5 @@
+import type { Moment } from "./moments.js";
+
 /**
  * The single source of truth for a library item's shape. Both the client
  * (RxDB collection) and the server (sync handlers) import this. If these
@@ -139,15 +141,16 @@ export interface LibraryItem {
    *  `rating`. Kept (just hidden) when the item leaves the planned group.
    *  Deliberately not recorded in `activity`. */
   excitement: number | null;
-  /** Calendar days (ISO "YYYY-MM-DD") the user marked this finished.
-   *  Empty until the first completion. Display order is a UI concern. */
-  completedDates: string[];
+  /** Each time the user finished this, as a {@link Moment}: the instant
+   *  they finished when known, else the bare day. Empty until the first
+   *  completion. Display order is a UI concern. */
+  completions: Moment[];
   /** Free-text notes; empty string when none. */
   notes: string;
-  /** TV only: episode key (see {@link episodeKey}) → local `YYYY-MM-DD`
-   *  watch date (`""` = date unknown, from pre-v6 migration). `{}` for other
-   *  media types. */
-  watchedEpisodes: Record<string, string>;
+  /** TV only: episode key (see {@link episodeKey}) → when the user finished
+   *  watching it, as a {@link Moment} (`""` = unknown: pre-v6 data, or a
+   *  source that only knows it was watched). `{}` for other media types. */
+  watchedEpisodes: Record<string, Moment | "">;
   /** Timestamped user edits, synced with the item. */
   activity: ItemActivity[];
   /** ms epoch */
@@ -164,17 +167,18 @@ export type ActivityChanges = Partial<
     | "progressValue"
     | "platforms"
     | "rating"
-    | "completedDates"
+    | "completions"
     | "notes"
   >
 > & {
   /** Only changed episode keys; null means marked unwatched. */
-  watchedEpisodes?: Record<string, string | null>;
+  watchedEpisodes?: Record<string, Moment | "" | null>;
 };
 
 export interface ItemActivity {
   id: string;
-  /** ms epoch when the edit was recorded, independent of a chosen watch/completion day. */
+  /** ms epoch when the edit was recorded, independent of the completion or
+   *  watch moments it records. */
   at: number;
   changes: ActivityChanges;
 }

@@ -1,8 +1,11 @@
 import {
   canonicalDocKey,
+  dayCouldHold,
   defaultLogFormat,
+  isInstant,
   libraryItemDocSchema,
   type ItemStatus,
+  type Moment,
   type ReplicatedLibraryItem,
 } from "@shelfie/shared";
 import type { ImportedItem } from "./types.js";
@@ -29,6 +32,56 @@ export interface MergeOptions {
   updateStatus?: boolean;
 }
 
+/** Whether `instant` is a more precise record of the bare `day`: the same
+ *  finish, if the owner's time zone puts the instant on that day. */
+function sharpens(day: string | undefined, instant: Moment): boolean {
+  return (
+    day !== undefined &&
+    !isInstant(day) &&
+    isInstant(instant) &&
+    dayCouldHold(day, instant)
+  );
+}
+
+/**
+ * The item's completions plus the source's. A timed completion replaces a
+ * bare day that could be the same finish (from a manual log, or an import
+ * that predates instants) rather than being added beside it; each day
+ * absorbs at most one instant, so a same-day rewatch still adds one.
+ */
+export function mergeCompletions(
+  current: readonly Moment[],
+  incoming: readonly Moment[],
+): Moment[] {
+  const merged = [...current];
+  for (const moment of incoming) {
+    if (merged.includes(moment)) continue;
+    const day = merged.findIndex((existing) => sharpens(existing, moment));
+    if (day >= 0) merged[day] = moment;
+    else if (!merged.some((existing) => sharpens(moment, existing)))
+      merged.push(moment);
+  }
+  return [...new Set(merged)].sort().slice(-100);
+}
+
+/**
+ * The item's watched episodes plus the source's. The owner's entries win,
+ * except that a source instant fills in an unknown ("") or bare-day watch
+ * of the same episode on a day the instant could fall on.
+ */
+function mergeWatchedEpisodes(
+  current: Readonly<Record<string, Moment | "">>,
+  incoming: Readonly<Record<string, Moment | "">>,
+): Record<string, Moment | ""> {
+  const merged = { ...incoming, ...current };
+  for (const [key, moment] of Object.entries(incoming)) {
+    const mine = current[key];
+    if (moment && isInstant(moment) && (mine === "" || sharpens(mine, moment)))
+      merged[key] = moment;
+  }
+  return merged;
+}
+
 /** Periodic imports are additive: preserve deliberate local edits and tombstones. */
 export function mergeImportedItem(
   incoming: ImportedItem,
@@ -50,7 +103,7 @@ export function mergeImportedItem(
       rating: incoming.rating ?? null,
       excitement: null,
       storefront: incoming.storefront ?? null,
-      completedDates: incoming.completedDates ?? [],
+      completions: incoming.completions ?? [],
       notes: "",
       watchedEpisodes: incoming.watchedEpisodes ?? {},
       activity: [],
@@ -76,18 +129,14 @@ export function mergeImportedItem(
     rating: current.rating ?? incoming.rating ?? null,
     // A store the user picked wins; an import only fills an unset one.
     storefront: current.storefront ?? incoming.storefront ?? null,
-    completedDates: [
-      ...new Set([
-        ...current.completedDates,
-        ...(incoming.completedDates ?? []),
-      ]),
-    ]
-      .sort()
-      .slice(-100),
-    watchedEpisodes: {
-      ...(incoming.watchedEpisodes ?? {}),
-      ...current.watchedEpisodes,
-    },
+    completions: mergeCompletions(
+      current.completions,
+      incoming.completions ?? [],
+    ),
+    watchedEpisodes: mergeWatchedEpisodes(
+      current.watchedEpisodes,
+      incoming.watchedEpisodes ?? {},
+    ),
     progressValue:
       current.progressValue === null &&
       current.progressFormat === incoming.progressFormat

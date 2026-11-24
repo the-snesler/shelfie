@@ -1,3 +1,4 @@
+import { latestMoment, type Moment } from "./moments.js";
 import type { TvMetadata } from "./tv.js";
 import { episodeKey } from "./types.js";
 
@@ -56,22 +57,22 @@ export function tvWatchState(
 }
 
 /**
- * The day a caught-up watcher finished: when they watched the latest aired
- * episode, else their latest known watch day. Null when no watch day is
+ * When a caught-up watcher finished: the moment they watched the latest
+ * aired episode, else their latest known watch. Null when no watch moment is
  * known (e.g. Trakt's "date unknown" history).
  */
-export function tvFinishedDay(
+export function tvFinishedMoment(
   watchedEpisodes: Record<string, string>,
   card: TvProgressCard | null | undefined,
-): string | null {
+): Moment | null {
   const last = card?.lastEpisodeToAir;
-  const lastDay = last
+  const lastWatch = last
     ? watchedEpisodes[episodeKey(last.seasonNumber, last.episodeNumber)]
     : undefined;
-  if (lastDay) return lastDay;
-  const days = regularKeys(watchedEpisodes)
-    .map((key) => watchedEpisodes[key])
-    .filter((day): day is string => Boolean(day))
-    .sort();
-  return days.at(-1) ?? null;
+  if (lastWatch) return lastWatch;
+  return latestMoment(
+    regularKeys(watchedEpisodes)
+      .map((key) => watchedEpisodes[key])
+      .filter(Boolean),
+  );
 }

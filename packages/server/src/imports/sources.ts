@@ -39,6 +39,29 @@ function day(value: unknown): string | undefined {
     ? iso
     : undefined;
 }
+/**
+ * When a Trakt watch ended, as a UTC instant. Trakt's `watched_at` is when
+ * the watch started, but Shelfie records when the user finished (see shared
+ * `Moment`), so the title's runtime is added. Without a runtime the start is
+ * the best moment available. Undefined for Trakt's "date unknown" (the Unix
+ * epoch) and anything unparseable.
+ */
+export function traktFinishedAt(
+  watchedAt: unknown,
+  runtimeMinutes: unknown,
+): string | undefined {
+  if (typeof watchedAt !== "string" || !day(watchedAt)) return undefined;
+  const started = Date.parse(watchedAt);
+  if (!Number.isFinite(started)) return undefined;
+  const runtime =
+    typeof runtimeMinutes === "number" &&
+    Number.isFinite(runtimeMinutes) &&
+    runtimeMinutes > 0 &&
+    runtimeMinutes < 24 * 60
+      ? runtimeMinutes
+      : 0;
+  return new Date(started + runtime * 60_000).toISOString();
+}
 /** The later of two optional ISO days. */
 function latestDay(a: string | undefined, b: string | undefined) {
   return a && b ? (a > b ? a : b) : (a ?? b);
@@ -332,6 +355,8 @@ async function fetchTrakt(
       url.search = new URLSearchParams({
         page: String(page),
         limit: "100",
+        // Full objects carry runtimes, needed to turn watch starts into ends.
+        ...(path === "history" ? { extended: "full" } : {}),
       }).toString();
       const { data, headers: pagination } = await deps.request(url, {
         headers,
@@ -399,14 +424,21 @@ async function fetchTrakt(
         const score = rating(entry.rating, 2);
         if (score) item.rating = score;
         if (kind === "history") {
-          const watched = day(entry.watched_at);
+          const ep = object(entry.episode);
+          const finished = traktFinishedAt(
+            entry.watched_at,
+            mediaType === "movie"
+              ? catalog.runtime
+              : (ep.runtime ?? catalog.runtime),
+          );
+          const watched = day(finished);
           if (watched) item.activityDay = latestDay(item.activityDay, watched);
           if (mediaType === "movie") {
             item.status = "finished";
-            item.completedDates = [
+            item.completions = [
               ...new Set([
-                ...(item.completedDates ?? []),
-                ...(watched ? [watched] : []),
+                ...(item.completions ?? []),
+                ...(finished ? [finished] : []),
               ]),
             ]
               .sort()
@@ -415,7 +447,6 @@ async function fetchTrakt(
             // Whether the show is finished is decided against TMDB's episode
             // data by the TV progress pass the import service runs next.
             item.status = "active";
-            const ep = object(entry.episode);
             if (
               Number.isInteger(ep.season) &&
               Number(ep.season) >= 0 &&
@@ -426,9 +457,13 @@ async function fetchTrakt(
             ) {
               const episode = episodeKey(Number(ep.season), Number(ep.number));
               item.watchedEpisodes ??= {};
+              // Keep the first time through; rewatches don't move it.
               const existing = item.watchedEpisodes[episode];
-              if (existing === undefined || (watched && watched < existing))
-                item.watchedEpisodes[episode] = watched ?? "";
+              if (
+                existing === undefined ||
+                (finished && (!existing || finished < existing))
+              )
+                item.watchedEpisodes[episode] = finished ?? "";
             }
           }
         }
@@ -606,9 +641,9 @@ async function fetchBookOrbit(
       const status =
         BOOKORBIT_STATUSES[String(readStatus.status)] ??
         (progress ? "active" : "backlogged");
-      const completedDates = finishDays.get(externalId);
+      const completions = finishDays.get(externalId);
       const activityDay = latestDay(
-        completedDates?.toSorted().at(-1),
+        completions?.toSorted().at(-1),
         day(readStatus.updatedAt),
       );
       // Before matching: Goodreads lookups are throttled to one a second.
@@ -661,7 +696,7 @@ async function fetchBookOrbit(
         rating: rating(card.rating),
         progressFormat: "percent",
         progressValue: progress,
-        ...(completedDates ? { completedDates } : {}),
+        ...(completions ? { completions } : {}),
       });
     }
     if (

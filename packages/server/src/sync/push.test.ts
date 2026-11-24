@@ -20,7 +20,7 @@ const base: ReplicatedLibraryItem = {
   rating: null,
   excitement: null,
   storefront: null,
-  completedDates: [],
+  completions: [],
   notes: "",
   watchedEpisodes: {},
   activity: [],
