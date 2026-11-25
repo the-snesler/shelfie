@@ -27,6 +27,7 @@ export function StaticStars({ value }: { value: number | null }) {
           />
         );
       })}
+      <span className="sr-only">{value != null ? value.toFixed(1) : "No rating"}</span>
     </div>
   );
 }
