@@ -528,7 +528,7 @@ function ListBody({
             </h2>
           )}
           {view === "shelf" ? (
-            <div className="shelf-rows flex flex-wrap items-start gap-x-6">
+            <div className="shelf-rows flex flex-wrap items-start gap-x-3 sm:gap-x-6">
               {section.shown.map((item) => (
                 <LibraryItemCard
                   key={item.id}

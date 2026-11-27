@@ -39,12 +39,12 @@ import {
 import type { CardMeta } from "./useLibraryData";
 import { libraryItemLink } from "./libraryItemLink";
 import { libraryProgressPercent } from "./libraryProgress";
+import { useShelfScale } from "./shelfScale";
 
-/** Poster rendered height (2:3 at MEDIA_LIBRARY_COVER_WIDTH) and the 16:9
- *  still width matched to it — the still stands the same height as the poster. */
+/** Next-episode still height (80% of the poster width at scale 1), and how
+ *  far it tucks under the poster's right edge. Both scale with the shelf. */
 const TV_STILL_HEIGHT = Math.round(MEDIA_LIBRARY_COVER_WIDTH * 0.8);
-const TV_STILL_WIDTH = Math.round((TV_STILL_HEIGHT * 16) / 9);
-const TV_STILL_GAP = -56;
+const TV_STILL_OVERLAP = 56;
 
 /** One library grid cell: cover (linked to detail, view-transitioning) +
  *  caption + log-activity button. Its own component so `useViewTransitionState`
@@ -102,11 +102,19 @@ export function LibraryItemCard({
 
   const isTransitioning = useViewTransitionState(href ?? "/__no_transition__");
 
+  const shelfScale = useShelfScale();
+  const compact = shelfScale < 1;
+  const mediaWidth = Math.round(MEDIA_LIBRARY_COVER_WIDTH * shelfScale);
+  const gameScale = LIBRARY_COVER_SCALE * shelfScale;
+  const stillHeight = Math.round(TV_STILL_HEIGHT * shelfScale);
+  const stillOverlap = Math.round(TV_STILL_OVERLAP * shelfScale);
+  const stillWidth = Math.round((stillHeight * 16) / 9);
+
   const cardWidth = airedNext
-    ? MEDIA_LIBRARY_COVER_WIDTH + TV_STILL_GAP + TV_STILL_WIDTH
+    ? mediaWidth - stillOverlap + stillWidth
     : item.mediaType === "game"
-      ? gameCoverWidth(caseKey, LIBRARY_COVER_SCALE)
-      : MEDIA_LIBRARY_COVER_WIDTH;
+      ? gameCoverWidth(caseKey, gameScale)
+      : mediaWidth;
 
   const coverBox =
     item.mediaType === "game" ? (
@@ -115,7 +123,7 @@ export function LibraryItemCard({
         coverHash={meta?.coverHash}
         caseKey={caseKey}
         name={name}
-        scale={LIBRARY_COVER_SCALE}
+        scale={gameScale}
         viewTransitionName={
           gameMeta?.slug && isTransitioning
             ? gameCoverTransitionName(gameMeta.slug)
@@ -127,7 +135,7 @@ export function LibraryItemCard({
         coverUrl={cover}
         coverHash={meta?.coverHash}
         name={name}
-        width={MEDIA_LIBRARY_COVER_WIDTH}
+        width={mediaWidth}
         mediaType={item.mediaType}
         viewTransitionName={
           isTransitioning
@@ -211,8 +219,12 @@ export function LibraryItemCard({
             to={href}
             viewTransition
             state={linkState}
-            className="relative overflow-hidden rounded-lg bg-panel -ml-14 z-10 poster"
-            style={{ height: `${TV_STILL_HEIGHT}px`, aspectRatio: "16 / 9" }}
+            className="relative overflow-hidden rounded-lg bg-panel z-10 poster"
+            style={{
+              height: `${stillHeight}px`,
+              aspectRatio: "16 / 9",
+              marginLeft: `${-stillOverlap}px`,
+            }}
           >
             <AnimatePresence initial={false}>
               <motion.div
@@ -259,9 +271,10 @@ export function LibraryItemCard({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(progress)}
-            className="absolute left-1 bottom-1 w-8 h-8 z-20 overflow-hidden drop-shadow-lg"
-            width="32"
-            height="32"
+            className="absolute left-1 bottom-1 z-20 overflow-hidden drop-shadow-lg"
+            width={compact ? 22 : 32}
+            height={compact ? 22 : 32}
+            viewBox="0 0 32 32"
           >
             <circle
               r={PROGRESS_RADIUS}
@@ -292,7 +305,10 @@ export function LibraryItemCard({
         style={{ height: "var(--shelf-label-h)" }}
       >
         <div className="min-w-0 flex-1 text-left">
-          <TruncatedText as="p" className="text-[13px] font-medium text-ink">
+          <TruncatedText
+            as="p"
+            className="text-xs font-medium text-ink sm:text-[13px]"
+          >
             {name}
           </TruncatedText>
           {airedNext ? (
@@ -304,7 +320,7 @@ export function LibraryItemCard({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                  className="absolute inset-x-0 top-0 text-xs text-muted"
+                  className="absolute inset-x-0 top-0 text-[11px] text-muted sm:text-xs"
                 >
                   <TruncatedText className="block">
                     {displayCaption}
@@ -318,12 +334,12 @@ export function LibraryItemCard({
             <Tooltip
               content={`S${upcoming.season}E${upcoming.episode} · ${airingLabel(upcoming.airDate, today)}`}
             >
-              <p className="truncate text-xs text-accent">
+              <p className="truncate text-[11px] text-accent sm:text-xs">
                 {airingLabel(upcoming.airDate, today)}
               </p>
             </Tooltip>
           ) : (
-            <TruncatedText as="p" className="text-xs text-muted">
+            <TruncatedText as="p" className="text-[11px] text-muted sm:text-xs">
               {displayCaption}
             </TruncatedText>
           )}
@@ -334,7 +350,7 @@ export function LibraryItemCard({
             checked={false}
             aria-label={`Mark S${airedNext.season}E${airedNext.episode} watched`}
             onChange={() => void markNextWatched()}
-            className="mt-0.5 size-5 shrink-0 cursor-pointer appearance-none rounded-full border-2 border-current bg-transparent text-faint hover:text-accent"
+            className="mt-0.5 size-4 shrink-0 sm:size-5 cursor-pointer appearance-none rounded-full border-2 border-current bg-transparent text-faint hover:text-accent"
           />
         ) : (
           <CardLogButton
@@ -384,7 +400,7 @@ function CardLogButton({
           setAnchor(event.currentTarget);
           setOpen(true);
         }}
-        className="shrink-0 rounded text-xl leading-none text-faint hover:text-accent"
+        className="shrink-0 rounded text-base leading-none sm:text-xl text-faint hover:text-accent"
       >
         <IconPlus />
       </button>

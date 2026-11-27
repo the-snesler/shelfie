@@ -32,6 +32,7 @@ import {
   type ShelfSection,
 } from "./librarySorting";
 import { PLANNED_SORT_OPTIONS, PlannedSortMenu } from "./PlannedSortMenu";
+import { useCompactShelf, useShelfScale } from "./shelfScale";
 import { useLibraryData } from "./useLibraryData";
 
 const MEDIA_LABELS: Record<MediaType, string> = {
@@ -223,6 +224,8 @@ export default function Library() {
   }
 
   const heading = activeType ? MEDIA_LABELS[activeType] : "Library";
+  const compactShelf = useCompactShelf();
+  const tileWidth = Math.round(MEDIA_LIBRARY_COVER_WIDTH * useShelfScale());
 
   return (
     <div
@@ -332,7 +335,17 @@ export default function Library() {
                     )}
                   </div>
                 </div>
-                <div className="shelf-rows flex flex-wrap items-start justify-center gap-x-6">
+                {/* On phones In Progress is one sideways-scrolling shelf, bled
+                    to the screen edges, so wide TV "next episode" cards and
+                    a long in-progress list don't push the rest of the
+                    library far down the page. */}
+                <div
+                  className={
+                    g === "in-progress" && compactShelf
+                      ? "shelf-rows shelf-strip -mx-5 flex items-start gap-x-3 scroll-px-5 px-5"
+                      : "shelf-rows flex flex-wrap items-start justify-center gap-x-3 sm:gap-x-6"
+                  }
+                >
                   {shownItems.map((item) => (
                     <motion.div
                       key={item.id}
@@ -403,11 +416,11 @@ export default function Library() {
                         to={listHref(tile.listId, activeType)}
                         className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-faint/60 text-muted transition-colors hover:border-accent hover:text-accent"
                         style={{
-                          width: `${MEDIA_LIBRARY_COVER_WIDTH}px`,
+                          width: `${tileWidth}px`,
                           aspectRatio: "2 / 3",
                         }}
                       >
-                        <span className="font-display text-4xl font-semibold">
+                        <span className="font-display text-3xl font-semibold sm:text-4xl">
                           +{tile.count}
                         </span>
                         <span className="text-xs">

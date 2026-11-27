@@ -180,6 +180,33 @@
     background-repeat: repeat-y;
   }
 
+  /* Phones: covers render at smaller scale (features/library/shelfScale.ts) so three
+   * fit a row; the cover zone shrinks with them. */
+  @media (width < 40rem) {
+    .shelf-rows {
+      --shelf-cover-h: calc(188px * 0.8);
+      --shelf-ledge-h: 10px;
+      --shelf-label-h: 38px;
+      --shelf-row-gap: 12px;
+    }
+  }
+
+  /* A single-shelf strip that scrolls sideways (the phone In Progress row).
+   * The ledge background stays put while the covers slide along it. */
+  .shelf-strip {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .shelf-strip > * {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+
   /* Items stand on the shelf: grow from their feet, not their center. */
   .shelf-rows .video-game,
   .shelf-rows .book,
