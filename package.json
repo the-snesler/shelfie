@@ -8,6 +8,7 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
+    "gate": "pnpm format:check && turbo run typecheck lint test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed": "node scripts/seed.mjs",
