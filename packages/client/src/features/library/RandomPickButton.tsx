@@ -185,7 +185,7 @@ export function RandomPickButton({
       disabled={rolling}
       aria-label="Pick a random planned item"
       title="Pick something at random"
-      className="inline-flex items-center gap-1.5 rounded-md border border-divider bg-panel px-2 py-1.5 text-sm text-muted transition-colors hover:border-accent hover:text-accent disabled:border-accent disabled:text-accent"
+      className="inline-flex rounded p-1.5 text-muted transition-colors hover:bg-well hover:text-accent disabled:text-accent"
     >
       <motion.span
         className="inline-flex"
@@ -204,9 +204,8 @@ export function RandomPickButton({
         }
         whileHover={rolling ? undefined : { rotate: -15 }}
       >
-        <Face className="size-4" />
+        <Face className="size-5" />
       </motion.span>
-      Random
     </button>
   );
 }

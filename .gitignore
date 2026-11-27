@@ -202,3 +202,4 @@ packages/server/data
 .turbo
 .react-router
 /scripts/screenshot.png
+.pnpm-store

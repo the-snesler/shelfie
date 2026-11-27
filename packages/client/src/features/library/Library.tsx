@@ -21,7 +21,7 @@ import {
   RandomPickButton,
   useRandomPick,
   type RandomPickCandidate,
-} from "./RandomPick";
+} from "./RandomPickButton";
 import {
   comparePlannedItems,
   compareUnreleasedItems,
@@ -31,6 +31,7 @@ import {
   type PlannedSort,
   type ShelfSection,
 } from "./librarySorting";
+import { PLANNED_SORT_OPTIONS, PlannedSortMenu } from "./PlannedSortMenu";
 import { useLibraryData } from "./useLibraryData";
 
 const MEDIA_LABELS: Record<MediaType, string> = {
@@ -48,15 +49,6 @@ const SECTION_LABELS: Record<ShelfSection, string> = {
 
 const PLANNED_SORT_KEY = "shelfie:planned-sort";
 const PLANNED_ORDER_KEY = "shelfie:planned-order";
-
-const PLANNED_SORT_OPTIONS: readonly [PlannedSort, string][] = [
-  ["manual", "Manual"],
-  ["recent", "Last interaction"],
-  ["release", "Release date"],
-  ["excitement", "Excitement"],
-  ["title", "A–Z"],
-  ["type", "Type"],
-];
 
 function storedPlannedSort(): PlannedSort {
   const value = localStorage.getItem(PLANNED_SORT_KEY);
@@ -312,7 +304,7 @@ export default function Library() {
                       {sectionItems.length}
                     </span>
                   </h2>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
                     {g === "planned" && randomCandidates.length > 0 && (
                       <RandomPickButton
                         rolling={randomPick.rolling}
@@ -320,24 +312,10 @@ export default function Library() {
                       />
                     )}
                     {g === "planned" && (
-                      <label className="flex items-center gap-2 text-xs text-muted">
-                        Sort
-                        <select
-                          value={plannedSort}
-                          onChange={(event) =>
-                            setPlannedSort(
-                              event.currentTarget.value as PlannedSort,
-                            )
-                          }
-                          className="rounded-md border border-divider bg-panel px-2 py-1.5 text-sm text-ink outline-none focus:border-accent"
-                        >
-                          {PLANNED_SORT_OPTIONS.map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <PlannedSortMenu
+                        value={plannedSort}
+                        onChange={setPlannedSort}
+                      />
                     )}
                     {g !== "unreleased" && (
                       <Link
@@ -345,10 +323,11 @@ export default function Library() {
                           g === "wishlist" ? "wishlisted" : groupListId(g),
                           activeType,
                         )}
-                        className="inline-flex items-center gap-0.5 text-sm text-muted hover:text-accent"
+                        aria-label={`See all ${SECTION_LABELS[g].toLowerCase()}`}
+                        title="See all"
+                        className="inline-flex rounded p-1.5 text-muted transition-colors hover:bg-well hover:text-accent"
                       >
-                        See all
-                        <IconChevronRight className="size-4" />
+                        <IconChevronRight className="size-5" aria-hidden />
                       </Link>
                     )}
                   </div>
