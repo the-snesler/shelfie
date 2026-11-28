@@ -40,27 +40,15 @@ function day(value: unknown): string | undefined {
     : undefined;
 }
 /**
- * When a Trakt watch ended, as a UTC instant. Trakt's `watched_at` is when
- * the watch started, but Shelfie records when the user finished (see shared
- * `Moment`), so the title's runtime is added. Without a runtime the start is
- * the best moment available. Undefined for Trakt's "date unknown" (the Unix
- * epoch) and anything unparseable.
+ * A Trakt `watched_at` as a canonical UTC instant (see shared `Moment`),
+ * taken as is: Trakt only records the start of a watch when scrobbling,
+ * and a history entry doesn't say whether it was scrobbled. Undefined for
+ * Trakt's "date unknown" (the Unix epoch) and anything unparseable.
  */
-export function traktFinishedAt(
-  watchedAt: unknown,
-  runtimeMinutes: unknown,
-): string | undefined {
+export function traktWatchedAt(watchedAt: unknown): string | undefined {
   if (typeof watchedAt !== "string" || !day(watchedAt)) return undefined;
-  const started = Date.parse(watchedAt);
-  if (!Number.isFinite(started)) return undefined;
-  const runtime =
-    typeof runtimeMinutes === "number" &&
-    Number.isFinite(runtimeMinutes) &&
-    runtimeMinutes > 0 &&
-    runtimeMinutes < 24 * 60
-      ? runtimeMinutes
-      : 0;
-  return new Date(started + runtime * 60_000).toISOString();
+  const instant = Date.parse(watchedAt);
+  return Number.isFinite(instant) ? new Date(instant).toISOString() : undefined;
 }
 /** The later of two optional ISO days. */
 function latestDay(a: string | undefined, b: string | undefined) {
@@ -355,8 +343,6 @@ async function fetchTrakt(
       url.search = new URLSearchParams({
         page: String(page),
         limit: "100",
-        // Full objects carry runtimes, needed to turn watch starts into ends.
-        ...(path === "history" ? { extended: "full" } : {}),
       }).toString();
       const { data, headers: pagination } = await deps.request(url, {
         headers,
@@ -425,12 +411,7 @@ async function fetchTrakt(
         if (score) item.rating = score;
         if (kind === "history") {
           const ep = object(entry.episode);
-          const finished = traktFinishedAt(
-            entry.watched_at,
-            mediaType === "movie"
-              ? catalog.runtime
-              : (ep.runtime ?? catalog.runtime),
-          );
+          const finished = traktWatchedAt(entry.watched_at);
           const watched = day(finished);
           if (watched) item.activityDay = latestDay(item.activityDay, watched);
           if (mediaType === "movie") {

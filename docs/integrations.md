@@ -165,10 +165,9 @@ refresh. Replace expired tokens in Settings.
 
 Movies and shows map through TMDB IDs. The adapter reads paginated watchlist,
 history, and ratings, maps movie watches to completions, and records episode
-watches on TV items, each with its exact time. Trakt's `watched_at` is when
-the watch _started_, while Shelfie records when you _finished_, so history is
-requested with `extended=full` and the movie's or episode's runtime (falling
-back to the show's) is added; with no runtime the start time is kept. A
+watches on TV items, each with its exact time. Trakt's `watched_at` is
+imported as is: it is only the start of the watch when Trakt scrobbled it,
+and history doesn't say which entries were scrobbled. A
 re-import upgrades completions and episode watches that only had a day,
 including ones logged by hand, when the day matches, instead of adding
 duplicates. Ratings only rate titles on the watchlist or

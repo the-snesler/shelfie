@@ -228,8 +228,9 @@ written to `activity`), `completions`, `notes`, `watchedEpisodes`,
   `YYYY-MM-DD` local day when only the day is (pre-v10 data, a picked day,
   a release-date completion; episodes also allow `""` for unknown). **An
   instant is when the user _finished_** the film, episode, book or game,
-  never when they started: a source that reports start times (Trakt's
-  `watched_at`) has the runtime added on import. For books and games the
+  never when they started. Source times are imported as is (Trakt's
+  `watched_at` is only a start time for scrobbles, which its history doesn't
+  flag). For books and games the
   start of the final session is meaningless and unknowable, so "finished"
   is the one definition that works for every medium. Only the client turns
   instants into days (`momentDay`, `momentSortKey`/`compareMoments` for

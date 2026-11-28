@@ -9,9 +9,9 @@
  *   completion. A bare day is already the owner's local day.
  *
  * An instant always marks the moment the user *finished*: the end of the
- * film, episode or book, never its start. A source that reports when
- * watching began (Trakt's `watched_at`) has the runtime added on import. For
- * books and games the start of the final session is meaningless and
+ * film, episode or book, never its start. Sources are taken at their word:
+ * Trakt's `watched_at` is only a start time for scrobbles, which history
+ * doesn't flag, so it is imported unchanged. For books and games the start of the final session is meaningless and
  * unknowable, so the end is the only moment that applies to every medium.
  *
  * Instants are stored in UTC and turned into local days only for display,
