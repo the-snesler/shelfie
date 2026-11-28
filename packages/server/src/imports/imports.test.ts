@@ -15,12 +15,7 @@ import { parseCron } from "./cron.js";
 import { mergeCompletions, mergeImportedItem } from "./merge.js";
 import { entryFilter } from "./policy.js";
 import { ImportService } from "./service.js";
-import {
-  fetchSource,
-  sourceJson,
-  traktWatchedAt,
-  type SourceDependencies,
-} from "./sources.js";
+import { fetchSource, sourceJson, type SourceDependencies } from "./sources.js";
 import { registerImportRoutes } from "./routes.js";
 import type { ImportedItem } from "./types.js";
 
@@ -377,7 +372,8 @@ describe("source adapters", () => {
           type: "episode",
           show: { ids: { tmdb: 2 } },
           episode: { season: 1, number: 3 },
-          watched_at: "2026-10-14T12:00:00.000Z",
+          // Normalized to the canonical instant form.
+          watched_at: "2026-10-14T12:00:00Z",
         },
       ]);
     });
@@ -403,14 +399,6 @@ describe("source adapters", () => {
         }),
       ]),
     );
-  });
-  it("imports Trakt watch times as is", () => {
-    const watched = "2026-11-22T03:15:00.000Z";
-    expect(traktWatchedAt(watched)).toBe(watched);
-    // Normalized to the canonical instant form.
-    expect(traktWatchedAt("2026-11-22T03:15:00Z")).toBe(watched);
-    expect(traktWatchedAt("1970-01-01T00:00:00.000Z")).toBeUndefined();
-    expect(traktWatchedAt("not a date")).toBeUndefined();
   });
   it("imports show history as watching, with unknown dates left blank, and explains skips", async () => {
     const request: SourceDependencies["request"] = vi.fn(async (url) => {

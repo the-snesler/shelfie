@@ -39,17 +39,6 @@ function day(value: unknown): string | undefined {
     ? iso
     : undefined;
 }
-/**
- * A Trakt `watched_at` as a canonical UTC instant (see shared `Moment`),
- * taken as is: Trakt only records the start of a watch when scrobbling,
- * and a history entry doesn't say whether it was scrobbled. Undefined for
- * Trakt's "date unknown" (the Unix epoch) and anything unparseable.
- */
-export function traktWatchedAt(watchedAt: unknown): string | undefined {
-  if (typeof watchedAt !== "string" || !day(watchedAt)) return undefined;
-  const instant = Date.parse(watchedAt);
-  return Number.isFinite(instant) ? new Date(instant).toISOString() : undefined;
-}
 /** The later of two optional ISO days. */
 function latestDay(a: string | undefined, b: string | undefined) {
   return a && b ? (a > b ? a : b) : (a ?? b);
@@ -411,8 +400,13 @@ async function fetchTrakt(
         if (score) item.rating = score;
         if (kind === "history") {
           const ep = object(entry.episode);
-          const finished = traktWatchedAt(entry.watched_at);
-          const watched = day(finished);
+          // Taken as is: watched_at is only a watch's start when Trakt
+          // scrobbled it, and history doesn't say which entries were.
+          const watched = day(entry.watched_at);
+          const instant = watched ? Date.parse(String(entry.watched_at)) : NaN;
+          const finished = Number.isFinite(instant)
+            ? new Date(instant).toISOString()
+            : undefined;
           if (watched) item.activityDay = latestDay(item.activityDay, watched);
           if (mediaType === "movie") {
             item.status = "finished";
