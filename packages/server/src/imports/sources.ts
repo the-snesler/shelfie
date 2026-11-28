@@ -400,20 +400,22 @@ async function fetchTrakt(
         if (score) item.rating = score;
         if (kind === "history") {
           const ep = object(entry.episode);
-          // Taken as is: watched_at is only a watch's start when Trakt
-          // scrobbled it, and history doesn't say which entries were.
-          const watched = day(entry.watched_at);
-          const instant = watched ? Date.parse(String(entry.watched_at)) : NaN;
-          const finished = Number.isFinite(instant)
-            ? new Date(instant).toISOString()
+          const parsed =
+            typeof entry.watched_at === "string"
+              ? Date.parse(entry.watched_at)
+              : NaN;
+          const instant = Number.isFinite(parsed)
+            ? new Date(parsed).toISOString()
             : undefined;
+          const watched = day(instant);
+          const watchedAt = watched ? instant : undefined;
           if (watched) item.activityDay = latestDay(item.activityDay, watched);
           if (mediaType === "movie") {
             item.status = "finished";
             item.completions = [
               ...new Set([
                 ...(item.completions ?? []),
-                ...(finished ? [finished] : []),
+                ...(watchedAt ? [watchedAt] : []),
               ]),
             ]
               .sort()
@@ -436,9 +438,9 @@ async function fetchTrakt(
               const existing = item.watchedEpisodes[episode];
               if (
                 existing === undefined ||
-                (finished && (!existing || finished < existing))
+                (watchedAt && (!existing || watchedAt < existing))
               )
-                item.watchedEpisodes[episode] = finished ?? "";
+                item.watchedEpisodes[episode] = watchedAt ?? "";
             }
           }
         }
