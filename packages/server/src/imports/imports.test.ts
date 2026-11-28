@@ -15,12 +15,7 @@ import { parseCron } from "./cron.js";
 import { mergeCompletions, mergeImportedItem } from "./merge.js";
 import { entryFilter } from "./policy.js";
 import { ImportService } from "./service.js";
-import {
-  fetchSource,
-  sourceJson,
-  traktFinishedAt,
-  type SourceDependencies,
-} from "./sources.js";
+import { fetchSource, sourceJson, type SourceDependencies } from "./sources.js";
 import { registerImportRoutes } from "./routes.js";
 import type { ImportedItem } from "./types.js";
 
@@ -370,14 +365,15 @@ describe("source adapters", () => {
       return response([
         {
           type: "movie",
-          movie: { ids: { tmdb: 1 }, runtime: 130 },
+          movie: { ids: { tmdb: 1 } },
           watched_at: "2026-10-15T22:00:00.000Z",
         },
         {
           type: "episode",
-          show: { ids: { tmdb: 2 }, runtime: 60 },
-          episode: { season: 1, number: 3, runtime: 42 },
-          watched_at: "2026-10-14T12:00:00.000Z",
+          show: { ids: { tmdb: 2 } },
+          episode: { season: 1, number: 3 },
+          // Normalized to the canonical instant form.
+          watched_at: "2026-10-14T12:00:00Z",
         },
       ]);
     });
@@ -392,37 +388,17 @@ describe("source adapters", () => {
           sourceId: "1",
           rating: 4.5,
           status: "finished",
-          // Trakt's watched_at is the start: the 130-minute film ended at
-          // 00:10Z, which is still the evening of the 15th in the Americas.
-          completions: ["2026-10-16T00:10:00.000Z"],
-          activityDay: "2026-10-16",
+          completions: ["2026-10-15T22:00:00.000Z"],
+          activityDay: "2026-10-15",
         }),
         expect.objectContaining({
           sourceId: "2",
           rating: 4,
           status: "active",
-          // The episode's own runtime wins over the show's.
-          watchedEpisodes: { s1e3: "2026-10-14T12:42:00.000Z" },
+          watchedEpisodes: { s1e3: "2026-10-14T12:00:00.000Z" },
         }),
       ]),
     );
-    const historyUrl = vi
-      .mocked(request)
-      .mock.calls.map(([url]) => new URL(url))
-      .find((url) => url.pathname.endsWith("history"));
-    expect(historyUrl?.searchParams.get("extended")).toBe("full");
-  });
-  it("turns Trakt watch starts into finish instants", () => {
-    const start = "2026-11-22T03:15:00.000Z";
-    expect(traktFinishedAt(start, 95)).toBe("2026-11-22T04:50:00.000Z");
-    // No usable runtime: the start is the best moment known.
-    expect(traktFinishedAt(start, null)).toBe(start);
-    expect(traktFinishedAt(start, 0)).toBe(start);
-    expect(traktFinishedAt("2026-11-22T03:15:00Z", 5)).toBe(
-      "2026-11-22T03:20:00.000Z",
-    );
-    expect(traktFinishedAt("1970-01-01T00:00:00.000Z", 95)).toBeUndefined();
-    expect(traktFinishedAt("not a date", 95)).toBeUndefined();
   });
   it("imports show history as watching, with unknown dates left blank, and explains skips", async () => {
     const request: SourceDependencies["request"] = vi.fn(async (url) => {
