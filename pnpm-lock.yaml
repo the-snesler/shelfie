@@ -53,12 +53,12 @@ importers:
       '@react-router/node':
         specifier: ^8.2.0
         version: 8.2.0(react-router@8.2.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@5.9.3)
-      '@shelfie/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@tanstack/react-virtual':
         specifier: ^3.14.26
         version: 3.14.26(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tsundo/shared':
+        specifier: workspace:*
+        version: link:../shared
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
@@ -135,7 +135,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.14
         version: 1.19.14(hono@4.12.30)
-      '@shelfie/shared':
+      '@tsundo/shared':
         specifier: workspace:*
         version: link:../shared
       better-sqlite3:

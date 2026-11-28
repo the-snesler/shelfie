@@ -12,7 +12,7 @@ import type {
   TvMetadata,
   TvSearchResult,
   TvSeason,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 

@@ -1,5 +1,5 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
-import { MEDIA_TYPES, STATUS_META_GROUP } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
+import { MEDIA_TYPES, STATUS_META_GROUP } from "@tsundo/shared";
 import { motion } from "motion/react";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -48,8 +48,8 @@ const SECTION_LABELS: Record<ShelfSection, string> = {
   unreleased: "Unreleased",
 };
 
-const PLANNED_SORT_KEY = "shelfie:planned-sort";
-const PLANNED_ORDER_KEY = "shelfie:planned-order";
+const PLANNED_SORT_KEY = "tsundo:planned-sort";
+const PLANNED_ORDER_KEY = "tsundo:planned-order";
 
 function storedPlannedSort(): PlannedSort {
   const value = localStorage.getItem(PLANNED_SORT_KEY);

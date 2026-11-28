@@ -1,4 +1,4 @@
-import type { ItemActivity, LogFormat } from "@shelfie/shared";
+import type { ItemActivity, LogFormat } from "@tsundo/shared";
 
 export type ProgressLine =
   | {

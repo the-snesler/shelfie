@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import { describe, expect, it } from "vitest";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { TvCardDoc } from "../../db/tvCards";

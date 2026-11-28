@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { subscribeCardCaches } from "./cardCache";
-import type { ShelfieDatabase } from "./database";
+import type { TsundoDatabase } from "./database";
 
 describe("scoped card subscriptions", () => {
   it("queries only displayed ids and skips media types with no owned items", () => {
@@ -17,7 +17,7 @@ describe("scoped card subscriptions", () => {
     };
     const receive = vi.fn();
     const stop = subscribeCardCaches(
-      db as unknown as ShelfieDatabase,
+      db as unknown as TsundoDatabase,
       ["game:2", "tv:4"],
       receive,
     );

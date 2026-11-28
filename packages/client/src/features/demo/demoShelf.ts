@@ -9,10 +9,10 @@ import type {
   MediaType,
   MovieMetadata,
   TvMetadata,
-} from "@shelfie/shared";
-import { defaultLogFormat, episodeKey, instantMoment } from "@shelfie/shared";
+} from "@tsundo/shared";
+import { defaultLogFormat, episodeKey, instantMoment } from "@tsundo/shared";
 import { upsertBookCards } from "../../db/bookCards";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { upsertCards } from "../../db/gameCards";
 import { upsertMovieCards } from "../../db/movieCards";
 import { skipGuestRefresh } from "../../db/refreshCards";
@@ -351,7 +351,7 @@ export function buildDemoItem(entry: DemoEntry, now: number): LibraryItem {
 /** Fills a guest shelf with the demo titles. Titles the guest already
  *  shelved keep their own state; only the missing ones are added. */
 export async function loadDemoShelf(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   now = Date.now(),
 ): Promise<void> {
   const items = DEMO_ITEMS.map((entry) => buildDemoItem(entry, now));

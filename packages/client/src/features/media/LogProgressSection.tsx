@@ -2,7 +2,7 @@ import {
   STATUS_META_GROUP,
   type LibraryItem,
   type LogFormat,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 
 const HOURS_STEP = 0.5;

@@ -39,17 +39,17 @@ export function renderCalendar(entries: readonly CalendarEntry[]): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Shelfie//Library Calendar//EN",
+    "PRODID:-//Tsundo//Library Calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Shelfie",
+    "X-WR-CALNAME:Tsundo",
   ];
   for (const entry of entries) {
     // Opaque stable identities survive title and release-date changes.
     const uid = createHash("sha256").update(entry.key).digest("hex");
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${uid}@shelfie`,
+      `UID:${uid}@tsundo`,
       `DTSTAMP:${timestamp(entry.updatedAt)}`,
       `LAST-MODIFIED:${timestamp(entry.updatedAt)}`,
       // A timed event with no DTEND is an instant (RFC 5545 §3.6.1).

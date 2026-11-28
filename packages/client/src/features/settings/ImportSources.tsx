@@ -6,7 +6,7 @@ import {
   type ImportPolicy,
   type ImportPreview,
   type ImportSource,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { BookMatches } from "./BookMatches";
 import {
@@ -75,7 +75,7 @@ export function ImportSources() {
       </p>
       <p className="mt-2 text-xs text-muted">
         Schedules use five-field cron in UTC, for example <code>0 3 * * *</code>{" "}
-        for daily at 03:00. Shelfie must be running at the scheduled time.
+        for daily at 03:00. Tsundo must be running at the scheduled time.
         Credentials are saved only on this server.
       </p>
       {error && (

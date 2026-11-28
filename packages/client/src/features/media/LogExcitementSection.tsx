@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { ExcitementMeter } from "./ExcitementMeter";
 import { LogFieldRow } from "./LogRows";

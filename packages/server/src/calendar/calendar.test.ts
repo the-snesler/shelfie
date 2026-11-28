@@ -242,7 +242,7 @@ describe("iCalendar encoding", () => {
         date: "2026-11-22",
         at: "2026-11-22T04:50:00.000Z",
         title: "Completed: One",
-        description: "Completed in Shelfie",
+        description: "Completed in Tsundo",
         kind: "completion",
         updatedAt: 0,
       },

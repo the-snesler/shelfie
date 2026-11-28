@@ -1,5 +1,5 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
-import { STATUS_META_GROUP } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
+import { STATUS_META_GROUP } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect } from "react";
 import { Link } from "react-router";
@@ -7,7 +7,7 @@ import IconChevronDown from "~icons/tabler/chevron-down";
 import { StaticBolts } from "../../components/StaticBolts";
 import { StaticStars } from "../../components/StaticStars";
 import { TruncatedText } from "../../components/Tooltip";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { libraryProgressPercent } from "../library/libraryProgress";
 import { lastCompletedDate } from "../library/librarySorting";
 import { LogPopover } from "../media/LogPopover";
@@ -74,7 +74,7 @@ export function ListRow({
   meta,
   onLogOpenChange,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   item: RxDocument<LibraryItem>;
   meta: CardMeta | undefined;
   onLogOpenChange: (itemId: string, open: boolean) => void;

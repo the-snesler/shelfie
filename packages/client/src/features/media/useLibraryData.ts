@@ -1,9 +1,9 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { gameImageUrl, tmdbImageUrl } from "../../images";
 import type { BookCardDoc } from "../../db/bookCards";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";
 import type { TvCardDoc } from "../../db/tvCards";
@@ -39,9 +39,9 @@ let cachedItems: RxDocument<LibraryItem>[] = [];
 let cachedCards: Map<string, CardMeta> = new Map();
 /** The database the snapshot came from. Owner and guest shelves live in
  *  separate databases, so a sign-out must never paint the owner's items. */
-let cachedDb: ShelfieDatabase | null = null;
+let cachedDb: TsundoDatabase | null = null;
 
-function resetSnapshotFor(db: ShelfieDatabase): void {
+function resetSnapshotFor(db: TsundoDatabase): void {
   if (cachedDb === db) return;
   cachedDb = db;
   cachedItems = [];
@@ -52,7 +52,7 @@ function resetSnapshotFor(db: ShelfieDatabase): void {
  *  caches and exposes a merged, reactive view. Screens that need the whole
  *  library (logbook, calendar, lists, recommendations) share this hook
  *  instead of duplicating subscriptions. */
-export function useLibraryData(db: ShelfieDatabase): {
+export function useLibraryData(db: TsundoDatabase): {
   items: RxDocument<LibraryItem>[];
   cards: Map<string, CardMeta>;
 } {

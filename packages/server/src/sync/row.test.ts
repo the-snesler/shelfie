@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReplicatedLibraryItem } from "@shelfie/shared";
+import type { ReplicatedLibraryItem } from "@tsundo/shared";
 import { libraryItemDocToRow, libraryItemRowToDoc } from "./row.js";
 
 const base: ReplicatedLibraryItem = {

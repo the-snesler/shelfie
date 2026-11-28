@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { OwnerSettings } from "@shelfie/shared";
+import type { OwnerSettings } from "@tsundo/shared";
 import { Link, Navigate, Outlet, useLocation } from "react-router";
 import {
   clearAuthToken,
@@ -12,7 +12,7 @@ import {
 } from "./auth";
 import { createAuthSessionMonitor } from "./authSession";
 import { AuthScreen } from "./AuthScreen";
-import { getDatabase, type ShelfieDatabase } from "./db/database";
+import { getDatabase, type TsundoDatabase } from "./db/database";
 import { startReplication, stopReplication } from "./db/replication";
 import IconMenu2 from "~icons/tabler/menu-2";
 import { ScrollContainerContext } from "./components/virtualList";
@@ -22,7 +22,7 @@ import { getSettings } from "./settings";
 export type AuthMode =
   "checking" | "setup" | "login" | "app" | "guest" | "unreachable";
 export type AppOutletContext = {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   settings: OwnerSettings;
   setSettings: (settings: OwnerSettings) => void;
   authenticated: boolean;
@@ -35,7 +35,7 @@ const GUEST_SETTINGS: OwnerSettings = {
   showProgressBars: false,
   separateWishlist: false,
 };
-const SETTINGS_CACHE_KEY = "shelfie.cachedSettings";
+const SETTINGS_CACHE_KEY = "tsundo.cachedSettings";
 
 function cachedSettings(): OwnerSettings | null {
   try {
@@ -146,7 +146,7 @@ function BrowsingApp({
   requestLogin: () => void;
   onLogout: () => void;
 }) {
-  const [db, setDb] = useState<ShelfieDatabase | null>(null);
+  const [db, setDb] = useState<TsundoDatabase | null>(null);
   const [settings, setSettings] = useState<OwnerSettings | null>(
     authenticated ? null : GUEST_SETTINGS,
   );
@@ -199,7 +199,7 @@ function BrowsingApp({
   if (loadError) {
     return (
       <div className="flex h-full items-center justify-center text-muted">
-        Could not load Shelfie. Refresh to try again.
+        Could not load Tsundo. Refresh to try again.
       </div>
     );
   }
@@ -228,7 +228,7 @@ function BrowsingApp({
           <IconMenu2 className="size-5" />
         </button>
         <Link to="/" aria-label="Home">
-          <img src="/logo.svg" alt="Shelfie" className="h-8 w-auto" />
+          <img src="/logo.svg" alt="Tsundo" className="h-7 w-auto" />
         </Link>
       </div>
       <Sidebar

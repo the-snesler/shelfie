@@ -3,7 +3,7 @@ import type {
   BookMetadata,
   BookSearchResult,
   BookSeries,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";

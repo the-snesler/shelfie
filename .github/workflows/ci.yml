@@ -54,7 +54,7 @@ jobs:
 
       - name: Build Docker image (PRs)
         if: github.event_name == 'pull_request'
-        run: docker build -t shelfie:ci .
+        run: docker build -t tsundo:ci .
 
       - name: Build and publish a Docker image for ${{ github.repository }}
         if: github.event_name == 'push'

@@ -1,4 +1,4 @@
-import type { PersonDetail } from "@shelfie/shared";
+import type { PersonDetail } from "@tsundo/shared";
 import BetterSqlite3 from "better-sqlite3";
 import { Hono } from "hono";
 import { Kysely, SqliteDialect } from "kysely";

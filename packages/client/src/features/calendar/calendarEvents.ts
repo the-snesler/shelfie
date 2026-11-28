@@ -1,5 +1,5 @@
-import type { LibraryItem, TvScheduledEpisode } from "@shelfie/shared";
-import { momentDay } from "@shelfie/shared";
+import type { LibraryItem, TvScheduledEpisode } from "@tsundo/shared";
+import { momentDay } from "@tsundo/shared";
 import type { TvCardDoc } from "../../db/tvCards";
 import { cardReleaseDate } from "../media/release";
 import type { CardMeta } from "../media/useLibraryData";

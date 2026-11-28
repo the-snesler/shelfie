@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Opens the running Shelfie client in headless Chromium, logs in if needed,
+ * Opens the running Tsundo client in headless Chromium, logs in if needed,
  * and saves a screenshot — so an agent doesn't have to hand-roll Playwright
  * just to see what's on screen after a change.
  *
@@ -10,21 +10,21 @@
  * Usage:   node scripts/screenshot.mjs [output-path] [route]
  *          route is an app path to capture after login, e.g.
  *          "/lists/dropped?type=game" (default: the library home)
- * Env:     SHELFIE_CLIENT_URL  full override, default derived from CLIENT_PORT
+ * Env:     TSUNDO_CLIENT_URL  full override, default derived from CLIENT_PORT
  *          CLIENT_PORT         default 5173 (matches packages/client's own default;
  *                              set alongside SERVER_PORT to run several dev
  *                              stacks — e.g. one per agent — in parallel)
- *          SHELFIE_USERNAME    default "owner" (matches the migration default)
- *          SHELFIE_PASSWORD    default "admin" (matches the dev convention)
+ *          TSUNDO_USERNAME    default "owner" (matches the migration default)
+ *          TSUNDO_PASSWORD    default "admin" (matches the dev convention)
  */
 
 import { chromium } from "playwright";
 
 const CLIENT_URL =
-  process.env.SHELFIE_CLIENT_URL ??
+  process.env.TSUNDO_CLIENT_URL ??
   `http://localhost:${process.env.CLIENT_PORT ?? 5173}`;
-const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
-const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
+const USERNAME = process.env.TSUNDO_USERNAME ?? "owner";
+const PASSWORD = process.env.TSUNDO_PASSWORD ?? "admin";
 const OUTPUT_PATH = process.argv[2] ?? "scripts/screenshot.png";
 const ROUTE = process.argv[3] ?? null;
 // After navigating to a non-home route, how long to let RxDB, card caches and
@@ -45,7 +45,7 @@ async function main() {
       viewport: { width: 1280, height: 800 },
     });
 
-    // Shelfie opens an SSE connection for the library_items collection as soon
+    // Tsundo opens an SSE connection for the library_items collection as soon
     // as it's authed, which never goes idle — so "networkidle" would hang.
     // "load" plus explicit element waits is the reliable signal here.
     await page.goto(CLIENT_URL, { waitUntil: "load" });
@@ -101,7 +101,7 @@ async function login(page) {
     .catch(() => false);
   if (loginFailed) {
     throw new Error(
-      `Login failed as "${USERNAME}". Set SHELFIE_USERNAME and SHELFIE_PASSWORD ` +
+      `Login failed as "${USERNAME}". Set TSUNDO_USERNAME and TSUNDO_PASSWORD ` +
         "to match the owner credentials, or run scripts/seed.mjs first to claim them.",
     );
   }

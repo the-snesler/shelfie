@@ -5,17 +5,17 @@ import type {
   MediaType,
   MovieMetadata,
   TvMetadata,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authFetch, getAuthToken } from "../auth";
 import { upsertOwnedCards } from "./cardCache";
-import type { ShelfieDatabase } from "./database";
+import type { TsundoDatabase } from "./database";
 import { refreshCardCaches } from "./refreshCards";
 
 vi.mock("../auth", () => ({ authFetch: vi.fn(), getAuthToken: vi.fn() }));
 vi.mock("./cardCache", () => ({ upsertOwnedCards: vi.fn() }));
 
-const db = {} as ShelfieDatabase;
+const db = {} as TsundoDatabase;
 const media = {
   games: "game",
   movies: "movie",
@@ -25,7 +25,7 @@ const media = {
 type OwnedId = Pick<LibraryItem, "mediaType" | "sourceId">;
 
 function request(input: RequestInfo | URL) {
-  const url = new URL(String(input), "https://shelfie.example");
+  const url = new URL(String(input), "https://tsundo.example");
   const medium = url.pathname.split("/").at(-1) as keyof typeof media;
   return { type: media[medium], ids: url.searchParams.get("ids")!.split(",") };
 }
@@ -174,7 +174,7 @@ describe("guest refreshes", () => {
 
   /** A guest database whose card caches hold `cached` ids, written at the
    *  given time (RxDB's last-write time). */
-  function guestDb(cached: Record<string, number>): ShelfieDatabase {
+  function guestDb(cached: Record<string, number>): TsundoDatabase {
     const collection = {
       findByIds: (ids: string[]) => ({
         exec: async () =>
@@ -190,7 +190,7 @@ describe("guest refreshes", () => {
       movie_metadata: collection,
       tv_metadata: collection,
       book_metadata: collection,
-    } as unknown as ShelfieDatabase;
+    } as unknown as TsundoDatabase;
   }
 
   function serveCards() {

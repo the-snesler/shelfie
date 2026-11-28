@@ -1,4 +1,4 @@
-import { renameCompletedDates } from "@shelfie/shared";
+import { renameCompletedDates } from "@tsundo/shared";
 import type { Kysely } from "kysely";
 import { sql } from "kysely";
 import type { Database } from "./types.js";
@@ -8,7 +8,7 @@ import type { Database } from "./types.js";
  * runner records `(id, name, applied_at)` in the `migrations` bookkeeping
  * table immediately after so a partially-applied migration never gets marked
  * done. Deliberately deviates from aside's create-tables-on-startup approach
- * (`ifNotExists()` everywhere, no bookkeeping) — shelfie expects to grow new
+ * (`ifNotExists()` everywhere, no bookkeeping) — Tsundo expects to grow new
  * media types and fields, so every schema change is a new numbered entry
  * appended to `migrations` below, never an edit to an already-shipped one.
  */

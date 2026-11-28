@@ -1,10 +1,10 @@
-import type { LibraryItem, MediaType, MetaStatus } from "@shelfie/shared";
+import type { LibraryItem, MediaType, MetaStatus } from "@tsundo/shared";
 import {
   STATUS_META_GROUP,
   latestMoment,
   momentDay,
   momentSortKey,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { GameCardDoc } from "../../db/gameCards";

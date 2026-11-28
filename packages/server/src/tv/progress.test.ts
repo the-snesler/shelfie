@@ -6,7 +6,7 @@ import {
   type ReplicatedLibraryItem,
   type TvLastAiring,
   type TvMetadata,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { runMigrations } from "../db/migrations.js";
 import { initSequence } from "../db/sequence.js";
 import type { Database } from "../db/types.js";

@@ -1,4 +1,4 @@
-import type { GameDetail as GameDetailDto, StoreName } from "@shelfie/shared";
+import type { GameDetail as GameDetailDto, StoreName } from "@tsundo/shared";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";

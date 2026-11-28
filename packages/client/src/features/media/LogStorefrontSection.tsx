@@ -1,4 +1,4 @@
-import type { Storefront } from "@shelfie/shared";
+import type { Storefront } from "@tsundo/shared";
 import IconBuildingStore from "~icons/tabler/building-store";
 import {
   hasStorefrontPlatform,

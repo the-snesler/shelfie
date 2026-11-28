@@ -1,4 +1,4 @@
-import type { MovieDetail as MovieDetailDto } from "@shelfie/shared";
+import type { MovieDetail as MovieDetailDto } from "@tsundo/shared";
 import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/MovieDetail";

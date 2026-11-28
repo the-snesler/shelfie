@@ -3,7 +3,7 @@ import {
   IMPORT_SOURCES,
   type BookLinkSource,
   type ImportSource,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { ImportService } from "./service.js";

@@ -9,7 +9,7 @@ import { startReleaseRefreshWorker } from "./metadata/releaseWorker.js";
 import { startCoverHashWorker } from "./covers/coverHashes.js";
 
 // Deviation from aside: aside assumes envs are pre-exported by the shell or
-// Docker tooling. Shelfie's IGDB credentials live in the repo root .env for
+// Docker tooling. Tsundo's IGDB credentials live in the repo root .env for
 // local dev convenience, so load it (if present) before anything reads
 // process.env — tried relative to cwd first (Docker's WORKDIR /app), then
 // relative to this package (pnpm/turbo dev, cwd = packages/server).
@@ -32,7 +32,7 @@ const stopCoverHashes = startCoverHashWorker();
 const app = createApp(imports);
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`shelfie server listening on :${info.port}`);
+  console.log(`tsundo server listening on :${info.port}`);
 });
 
 let shuttingDown = false;

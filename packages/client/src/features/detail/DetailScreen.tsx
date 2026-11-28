@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import type { RxDocument } from "rxdb";

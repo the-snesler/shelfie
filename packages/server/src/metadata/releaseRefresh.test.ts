@@ -1,4 +1,4 @@
-import type { ItemStatus, MediaType } from "@shelfie/shared";
+import type { ItemStatus, MediaType } from "@tsundo/shared";
 import BetterSqlite3 from "better-sqlite3";
 import { Kysely, SqliteDialect } from "kysely";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

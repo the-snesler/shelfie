@@ -1,4 +1,4 @@
-import type { PersonDetail } from "@shelfie/shared";
+import type { PersonDetail } from "@tsundo/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";

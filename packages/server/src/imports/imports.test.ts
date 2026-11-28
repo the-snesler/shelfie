@@ -6,7 +6,7 @@ import {
   DEFAULT_IMPORT_POLICY,
   type ItemStatus,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { runMigrations } from "../db/migrations.js";
 import type { Database } from "../db/types.js";
 import { initSequence } from "../db/sequence.js";
@@ -274,7 +274,7 @@ describe("source adapters", () => {
       (call) =>
         new Headers((call as unknown as [string, RequestInit])[1].headers),
     );
-    expect(sent[0].get("user-agent")).toMatch(/^Shelfie\//);
+    expect(sent[0].get("user-agent")).toMatch(/^Tsundo\//);
     expect(sent[0].get("trakt-api-key")).toBe("k");
     expect(sent[1].get("user-agent")).toBe("custom");
   });
@@ -460,7 +460,7 @@ describe("source adapters", () => {
     expect(skipped).toBe(3);
     expect(warnings).toEqual([
       "1 Trakt entries without a TMDB identifier were skipped.",
-      "2 episode or season ratings were skipped; Shelfie rates whole titles.",
+      "2 episode or season ratings were skipped; Tsundo rates whole titles.",
     ]);
   });
   it("plans Trakt watchlist items as backlogged and repairs earlier wishlisted ones", async () => {

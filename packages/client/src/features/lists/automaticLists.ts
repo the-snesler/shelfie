@@ -3,8 +3,8 @@ import type {
   LibraryItem,
   MediaType,
   MetaStatus,
-} from "@shelfie/shared";
-import { ITEM_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
+} from "@tsundo/shared";
+import { ITEM_STATUSES, STATUS_META_GROUP } from "@tsundo/shared";
 import type { FunctionComponent, SVGProps } from "react";
 import IconBolt from "~icons/tabler/bolt";
 import IconCalendarCheck from "~icons/tabler/calendar-check";

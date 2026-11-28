@@ -4,7 +4,7 @@ import {
   type ImportPolicy,
   type ImportSource,
   type MediaType,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { inputClass } from "./importRequest";
 
 export const BUCKET_LABELS: Record<ImportBucket, string> = {

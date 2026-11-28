@@ -3,13 +3,13 @@ import type {
   LibraryItem,
   MediaType,
   TvProgressCard,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import {
   defaultLogFormat,
   instantMoment,
   momentDay,
   tvWatchState,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 
 /** Everything a log/status action needs to know about the thing being
  *  logged, independent of media type — replaces the game-only `LogGame`. */

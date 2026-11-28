@@ -1,4 +1,4 @@
-import type { TvEpisode, TvSeason } from "@shelfie/shared";
+import type { TvEpisode, TvSeason } from "@tsundo/shared";
 import { describe, expect, it } from "vitest";
 import {
   episodeProgress,

@@ -16,14 +16,14 @@ describe("CORS origin policy", () => {
 
   it("defaults to the request's exact origin and never emits a wildcard", async () => {
     const server = app();
-    const same = await server.request("https://shelfie.example/api/example", {
-      headers: { origin: "https://shelfie.example" },
+    const same = await server.request("https://tsundo.example/api/example", {
+      headers: { origin: "https://tsundo.example" },
     });
-    const other = await server.request("https://shelfie.example/api/example", {
+    const other = await server.request("https://tsundo.example/api/example", {
       headers: { origin: "https://attacker.example" },
     });
     expect(same.headers.get("access-control-allow-origin")).toBe(
-      "https://shelfie.example",
+      "https://tsundo.example",
     );
     expect(other.headers.get("access-control-allow-origin")).toBeNull();
   });

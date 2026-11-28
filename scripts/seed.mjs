@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Bootstraps a freshly-cloned Shelfie instance for local dev: claims the
+ * Bootstraps a freshly-cloned Tsundo instance for local dev: claims the
  * owner password (so the app isn't stuck behind the setup wall) and adds a
  * handful of real games, movies, TV shows, and books to the library, so a
  * new worktree isn't a blank slate.
@@ -17,19 +17,19 @@
  * overwriting).
  *
  * Usage:   node scripts/seed.mjs
- * Env:     SHELFIE_SERVER_URL  full override, default derived from SERVER_PORT
+ * Env:     TSUNDO_SERVER_URL  full override, default derived from SERVER_PORT
  *          SERVER_PORT         default 3001 (matches packages/server's own default;
  *                              set alongside CLIENT_PORT to run several dev
  *                              stacks — e.g. one per agent — in parallel)
- *          SHELFIE_USERNAME    default "owner" (matches the migration default)
- *          SHELFIE_PASSWORD    default "admin" (matches the dev convention)
+ *          TSUNDO_USERNAME    default "owner" (matches the migration default)
+ *          TSUNDO_PASSWORD    default "admin" (matches the dev convention)
  */
 
 const SERVER_URL =
-  process.env.SHELFIE_SERVER_URL ??
+  process.env.TSUNDO_SERVER_URL ??
   `http://localhost:${process.env.SERVER_PORT ?? process.env.PORT ?? 3001}`;
-const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
-const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
+const USERNAME = process.env.TSUNDO_USERNAME ?? "owner";
+const PASSWORD = process.env.TSUNDO_PASSWORD ?? "admin";
 
 // mediaType+query: what to search for. status/progressFormat/progressValue:
 // seeded library item state. excitement: planned-item level 1–4 (unset when
@@ -234,7 +234,7 @@ async function claimToken() {
     const hint = status.setupRequired
       ? `Setup failed (${res.status}): ${detail}`
       : `Login failed (${res.status}) — the owner credentials don't match ${USERNAME}/${PASSWORD}. ` +
-        `Set SHELFIE_USERNAME and SHELFIE_PASSWORD to match them, or wipe packages/server/data to start over. ${detail}`;
+        `Set TSUNDO_USERNAME and TSUNDO_PASSWORD to match them, or wipe packages/server/data to start over. ${detail}`;
     throw new Error(hint);
   }
   return (await res.json()).token;

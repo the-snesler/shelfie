@@ -2,7 +2,7 @@ import type {
   CalendarSubscriptionSettings,
   CreatedCalendarSubscription,
   NotificationSettings,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { authFetch } from "../../auth";
 
@@ -80,7 +80,7 @@ export function CalendarSubscriptionSection() {
     <Section title="Calendar subscription">
       <p className="text-sm text-muted">
         Add your collection’s releases, TV air dates, and completion history to
-        a calendar app by URL. Dates come from Shelfie’s cached metadata and
+        a calendar app by URL. Dates come from Tsundo’s cached metadata and
         update when your calendar app refreshes the subscription.
       </p>
       <p className="mt-2 text-xs text-muted">
@@ -225,7 +225,7 @@ export function ReleaseNotificationsSection() {
           Apprise API server
         </a>{" "}
         to receive reminders for releases and TV episodes in your collection.
-        Shelfie checks cached dates each minute, using UTC days. Keep Shelfie
+        Tsundo checks cached dates each minute, using UTC days. Keep Tsundo
         running to receive reminders.
       </p>
       <form className="mt-4" onSubmit={(event) => void save(event)}>

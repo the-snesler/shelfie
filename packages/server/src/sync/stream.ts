@@ -1,4 +1,4 @@
-import type { Checkpoint } from "@shelfie/shared";
+import type { Checkpoint } from "@tsundo/shared";
 import { EventEmitter } from "node:events";
 
 export interface SyncEvent {

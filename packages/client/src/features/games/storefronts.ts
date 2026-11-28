@@ -1,4 +1,4 @@
-import { STOREFRONTS, type Storefront } from "@shelfie/shared";
+import { STOREFRONTS, type Storefront } from "@tsundo/shared";
 
 /** Display names for each PC storefront, in picker order. */
 export const STOREFRONT_LABELS: Record<Storefront, string> = {

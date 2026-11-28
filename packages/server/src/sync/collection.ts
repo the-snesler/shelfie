@@ -1,4 +1,4 @@
-import { canonicalDocKey } from "@shelfie/shared";
+import { canonicalDocKey } from "@tsundo/shared";
 
 /**
  * The generic sync contract. `pull`/`push` orchestrate replication against any

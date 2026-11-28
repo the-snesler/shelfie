@@ -1,4 +1,4 @@
-import type { ItemStatus } from "@shelfie/shared";
+import type { ItemStatus } from "@tsundo/shared";
 
 export type LogCompletionPromptState = {
   status: ItemStatus;

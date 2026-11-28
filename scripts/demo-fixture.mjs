@@ -13,16 +13,16 @@
  * `demoShelf.test.ts` fails if the two diverge.
  *
  * Usage:   node scripts/demo-fixture.mjs   (needs `pnpm dev` running)
- * Env:     SHELFIE_SERVER_URL / SERVER_PORT / SHELFIE_USERNAME /
- *          SHELFIE_PASSWORD, as for `scripts/seed.mjs`.
+ * Env:     TSUNDO_SERVER_URL / SERVER_PORT / TSUNDO_USERNAME /
+ *          TSUNDO_PASSWORD, as for `scripts/seed.mjs`.
  */
 import { writeFile } from "node:fs/promises";
 
 const SERVER_URL =
-  process.env.SHELFIE_SERVER_URL ??
+  process.env.TSUNDO_SERVER_URL ??
   `http://localhost:${process.env.SERVER_PORT ?? process.env.PORT ?? 3001}`;
-const USERNAME = process.env.SHELFIE_USERNAME ?? "owner";
-const PASSWORD = process.env.SHELFIE_PASSWORD ?? "admin";
+const USERNAME = process.env.TSUNDO_USERNAME ?? "owner";
+const PASSWORD = process.env.TSUNDO_PASSWORD ?? "admin";
 const OUT = new URL(
   "../packages/client/src/features/demo/demoCards.json",
   import.meta.url,
@@ -67,7 +67,7 @@ async function login() {
   });
   if (!res.ok) {
     throw new Error(
-      `Login failed (${res.status}). Run \`pnpm seed\` first, or set SHELFIE_USERNAME/SHELFIE_PASSWORD.`,
+      `Login failed (${res.status}). Run \`pnpm seed\` first, or set TSUNDO_USERNAME/TSUNDO_PASSWORD.`,
     );
   }
   return (await res.json()).token;

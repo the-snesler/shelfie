@@ -11,7 +11,7 @@ reads and the Settings page; they are plaintext in SQLite, so protect backups.
 Search, card lookups, media detail pages and actor pages are public. Library documents,
 TV schedules for your collection, sync, and settings require login. Guests get
 their own shelf in a separate, never-replicated browser database
-(`shelfiedb-guest`): they can log titles and use Home, lists, the logbook,
+(`tsundodb-guest`): they can log titles and use Home, lists, the logbook,
 the calendar (release dates only), and recommendations, or load a demo shelf
 whose card metadata ships with the client (`features/demo/`), so it costs no
 catalog quota. Guest card refreshes only fetch missing or week-old cards, ten
@@ -23,16 +23,16 @@ Login, setup, and credential-change attempts are limited to five per minute
 per client address. Anonymous catalog reads share a ten-unit quota per minute:
 search and detail cost one, and card batches cost one per distinct identifier
 (maximum ten). A 429 response includes `Retry-After`. These in-memory quotas
-reset on server restart and are designed for Shelfie's single-process model.
+reset on server restart and are designed for Tsundo's single-process model.
 
 CORS defaults to the request's own origin. If you host the browser frontend
 separately, set `CORS_ORIGIN` to its exact origin, for example
-`https://shelfie.example.com`, without a trailing slash or path. Wildcards are
+`https://tsundo.example.com`, without a trailing slash or path. Wildcards are
 rejected. The normal Vite proxy and single-container deployment need no override.
 
 Rate limits use the socket address by default. Behind a reverse proxy, set
 `TRUST_PROXY=1` only when the proxy overwrites `X-Forwarded-For` and the server
-cannot be reached directly by untrusted clients. Shelfie uses the final address
+cannot be reached directly by untrusted clients. Tsundo uses the final address
 in that header. Otherwise clients behind the proxy share the same quota.
 
 ## Calendar subscriptions
@@ -49,7 +49,7 @@ Generate a replacement or revoke it in Settings to invalidate the previous URL.
 Calendar applications choose their own refresh interval.
 
 The feed and release reminders use cached metadata and never call catalog APIs.
-Opening Shelfie refreshes owned cards; viewing a TV show refreshes its season
+Opening Tsundo refreshes owned cards; viewing a TV show refreshes its season
 catalog. Dates unknown to the cache cannot appear until that metadata is fetched.
 While the server runs, an hourly job also refreshes planned titles' cards,
 whether missing or dateless, or releasing within the next sixty days or the
@@ -59,13 +59,13 @@ opening the app.
 
 ## Apprise reminders
 
-Run an [Apprise API server](https://appriseit.com/api/) reachable from Shelfie's
+Run an [Apprise API server](https://appriseit.com/api/) reachable from Tsundo's
 container. In Settings, enter its base URL (for example `http://apprise:8000`)
 and destination URLs, one per line. Save and enable reminders, choosing zero
 to thirty days before release. “Send test to saved destinations” explicitly
 sends a test. Saving alone does not send a test.
 
-Shelfie uses the stateless `POST /notify/` API. This first version supports API
+Tsundo uses the stateless `POST /notify/` API. This first version supports API
 instances reachable without HTTP authentication. Destinations support the
 services configured in your Apprise installation. Blank destinations preserve
 saved ones; entering replacements replaces the full list. Disable reminders
@@ -76,7 +76,7 @@ per pass, and persists deduplication and exponential retries (five attempts).
 Unsent reminders are cancelled when an item is removed, its release date moves,
 or the lead-time setting changes. Retries are retained within a three-day
 lookback. A stopped server misses newly due reminders; it does not backfill
-every release that passed during downtime. Keep Shelfie running for reminders.
+every release that passed during downtime. Keep Tsundo running for reminders.
 
 ## Import sources
 
@@ -166,15 +166,15 @@ refresh. Replace expired tokens in Settings.
 Movies and shows map through TMDB IDs. The adapter reads paginated watchlist,
 history, and ratings, maps movie watches to completions, and records episode
 watches on TV items, each with its exact time. Trakt's `watched_at` is when
-the watch _started_, while Shelfie records when you _finished_, so history is
+the watch _started_, while Tsundo records when you _finished_, so history is
 requested with `extended=full` and the movie's or episode's runtime (falling
 back to the show's) is added; with no runtime the start time is kept. A
 re-import upgrades completions and episode watches that only had a day,
 including ones logged by hand, when the day matches, instead of adding
 duplicates. Ratings only rate titles on the watchlist or
-in the history: like Trakt, Shelfie treats a rating alone as neither a watch
+in the history: like Trakt, Tsundo treats a rating alone as neither a watch
 nor a plan, so those titles are skipped with a warning. Episode and season ratings are skipped because
-Shelfie stores one show rating. Unsupported entries or missing TMDB IDs are
+Tsundo stores one show rating. Unsupported entries or missing TMDB IDs are
 reported as skipped, with separate warnings for each. Trakt's "date unknown"
 watches (reported as 1970-01-01) import without a date or time. Show history imports
 as watching; right after the import, the TV progress check below marks shows
@@ -211,11 +211,11 @@ dropped, and planned shows are never touched. Changes are logged as
 ### BookOrbit
 
 BookOrbit imports use its official API with a personal API key. In BookOrbit,
-open Settings → API keys and create a key (read access is enough; Shelfie never
-writes to BookOrbit). In Shelfie, enter the BookOrbit server URL and the key.
+open Settings → API keys and create a key (read access is enough; Tsundo never
+writes to BookOrbit). In Tsundo, enter the BookOrbit server URL and the key.
 The server root works, and so does a pasted `/api/v1` or `/api/docs` URL.
-Shelfie sends the key as `Authorization: Bearer bok_…`. Use the address the
-server actually answers on: Shelfie never follows redirects, so an `http://`
+Tsundo sends the key as `Authorization: Bearer bok_…`. Use the address the
+server actually answers on: Tsundo never follows redirects, so an `http://`
 URL for an HTTPS server fails with a message naming the right address.
 
 Each run reads:
@@ -234,13 +234,13 @@ Each run reads:
 - `GET /api/v1/books/{id}`, only for a book with no saved Goodreads match, for
   BookOrbit's Goodreads ID and ISBN.
 
-The book list carries no Goodreads IDs. Shelfie matches each book once and
+The book list carries no Goodreads IDs. Tsundo matches each book once and
 saves the result, in this order:
 
 1. A book already in your library with the same title and author.
 2. BookOrbit's own Goodreads ID. If that exact edition is already in your
    library it is kept. Otherwise it is mapped to the Goodreads work's best
-   edition, the one a manual Shelfie search would add, since BookOrbit
+   edition, the one a manual Tsundo search would add, since BookOrbit
    usually stores the edition that matches the book file's ISBN. An ID
    Goodreads no longer knows falls through to the next step.
 3. A Goodreads search for the title and first author, accepting only a result
@@ -248,7 +248,7 @@ saves the result, in this order:
    subtitle or Goodreads series suffix on one side is ignored.
 4. The ISBN from BookOrbit, if the result agrees with the title or an author.
 
-Title search comes before ISBN because it finds the edition a manual Shelfie
+Title search comes before ISBN because it finds the edition a manual Tsundo
 search would add; an ISBN can name a translated edition. Books without a match
 are searched again after seven days, or sooner if their title or authors
 change in BookOrbit. Goodreads requests share the server's one-per-second
@@ -262,11 +262,11 @@ automatic matching. Changes apply on the next import. A book already imported
 under an earlier match stays in your library; remove it there if it was wrong.
 Disconnecting BookOrbit also forgets its matches.
 
-BookOrbit progress moves Shelfie books forward as described under “What to
+BookOrbit progress moves Tsundo books forward as described under “What to
 import”: a wishlisted or backlogged book becomes reading or read, and a
 reading or paused book becomes read. Dropped and read books are never changed,
 and percent progress only increases. Completion dates are merged with the ones
-already in Shelfie.
+already in Tsundo.
 
 Earlier versions connected with a web bearer token, then with KOReader sync
 credentials. Upgrading clears the old credential and pauses the schedule until
@@ -277,7 +277,7 @@ match are retried on the next run.
 
 Enter a SteamID64 (seventeen digits) and a Steam Web API key. The profile and
 game details must be public. IGDB credentials must also be configured in the
-Shelfie server environment.
+Tsundo server environment.
 
 Owned games map by exact Steam app ID through IGDB's `external_games` endpoint.
 There is no fuzzy title match. Unmatched apps, including some tools and DLC,

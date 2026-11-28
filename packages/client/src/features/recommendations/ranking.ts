@@ -1,4 +1,4 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
 import type { CardMeta } from "../../db/cardCache";
 import { isUnreleased, releaseState } from "../media/release";
 

@@ -8,5 +8,5 @@ export default defineConfig({
   clean: true,
   // Inlines the workspace package so the built server has no
   // workspace-resolution step at runtime.
-  noExternal: ["@shelfie/shared"],
+  noExternal: ["@tsundo/shared"],
 });

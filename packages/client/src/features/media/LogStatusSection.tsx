@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { COMPLETION_STATUSES, STATUS_ICONS } from "./status";
-import type { ItemStatus } from "@shelfie/shared";
+import type { ItemStatus } from "@tsundo/shared";
 import IconChevronRight from "~icons/tabler/chevron-right";
 
 /** Flat status menu: one light icon row per status, the selected one in

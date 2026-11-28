@@ -7,7 +7,7 @@ import {
   type ItemStatus,
   type Moment,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { ImportedItem } from "./types.js";
 
 /**

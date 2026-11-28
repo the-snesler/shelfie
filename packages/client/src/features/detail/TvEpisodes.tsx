@@ -1,5 +1,5 @@
-import type { TvDetail, TvEpisode, TvSeason } from "@shelfie/shared";
-import { episodeKey } from "@shelfie/shared";
+import type { TvDetail, TvEpisode, TvSeason } from "@tsundo/shared";
+import { episodeKey } from "@tsundo/shared";
 import { useEffect, useRef, useState } from "react";
 import IconCheck from "~icons/tabler/check";
 import IconLayoutList from "~icons/tabler/layout-list";
@@ -16,7 +16,7 @@ import {
 } from "./episodeProgress";
 
 type EpisodeView = "rail" | "list";
-const VIEW_STORAGE_KEY = "shelfie:tv-episode-view";
+const VIEW_STORAGE_KEY = "tsundo:tv-episode-view";
 
 function readView(): EpisodeView {
   try {

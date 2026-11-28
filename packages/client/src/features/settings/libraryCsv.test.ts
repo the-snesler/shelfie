@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import {
   exportLibraryCsv,
   importLibraryCsv,

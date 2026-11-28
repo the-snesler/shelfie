@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { CardMeta } from "../../db/cardCache";
 import { releaseDateFromEpoch, releaseDateFromYear } from "./libraryActions";
 

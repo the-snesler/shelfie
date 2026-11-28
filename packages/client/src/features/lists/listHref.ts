@@ -1,4 +1,4 @@
-import type { MediaType } from "@shelfie/shared";
+import type { MediaType } from "@tsundo/shared";
 
 /** `/lists/:id`, carrying the media filter along when one is set. */
 export function listHref(id: string, type: MediaType | null): string {

@@ -1,5 +1,5 @@
-import type { MediaType } from "@shelfie/shared";
-import { MEDIA_TYPES } from "@shelfie/shared";
+import type { MediaType } from "@tsundo/shared";
+import { MEDIA_TYPES } from "@tsundo/shared";
 import type { LibrarySort, SortDirection } from "../library/librarySorting";
 import { NATURAL_DIRECTION } from "../library/librarySorting";
 import type { AutoList, ListGrouping } from "./automaticLists";
@@ -91,7 +91,7 @@ export function resolveListViewState(
 }
 
 function storageKey(list: AutoList): string {
-  return `shelfie:list-view:${list.id}`;
+  return `tsundo:list-view:${list.id}`;
 }
 
 export function readStoredViewState(

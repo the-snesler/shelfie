@@ -8,7 +8,7 @@ import {
 import {
   libraryItemDocSchema,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runMigrations } from "../db/migrations.js";
 import { initSequence } from "../db/sequence.js";

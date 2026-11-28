@@ -1,7 +1,7 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { authFetch } from "../../auth";
 
 export type DetailFetchState<TMeta> =
@@ -10,7 +10,7 @@ export type DetailFetchState<TMeta> =
   | { status: "loaded"; meta: TMeta };
 
 export interface UseDetailFetchOptions<TMeta> {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   /** Full request path, e.g. `/api/movies/by-id/42`. Re-fetches whenever
    *  this string changes. */
   url: string;
@@ -20,7 +20,7 @@ export interface UseDetailFetchOptions<TMeta> {
   libraryItemId?: (meta: TMeta) => string;
   /** Card-tier upsert for the loaded metadata, fired once on success so the
    *  library/search caches stay warm without waiting for a resync. */
-  upsertCards?: (db: ShelfieDatabase, cards: TMeta[]) => unknown;
+  upsertCards?: (db: TsundoDatabase, cards: TMeta[]) => unknown;
 }
 
 export interface UseDetailFetchResult<TMeta> {

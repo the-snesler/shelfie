@@ -5,7 +5,7 @@ import {
   importBucket,
   type ImportPolicy,
   type ImportSource,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { z } from "zod";
 import type { EntryFilter } from "./types.js";
 

@@ -5,7 +5,7 @@ import type {
   MediaType,
   Moment,
   Storefront,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 
 export interface ImportedItem {
   mediaType: MediaType;

@@ -1,7 +1,7 @@
 import type {
   NotificationSettings,
   NotificationSettingsUpdate,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
@@ -139,8 +139,8 @@ export function registerNotificationRoutes(
       await sendApprise(
         settings.endpoint,
         settings.destinations,
-        "Shelfie test notification",
-        "Your Shelfie release notifications are configured.",
+        "Tsundo test notification",
+        "Your Tsundo release notifications are configured.",
         fetcher,
       );
       return c.json({ ok: true });

@@ -3,7 +3,7 @@ import {
   episodeKey,
   type ImportSource,
   type ItemStatus,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { findGameIdBySteamAppId } from "../igdb/client.js";
 import {
   GoodreadsLookupError,
@@ -41,7 +41,7 @@ function day(value: unknown): string | undefined {
 }
 /**
  * When a Trakt watch ended, as a UTC instant. Trakt's `watched_at` is when
- * the watch started, but Shelfie records when the user finished (see shared
+ * the watch started, but Tsundo records when the user finished (see shared
  * `Moment`), so the title's runtime is added. Without a runtime the start is
  * the best moment available. Undefined for Trakt's "date unknown" (the Unix
  * epoch) and anything unparseable.
@@ -78,7 +78,7 @@ function rating(value: unknown, divisor = 1): number | undefined {
  * reaches the API, which looks exactly like a bad API key.
  */
 export const SOURCE_USER_AGENT =
-  "Shelfie/1.0 (+https://github.com/the-snesler/shelfie)";
+  "Tsundo/1.0 (+https://github.com/the-snesler/tsundo)";
 
 /**
  * Host + path only: query strings carry credentials (Steam's `key=`) and
@@ -388,7 +388,7 @@ async function fetchTrakt(
           entry.type !== "movie" &&
           entry.type !== "show"
         ) {
-          // Episode/season ratings: Shelfie rates whole titles only.
+          // Episode/season ratings: Tsundo rates whole titles only.
           partRatings++;
           continue;
         }
@@ -478,7 +478,7 @@ async function fetchTrakt(
     );
   if (partRatings)
     warnings.push(
-      `${partRatings} episode or season ratings were skipped; Shelfie rates whole titles.`,
+      `${partRatings} episode or season ratings were skipped; Tsundo rates whole titles.`,
     );
   if (unwatchedRatings)
     warnings.push(

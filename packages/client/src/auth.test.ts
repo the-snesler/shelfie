@@ -127,14 +127,14 @@ describe("catalog authentication", () => {
       });
       window.dispatchEvent(event);
     }
-    storage("shelfie.username");
-    storage("shelfie.authToken", {});
+    storage("tsundo.username");
+    storage("tsundo.authToken", {});
     expect(changed).not.toHaveBeenCalled();
-    storage("shelfie.authToken");
+    storage("tsundo.authToken");
     storage(null);
     expect(changed).toHaveBeenCalledTimes(2);
     removeListener();
-    storage("shelfie.authToken");
+    storage("tsundo.authToken");
     expect(changed).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { GameCardDoc } from "../../db/gameCards";
 import type { TvCardDoc } from "../../db/tvCards";

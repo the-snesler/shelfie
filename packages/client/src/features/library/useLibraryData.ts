@@ -2,13 +2,13 @@ import type {
   LibraryItem,
   TvDetail as TvDetailDto,
   TvSeason,
-} from "@shelfie/shared";
-import { NON_FINISHED_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
+} from "@tsundo/shared";
+import { NON_FINISHED_STATUSES, STATUS_META_GROUP } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo, useState } from "react";
 import { authFetch } from "../../auth";
 import { subscribeCardCaches, type CardMeta } from "../../db/cardCache";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { refreshCardCaches } from "../../db/refreshCards";
 
 /** Any card-cache doc a library item might have metadata for. All four
@@ -33,9 +33,9 @@ let cachedCards: Map<string, CardMeta> = new Map();
 let cachedTvCatalogs: Map<string, TvSeason[]> = new Map();
 /** The database the snapshot came from. Owner and guest shelves live in
  *  separate databases, so a sign-out must never paint the owner's items. */
-let cachedDb: ShelfieDatabase | null = null;
+let cachedDb: TsundoDatabase | null = null;
 
-function resetSnapshotFor(db: ShelfieDatabase): void {
+function resetSnapshotFor(db: TsundoDatabase): void {
   if (cachedDb === db) return;
   cachedDb = db;
   cachedItems = [];
@@ -86,7 +86,7 @@ function mergeCards(
  *  TV catalog fetch (for next-episode previews). Module-level caches back
  *  each piece of state so a remount reuses the last snapshot instead of
  *  flashing empty (see `cachedItems` above). */
-export function useLibraryData(db: ShelfieDatabase): LibraryData {
+export function useLibraryData(db: TsundoDatabase): LibraryData {
   resetSnapshotFor(db);
   const [items, setItems] = useState<RxDocument<LibraryItem>[]>(cachedItems);
   const [cards, setCards] = useState<Map<string, CardMeta>>(cachedCards);

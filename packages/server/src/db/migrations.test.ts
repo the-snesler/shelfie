@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   libraryItemMigrationStrategies,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { libraryItemRowToDoc } from "../sync/row.js";
 import { runMigrations } from "./migrations.js";
 import type { Database } from "./types.js";

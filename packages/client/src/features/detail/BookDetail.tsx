@@ -1,4 +1,4 @@
-import type { BookDetail as BookDetailDto } from "@shelfie/shared";
+import type { BookDetail as BookDetailDto } from "@tsundo/shared";
 import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/BookDetail";

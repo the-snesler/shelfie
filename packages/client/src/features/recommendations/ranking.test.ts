@@ -1,4 +1,4 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
 import { describe, expect, it } from "vitest";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { CardMeta } from "../../db/cardCache";

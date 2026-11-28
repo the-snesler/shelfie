@@ -3,8 +3,8 @@ import type {
   LibraryItem,
   MediaType,
   OwnerSettings,
-} from "@shelfie/shared";
-import { ITEM_STATUSES, MEDIA_TYPES, STATUS_META_GROUP } from "@shelfie/shared";
+} from "@tsundo/shared";
+import { ITEM_STATUSES, MEDIA_TYPES, STATUS_META_GROUP } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -19,7 +19,7 @@ import IconList from "~icons/tabler/list";
 import IconSortAscending from "~icons/tabler/sort-ascending";
 import IconSortDescending from "~icons/tabler/sort-descending";
 import type { AppOutletContext } from "../../App";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { refreshCardCaches } from "../../db/refreshCards";
 import { cardCaption } from "../library/libraryCaptions";
 import { LibraryItemCard } from "../library/LibraryItemCard";
@@ -479,7 +479,7 @@ function ListBody({
   settings,
   onLogOpenChange,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   sections: Section[];
   cards: Map<string, CardMeta>;
   view: ListViewMode;

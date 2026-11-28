@@ -13,7 +13,7 @@ import {
   type ImportResult,
   type ImportConnectionInput,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import type { Database, ImportConnectionsTable } from "../db/types.js";

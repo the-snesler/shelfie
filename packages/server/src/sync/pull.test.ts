@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReplicatedLibraryItem } from "@shelfie/shared";
+import type { ReplicatedLibraryItem } from "@tsundo/shared";
 import { pull } from "./pull.js";
 import type { SyncCollection } from "./collection.js";
 
