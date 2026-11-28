@@ -85,7 +85,7 @@ export function AuthScreen({
         className="w-full max-w-sm rounded-xl border border-divider bg-panel p-8 shadow"
       >
         <h1>
-          <img src="/logo.svg" alt="Shelfie" className="mx-auto h-14 w-auto" />
+          <img src="/logo.svg" alt="Tsundo" className="mx-auto h-12 w-auto" />
         </h1>
         <p className="mt-1 text-center text-sm text-muted">
           {isSetup

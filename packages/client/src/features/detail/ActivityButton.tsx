@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { Popover } from "@base-ui/react/popover";
 import IconHistory from "~icons/tabler/history";
-import type { ActivityChanges, LibraryItem } from "@shelfie/shared";
+import type { ActivityChanges, LibraryItem } from "@tsundo/shared";
 import {
   isInstant,
   momentDay,
   momentSortKey,
   parseEpisodeKey,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { STATUS_LABELS } from "../media/status";
 import {
   describeProgressLine,

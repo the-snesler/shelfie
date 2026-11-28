@@ -1,5 +1,5 @@
 import templates from "./platforms.json";
-import type { PlatformRelease, Storefront } from "@shelfie/shared";
+import type { PlatformRelease, Storefront } from "@tsundo/shared";
 import { STOREFRONT_PLATFORMS, storefrontCaseKey } from "./storefronts";
 
 export interface PlatformTemplate {

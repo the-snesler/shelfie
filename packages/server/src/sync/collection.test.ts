@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { equalDocs, type ReplicatedDoc } from "./collection.js";
-import type { ReplicatedLibraryItem } from "@shelfie/shared";
+import type { ReplicatedLibraryItem } from "@tsundo/shared";
 
 const base: ReplicatedLibraryItem = {
   id: "game:1942",

@@ -2,7 +2,7 @@ import {
   LIBRARY_THEMES,
   type LibraryTheme,
   type OwnerSettings,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Hono } from "hono";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";

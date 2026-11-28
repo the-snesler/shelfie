@@ -1,4 +1,4 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { describe, expect, it } from "vitest";
 import type { GameCardDoc } from "../../db/gameCards";

@@ -1,6 +1,6 @@
-import type { MovieMetadata } from "@shelfie/shared";
+import type { MovieMetadata } from "@tsundo/shared";
 import type { RxJsonSchema } from "rxdb";
-import type { ShelfieDatabase } from "./database";
+import type { TsundoDatabase } from "./database";
 import { upsertOwnedCards } from "./cardCache";
 
 /**
@@ -68,7 +68,7 @@ export function cardToDoc(card: MovieMetadata): MovieCardDoc {
 }
 
 export async function upsertMovieCards(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   cards: MovieMetadata[],
 ): Promise<void> {
   await upsertOwnedCards(db, cards.map(cardToDoc));

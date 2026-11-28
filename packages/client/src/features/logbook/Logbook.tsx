@@ -1,5 +1,5 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
-import { isInstant, momentDay, parseEpisodeKey } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
+import { isInstant, momentDay, parseEpisodeKey } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";

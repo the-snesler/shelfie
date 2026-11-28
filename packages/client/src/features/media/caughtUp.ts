@@ -1,5 +1,5 @@
-import type { LibraryItem } from "@shelfie/shared";
-import { tvWatchState } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
+import { tvWatchState } from "@tsundo/shared";
 import type { CardMeta } from "../../db/cardCache";
 import type { TvCardDoc } from "../../db/tvCards";
 

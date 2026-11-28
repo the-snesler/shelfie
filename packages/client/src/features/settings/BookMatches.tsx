@@ -4,7 +4,7 @@ import type {
   BookSearchResult,
   ImportBookLink,
   ImportBookLinkInput,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { MediaCover } from "../media/MediaCover";

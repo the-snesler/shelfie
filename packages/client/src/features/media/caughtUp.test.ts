@@ -1,4 +1,4 @@
-import type { TvLastAiring } from "@shelfie/shared";
+import type { TvLastAiring } from "@tsundo/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TvCardDoc } from "../../db/tvCards";
 import { findList, listMembers } from "../lists/automaticLists";

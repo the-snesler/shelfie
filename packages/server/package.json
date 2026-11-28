@@ -1,5 +1,5 @@
 {
-  "name": "@shelfie/server",
+  "name": "@tsundo/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.14",
-    "@shelfie/shared": "workspace:*",
+    "@tsundo/shared": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "hono": "^4.12.26",
     "kysely": "^0.28.17",

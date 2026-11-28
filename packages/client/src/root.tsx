@@ -11,7 +11,7 @@ import {
 import "./index.css";
 
 export function meta() {
-  return [{ title: "Shelfie" }];
+  return [{ title: "Tsundo" }];
 }
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -25,6 +25,15 @@ export function Layout({ children }: { children: ReactNode }) {
         />
         <Meta />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#2a231f" />
+        <meta name="apple-mobile-web-app-title" content="Tsundo" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        {/* No safe-area padding in the layout, so keep an opaque status bar
+            rather than black-translucent (which would draw under it). */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <Links />
       </head>
       <body className="h-full">

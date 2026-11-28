@@ -1,4 +1,4 @@
-import type { CastMember, MediaVideo } from "@shelfie/shared";
+import type { CastMember, MediaVideo } from "@tsundo/shared";
 import {
   type ReactNode,
   useCallback,

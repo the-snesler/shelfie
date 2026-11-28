@@ -57,7 +57,7 @@ export function Sidebar({
       >
         <div className="flex justify-start px-5 pt-5 pb-1">
           <Link to="/" onClick={onClose}>
-            <img src="/logo.svg" alt="Shelfie" className="h-11 w-auto" />
+            <img src="/logo.svg" alt="Tsundo" className="h-9 w-auto" />
           </Link>
         </div>
 

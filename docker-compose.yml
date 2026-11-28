@@ -1,15 +1,15 @@
 services:
   app:
     build: .
-    # image: ghcr.io/the-snesler/shelfie:latest
+    # image: ghcr.io/the-snesler/tsundo:latest
     ports:
       - "3001:3001"
     environment:
       - PORT=3001
       # Swap to an external Postgres later by setting DATABASE_URL here.
     volumes:
-      - shelfie-data:/data
+      - tsundo-data:/data
     restart: unless-stopped
 
 volumes:
-  shelfie-data:
+  tsundo-data:

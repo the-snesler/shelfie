@@ -7,7 +7,7 @@ import {
   type ReplicatedLibraryItem,
   type TvMetadata,
   type TvWatchState,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Kysely } from "kysely";
 import { db as defaultDb } from "../db/index.js";
 import { nextRev } from "../db/sequence.js";

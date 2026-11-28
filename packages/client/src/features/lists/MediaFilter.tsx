@@ -1,4 +1,4 @@
-import type { MediaType } from "@shelfie/shared";
+import type { MediaType } from "@tsundo/shared";
 import { useSearchParams } from "react-router";
 
 const FILTERS: readonly { type: MediaType | null; label: string }[] = [

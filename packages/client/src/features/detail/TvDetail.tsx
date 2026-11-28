@@ -1,5 +1,5 @@
-import type { TvDetail as TvDetailDto, TvEpisode } from "@shelfie/shared";
-import { episodeKey, instantMoment } from "@shelfie/shared";
+import type { TvDetail as TvDetailDto, TvEpisode } from "@tsundo/shared";
+import { episodeKey, instantMoment } from "@tsundo/shared";
 import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../../App";
 import type { Route } from "./+types/TvDetail";

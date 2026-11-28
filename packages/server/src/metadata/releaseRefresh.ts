@@ -1,5 +1,5 @@
-import type { MediaType } from "@shelfie/shared";
-import { ITEM_STATUSES, STATUS_META_GROUP } from "@shelfie/shared";
+import type { MediaType } from "@tsundo/shared";
+import { ITEM_STATUSES, STATUS_META_GROUP } from "@tsundo/shared";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/types.js";
 import type { MetadataCollection } from "./collection.js";

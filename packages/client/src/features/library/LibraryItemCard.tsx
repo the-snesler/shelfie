@@ -1,5 +1,5 @@
-import type { LibraryItem, TvSeason } from "@shelfie/shared";
-import { episodeKey, instantMoment } from "@shelfie/shared";
+import type { LibraryItem, TvSeason } from "@tsundo/shared";
+import { episodeKey, instantMoment } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useState } from "react";
 import { Link, useViewTransitionState } from "react-router";
@@ -7,7 +7,7 @@ import IconPlus from "~icons/tabler/plus";
 import { AnimatePresence, motion } from "motion/react";
 import { Tooltip, TruncatedText } from "../../components/Tooltip";
 import { tmdbImageUrl } from "../../images";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import type { GameCardDoc } from "../../db/gameCards";
 import type { TvCardDoc } from "../../db/tvCards";
 import { GameCover } from "../games/GameCover";
@@ -58,7 +58,7 @@ export function LibraryItemCard({
   showProgressBar,
   onLogOpenChange,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   item: RxDocument<LibraryItem>;
   meta: CardMeta | undefined;
   caption: string | null;
@@ -377,7 +377,7 @@ function CardLogButton({
   target,
   onOpenChange,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   item: RxDocument<LibraryItem>;
   target: LogTarget;
   onOpenChange?: (itemId: string, open: boolean) => void;
@@ -429,7 +429,7 @@ function CardLogPopover({
   anchor: HTMLButtonElement;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   item: RxDocument<LibraryItem>;
   target: LogTarget;
 }) {

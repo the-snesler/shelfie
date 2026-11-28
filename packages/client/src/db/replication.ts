@@ -1,4 +1,4 @@
-import type { Checkpoint } from "@shelfie/shared";
+import type { Checkpoint } from "@tsundo/shared";
 import type { RxCollection, RxReplicationPullStreamItem } from "rxdb";
 import { replicateRxCollection } from "rxdb/plugins/replication";
 import { Subject } from "rxjs";
@@ -51,7 +51,7 @@ export function startReplication<TDoc>(options: {
 
   const state = replicateRxCollection<TDoc, Checkpoint>({
     collection,
-    replicationIdentifier: `shelfie-${name}-http`,
+    replicationIdentifier: `tsundo-${name}-http`,
     live: true,
     retryTime: 5000,
     pull: {

@@ -1,4 +1,4 @@
-import type { TvAiring, TvSeason } from "@shelfie/shared";
+import type { TvAiring, TvSeason } from "@tsundo/shared";
 import { describe, expect, it } from "vitest";
 import { nextEpisodeExpired, scheduleForShow } from "./schedule.js";
 

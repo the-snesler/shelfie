@@ -2,7 +2,7 @@ import type {
   LibraryItem,
   MediaType,
   TvScheduledEpisode,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";

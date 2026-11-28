@@ -36,7 +36,7 @@ RUN pnpm build
 FROM build AS deploy
 # --legacy: the server bundles @aside/shared via tsup, so we don't need pnpm's
 # injected-workspace-packages deploy (which pnpm v10+ otherwise requires).
-RUN pnpm deploy --filter=@shelfie/server --prod --legacy /app/deploy
+RUN pnpm deploy --filter=@tsundo/server --prod --legacy /app/deploy
 
 # --- runtime: the single shipped image ---
 FROM base AS runtime

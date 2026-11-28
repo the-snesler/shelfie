@@ -3,7 +3,7 @@ import type {
   BookLinkSource,
   BookSearchResult,
   ImportBookLink,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { Kysely } from "kysely";
 import type { Database, ImportBookLinksTable } from "../db/types.js";
 import { fetchBestEditionId, searchBooks } from "../goodreads/client.js";
@@ -140,7 +140,7 @@ export function publicBookLink(row: ImportBookLinksTable): ImportBookLink {
  * the library with the same title and author, the source's own Goodreads id,
  * a strict title and author match from Goodreads title searches, then the
  * ISBN. A source's Goodreads id usually names the edition matching its file,
- * so it is mapped to the work's best edition, the one a manual Shelfie search
+ * so it is mapped to the work's best edition, the one a manual Tsundo search
  * would add. Title search comes before ISBN for the same reason; an ISBN can
  * name a translated edition. Results are saved per source so later runs skip
  * lookups.

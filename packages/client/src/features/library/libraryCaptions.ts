@@ -1,5 +1,5 @@
-import type { LibraryItem, TvSeason } from "@shelfie/shared";
-import { episodeKey, STATUS_META_GROUP } from "@shelfie/shared";
+import type { LibraryItem, TvSeason } from "@tsundo/shared";
+import { episodeKey, STATUS_META_GROUP } from "@tsundo/shared";
 import type { BookCardDoc } from "../../db/bookCards";
 import type { GameCardDoc } from "../../db/gameCards";
 import type { MovieCardDoc } from "../../db/movieCards";

@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router";
 import IconSearch from "~icons/tabler/search";
 import IconSparkles from "~icons/tabler/sparkles";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 
 /** Empty Home for a guest: offers the demo shelf instead of a dead end. The
  *  demo module (and its bundled card fixture) loads only when asked for. */
-export function GuestEmptyShelf({ db }: { db: ShelfieDatabase }) {
+export function GuestEmptyShelf({ db }: { db: TsundoDatabase }) {
   const [state, setState] = useState<"idle" | "loading" | "failed">("idle");
 
   async function loadDemo() {
@@ -25,7 +25,7 @@ export function GuestEmptyShelf({ db }: { db: ShelfieDatabase }) {
       <p className="font-display text-2xl text-ink">Your shelf is empty</p>
       <p className="max-w-md text-sm">
         Fill it with a demo collection of games, movies, shows, and books to see
-        how Shelfie works, or search to start your own. Everything stays in this
+        how Tsundo works, or search to start your own. Everything stays in this
         browser.
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
@@ -56,7 +56,7 @@ export function GuestEmptyShelf({ db }: { db: ShelfieDatabase }) {
 }
 
 /** Reminds a guest where their shelf lives and lets them start over. */
-export function GuestShelfNotice({ db }: { db: ShelfieDatabase }) {
+export function GuestShelfNotice({ db }: { db: TsundoDatabase }) {
   const [clearing, setClearing] = useState(false);
 
   async function clear() {

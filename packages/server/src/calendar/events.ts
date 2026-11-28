@@ -1,5 +1,5 @@
-import { isInstant, type Moment } from "@shelfie/shared";
-import type { TvAiring, TvSeason } from "@shelfie/shared";
+import { isInstant, type Moment } from "@tsundo/shared";
+import type { TvAiring, TvSeason } from "@tsundo/shared";
 import { sql, type Kysely } from "kysely";
 import type { Database } from "../db/types.js";
 import { scheduleForShow } from "../tv/schedule.js";
@@ -106,7 +106,7 @@ export async function readCalendarEntries(
         date: moment.slice(0, 10),
         ...(isInstant(moment) ? { at: moment } : {}),
         title: `Completed: ${name}`,
-        description: "Completed in Shelfie",
+        description: "Completed in Tsundo",
         kind: "completion",
         updatedAt: item.updated_at,
       });

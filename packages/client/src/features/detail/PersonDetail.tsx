@@ -2,7 +2,7 @@ import type {
   ItemStatus,
   PersonCredit,
   PersonDetail as PersonDetailDto,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { useEffect, useState } from "react";
 import {
   Link,

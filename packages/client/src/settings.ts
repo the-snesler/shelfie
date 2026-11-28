@@ -1,4 +1,4 @@
-import type { OwnerPreferences, OwnerSettings } from "@shelfie/shared";
+import type { OwnerPreferences, OwnerSettings } from "@tsundo/shared";
 import { authFetch } from "./auth";
 
 export async function getSettings(): Promise<OwnerSettings> {

@@ -1,10 +1,6 @@
-import type {
-  GameMetadata,
-  PlatformRelease,
-  TimeToBeat,
-} from "@shelfie/shared";
+import type { GameMetadata, PlatformRelease, TimeToBeat } from "@tsundo/shared";
 import type { RxJsonSchema } from "rxdb";
-import type { ShelfieDatabase } from "./database";
+import type { TsundoDatabase } from "./database";
 import { upsertOwnedCards } from "./cardCache";
 
 /**
@@ -117,7 +113,7 @@ export function cardToDoc(card: GameMetadata): GameCardDoc {
 }
 
 export async function upsertCards(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   cards: GameMetadata[],
 ): Promise<void> {
   await upsertOwnedCards(db, cards.map(cardToDoc));

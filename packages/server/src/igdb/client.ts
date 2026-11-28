@@ -7,7 +7,7 @@ import type {
   StoreLink,
   StoreName,
   TimeToBeat,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { getIgdbToken, invalidateIgdbToken } from "./token.js";
 import { rankSearchGames } from "./rank.js";
 

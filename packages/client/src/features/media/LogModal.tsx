@@ -2,19 +2,19 @@ import {
   instantMoment,
   LOG_FORMATS_BY_MEDIA,
   STATUS_META_GROUP,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type {
   ItemStatus,
   LibraryItem,
   LogFormat,
   Moment,
   Storefront,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { randomToken, type RxDocument } from "rxdb";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import IconTrash from "~icons/tabler/trash";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import type { LogTarget } from "./libraryActions";
 import { newLibraryItem, todayLocalIsoDate } from "./libraryActions";
 import { celebrate, celebrationOrigin } from "./celebrate";
@@ -55,7 +55,7 @@ export function LogModal({
   item,
   onClose,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   target: LogTarget;
   item: RxDocument<LibraryItem> | null;
   onClose: () => void;

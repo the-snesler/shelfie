@@ -5,7 +5,7 @@ import type {
   MovieSearchResult,
   SearchResult,
   TvSearchResult,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { useEffect, useState } from "react";
 import type { RxDocument } from "rxdb";
 import {
@@ -20,7 +20,7 @@ import type { AppOutletContext } from "../../App";
 import { authFetch } from "../../auth";
 import { TruncatedText } from "../../components/Tooltip";
 import { tmdbImageUrl } from "../../images";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { GameCover } from "../games/GameCover";
 import {
   gameCoverTransitionName,
@@ -90,7 +90,7 @@ function SearchLogButton({
   target,
   item,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   target: LogTarget;
   item: RxDocument<LibraryItem> | null;
 }) {
@@ -137,7 +137,7 @@ function SearchResultRow({
   item,
   typeLabel,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   result: SearchResult;
   item: RxDocument<LibraryItem> | null;
   typeLabel?: string;
@@ -212,7 +212,7 @@ function MediaSearchResultRow({
   item,
   typeLabel,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   mediaType: Exclude<MediaType, "game">;
   href: string;
   coverUrl: string | null;

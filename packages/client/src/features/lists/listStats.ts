@@ -1,5 +1,5 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
-import { LOG_FORMATS_BY_MEDIA } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
+import { LOG_FORMATS_BY_MEDIA } from "@tsundo/shared";
 
 export interface ListStats {
   count: number;

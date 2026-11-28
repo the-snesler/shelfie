@@ -1,4 +1,4 @@
-import type { LibraryItem, MediaType } from "@shelfie/shared";
+import type { LibraryItem, MediaType } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import { useEffect, useMemo } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router";

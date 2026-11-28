@@ -1,19 +1,19 @@
-import type { MediaType } from "@shelfie/shared";
+import type { MediaType } from "@tsundo/shared";
 import type { RxCollection } from "rxdb";
 import type { BookCardDoc } from "./bookCards";
 import { OwnedCardCache } from "./cardCachePolicy";
-import type { ShelfieDatabase } from "./database";
+import type { TsundoDatabase } from "./database";
 import type { GameCardDoc } from "./gameCards";
 import type { MovieCardDoc } from "./movieCards";
 import type { TvCardDoc } from "./tvCards";
 
 export type CardMeta = GameCardDoc | MovieCardDoc | TvCardDoc | BookCardDoc;
 
-const caches = new WeakMap<ShelfieDatabase, OwnedCardCache<CardMeta>>();
+const caches = new WeakMap<TsundoDatabase, OwnedCardCache<CardMeta>>();
 const CARD_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 const CARD_TOMBSTONE_RETENTION_MS = 24 * 60 * 60 * 1000;
 
-function cacheFor(db: ShelfieDatabase): OwnedCardCache<CardMeta> {
+function cacheFor(db: TsundoDatabase): OwnedCardCache<CardMeta> {
   const existing = caches.get(db);
   if (existing) return existing;
 
@@ -68,7 +68,7 @@ function cacheFor(db: ShelfieDatabase): OwnedCardCache<CardMeta> {
 }
 
 export async function upsertOwnedCards(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   cards: CardMeta[],
 ): Promise<void> {
   if (cards.length === 0) return;
@@ -77,7 +77,7 @@ export async function upsertOwnedCards(
 
 /** Database-owned rather than screen-owned, so removing items from detail,
  * imports, or another tab also collects their cards. */
-export function startCardCacheLifecycle(db: ShelfieDatabase): () => void {
+export function startCardCacheLifecycle(db: TsundoDatabase): () => void {
   let previous: string | undefined;
   const subscription = db.library_items.find().$.subscribe((items) => {
     const membership = items
@@ -135,7 +135,7 @@ export function startCardCacheLifecycle(db: ShelfieDatabase): () => void {
 /** Only read the card ids the caller owns or displays. Empty media types do
  * not subscribe at all, and orphaned cards never enter a screen's state. */
 export function subscribeCardCaches(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   ids: readonly string[],
   receive: (prefix: string, cards: readonly CardMeta[]) => void,
 ): () => void {

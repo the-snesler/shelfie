@@ -1,7 +1,7 @@
-const TOKEN_KEY = "shelfie.authToken";
-const USERNAME_KEY = "shelfie.username";
-const AUTH_LOST_EVENT = "shelfie-auth-lost";
-const TOKEN_UPDATED_EVENT = "shelfie-auth-token-updated";
+const TOKEN_KEY = "tsundo.authToken";
+const USERNAME_KEY = "tsundo.username";
+const AUTH_LOST_EVENT = "tsundo-auth-lost";
+const TOKEN_UPDATED_EVENT = "tsundo-auth-token-updated";
 
 export interface AuthStatus {
   setupRequired: boolean;

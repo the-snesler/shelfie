@@ -5,10 +5,10 @@ import type {
   MediaType,
   MovieMetadata,
   TvMetadata,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { authFetch, getAuthToken } from "../auth";
 import { upsertBookCards } from "./bookCards";
-import type { ShelfieDatabase } from "./database";
+import type { TsundoDatabase } from "./database";
 import { upsertCards } from "./gameCards";
 import { upsertMovieCards } from "./movieCards";
 import { upsertTvCards } from "./tvCards";
@@ -60,7 +60,7 @@ async function refreshMedium<T>(
 /** Narrows a guest refresh to cards that are missing or a week old, missing
  *  first, at most `GUEST_REFRESH_LIMIT` ids in total. */
 async function guestRefreshIds(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   idsByType: Map<MediaType, Set<string>>,
   now: number,
 ): Promise<Map<MediaType, Set<string>>> {
@@ -105,7 +105,7 @@ async function guestRefreshIds(
  *  Guests (no session token) share a small anonymous quota with search, so
  *  they only fetch missing or week-old cards, ten at a time. */
 export async function refreshCardCaches(
-  db: ShelfieDatabase,
+  db: TsundoDatabase,
   items: readonly Pick<LibraryItem, "mediaType" | "sourceId">[],
 ): Promise<void> {
   let idsByType = new Map<MediaType, Set<string>>();

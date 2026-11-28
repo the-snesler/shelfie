@@ -2,7 +2,7 @@ import {
   LIBRARY_THEMES,
   type LibraryTheme,
   type OwnerSettings,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useOutletContext } from "react-router";
 import IconDownload from "~icons/tabler/download";
@@ -71,7 +71,7 @@ export default function Settings() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `shelfie-library-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.download = `tsundo-library-${new Date().toISOString().slice(0, 10)}.csv`;
       link.click();
       URL.revokeObjectURL(url);
       setDataMessage(`Exported ${items.length} items.`);
@@ -164,7 +164,7 @@ export default function Settings() {
               Library progress bars
             </span>
             <span className="mt-0.5 block text-xs text-muted">
-              Show progress when Shelfie can calculate a meaningful percentage.
+              Show progress when Tsundo can calculate a meaningful percentage.
             </span>
           </span>
           <input
@@ -209,7 +209,7 @@ export default function Settings() {
 
       <SettingsSection title="Data">
         <p className="text-sm text-muted">
-          Export a Shelfie CSV backup or restore one. Imports overwrite matching
+          Export a Tsundo CSV backup or restore one. Imports overwrite matching
           items only after every row has been validated.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">

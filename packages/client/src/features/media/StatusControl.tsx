@@ -1,7 +1,7 @@
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
 import IconChevronDown from "~icons/tabler/chevron-down";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { LogPopover } from "./LogPopover";
 import type { LogTarget } from "./libraryActions";
 import { newLibraryItem } from "./libraryActions";
@@ -16,7 +16,7 @@ export function StatusControl({
   target,
   item,
 }: {
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   target: LogTarget;
   item: RxDocument<LibraryItem> | null | undefined;
 }) {

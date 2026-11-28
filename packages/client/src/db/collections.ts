@@ -3,7 +3,7 @@ import {
   libraryItemConflictHandler,
   libraryItemMigrationStrategies,
   libraryItemSchema,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { bookCardSchema, type BookCardDoc } from "./bookCards";
 import { gameCardSchema, type GameCardDoc } from "./gameCards";
 import { movieCardSchema, type MovieCardDoc } from "./movieCards";

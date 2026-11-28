@@ -3,8 +3,8 @@ import type {
   TvLastAiring,
   TvMetadata,
   TvSeason,
-} from "@shelfie/shared";
-import { episodeKey } from "@shelfie/shared";
+} from "@tsundo/shared";
+import { episodeKey } from "@tsundo/shared";
 
 /** Ascending by seasonNumber, with Specials (0) pushed to the end. */
 export function orderedSeasons(seasons: readonly TvSeason[]): TvSeason[] {

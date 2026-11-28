@@ -3,7 +3,7 @@ import {
   libraryItemDocSchema,
   renameCompletedDates,
   type LibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 
 const HEADERS = [
   "id",

@@ -1,4 +1,4 @@
-import { compareMoments } from "@shelfie/shared";
+import { compareMoments } from "@tsundo/shared";
 
 /** Logbook feed shaping: raw log entries (one per completion or watched
  *  episode) → the rows the windowed list renders. Pure, so it stays cheap to

@@ -147,7 +147,7 @@ export interface ImportConnectionInput {
   policy?: ImportPolicy | null;
 }
 
-/** Sources whose books are matched to Goodreads IDs by Shelfie. */
+/** Sources whose books are matched to Goodreads IDs by Tsundo. */
 export const BOOK_LINK_SOURCES = [
   "bookorbit",
 ] as const satisfies readonly ImportSource[];

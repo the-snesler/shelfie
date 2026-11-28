@@ -1,5 +1,5 @@
-import type { ItemStatus, MediaType, MetaStatus } from "@shelfie/shared";
-import { ITEM_STATUSES } from "@shelfie/shared";
+import type { ItemStatus, MediaType, MetaStatus } from "@tsundo/shared";
+import { ITEM_STATUSES } from "@tsundo/shared";
 import type { FunctionComponent, SVGProps } from "react";
 import IconHeart from "~icons/tabler/heart";
 import IconStack from "~icons/tabler/stack-2";

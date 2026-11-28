@@ -1,7 +1,7 @@
 import {
   libraryItemDocSchema,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import { db } from "../db/index.js";
 import type { SyncCollection } from "./collection.js";
 import { libraryItemDocToRow, libraryItemRowToDoc } from "./row.js";

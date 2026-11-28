@@ -2,7 +2,7 @@ import BetterSqlite3 from "better-sqlite3";
 import { Hono } from "hono";
 import { Kysely, SqliteDialect } from "kysely";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BookSearchResult } from "@shelfie/shared";
+import type { BookSearchResult } from "@tsundo/shared";
 import { runMigrations } from "../db/migrations.js";
 import type { Database } from "../db/types.js";
 import { initSequence } from "../db/sequence.js";
@@ -770,7 +770,7 @@ describe("book import merge", () => {
       progressValue: 100,
       completions: ["2026-11-01"],
     });
-    // A reread in the source leaves the book finished in Shelfie.
+    // A reread in the source leaves the book finished in Tsundo.
     expect(
       mergeImportedItem(
         { ...base, status: "active", progressValue: 5 },

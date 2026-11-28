@@ -1,6 +1,6 @@
 import type { ImportService } from "./service.js";
 
-/** Single-process worker, matching Shelfie's deployment model. */
+/** Single-process worker, matching Tsundo's deployment model. */
 export async function startImportWorker(
   service: ImportService,
 ): Promise<() => Promise<void>> {

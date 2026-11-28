@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import type { ReplicatedLibraryItem } from "@shelfie/shared";
+import type { ReplicatedLibraryItem } from "@tsundo/shared";
 import type * as LibraryItemsSyncModule from "./library-items.js";
 
 // `db/index.ts` builds the Kysely singleton at import time from

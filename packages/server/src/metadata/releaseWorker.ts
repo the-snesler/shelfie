@@ -42,11 +42,11 @@ export function startReleaseRefreshWorker(
       );
       if (failed.length > 0) {
         console.error(
-          `Shelfie release refresh could not reach: ${failed.join(", ")}`,
+          `Tsundo release refresh could not reach: ${failed.join(", ")}`,
         );
       }
     } catch {
-      console.error("Shelfie release refresh could not complete its pass");
+      console.error("Tsundo release refresh could not complete its pass");
     }
     if (stopped) return;
     try {

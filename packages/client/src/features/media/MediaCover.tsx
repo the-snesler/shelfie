@@ -1,4 +1,4 @@
-import type { MediaType } from "@shelfie/shared";
+import type { MediaType } from "@tsundo/shared";
 import { coverPlaceholderStyle } from "../../images";
 
 /** px width of a media (movie/tv/book) cover in the library grid. */

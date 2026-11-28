@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   libraryItemDocSchema,
   type ReplicatedLibraryItem,
-} from "@shelfie/shared";
+} from "@tsundo/shared";
 import type { SyncCollection } from "./collection.js";
 import { push, type PushRow } from "./push.js";
 import { onChange, type SyncEvent } from "./stream.js";

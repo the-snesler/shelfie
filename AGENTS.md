@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Shelfie is a media tracker focused on the _physicality_ of a collection —
+Tsundo is a media tracker focused on the _physicality_ of a collection —
 what you own, what you're playing/watching/reading, what you've finished —
 rather than a generic watchlist. It tracks **games (IGDB), movies + TV
 shows (TMDB), and books (Goodreads via its internal endpoints,
@@ -18,7 +18,7 @@ generic-sync pattern used by the sibling project `aside`:
 
 ```
 packages/
-├── shared/  @shelfie/shared   the client↔server contract (tsup: esm+cjs+dts)
+├── shared/  @tsundo/shared   the client↔server contract (tsup: esm+cjs+dts)
 │   └── src/
 │       ├── types.ts        LibraryItem / Checkpoint / ItemStatus / MediaType / LOG_FORMATS / episodeKey()
 │       ├── schema.ts       RxDB JSON schema (libraryItemSchema, v8) + migration strategies — the *only* synced schema
@@ -29,10 +29,10 @@ packages/
 │       ├── people.ts       PersonDetail/PersonCredit for the actor page (CastMember.id links to it) — HTTP-only, never synced
 │       ├── contract.test.ts    asserts zod ↔ RxDB schema field alignment stays in lockstep
 │       └── index.ts        barrel export
-├── client/  @shelfie/client  Vite + React 18 + RxDB (Dexie storage) + Tailwind v4
+├── client/  @tsundo/client  Vite + React 18 + RxDB (Dexie storage) + Tailwind v4
 │   └── src/
 │       ├── db/
-│       │   ├── database.ts     getDatabase(scope): 'shelfiedb' (owner, replicated) or 'shelfiedb-guest' (logged-out visitors, never replicated); collections: library_items (synced) + game_metadata/movie_metadata/tv_metadata/book_metadata (local-only card caches)
+│       │   ├── database.ts     getDatabase(scope): 'tsundodb' (owner, replicated) or 'tsundodb-guest' (logged-out visitors, never replicated); collections: library_items (synced) + game_metadata/movie_metadata/tv_metadata/book_metadata (local-only card caches)
 │       │   ├── collections.ts  library_items (schema+migrationStrategies+conflictHandler) + the four card caches (schema only — never replicated, so no conflictHandler)
 │       │   ├── gameCards.ts / movieCards.ts / tvCards.ts / bookCards.ts   per-medium card-cache docs + upsert helpers
 │       │   └── replication.ts  startReplication() → /api/sync/<name>/{pull,push,stream}; called only for library_items — card caches are deliberately never passed in
@@ -48,7 +48,7 @@ packages/
 │       ├── images.ts       gameImageUrl() (IGDB proxy) + tmdbImageUrl() (direct TMDB CDN); book covers are full URLs loaded directly; coverPlaceholderStyle() decodes card ThumbHashes
 │       ├── auth.ts         bearer-token session auth (localStorage), authFetch() wrapper
 │       ├── App.tsx, main.tsx, AuthScreen.tsx, index.css (Tailwind v4 theme tokens)
-└── server/  @shelfie/server  Hono on @hono/node-server
+└── server/  @tsundo/server  Hono on @hono/node-server
     └── src/
         ├── index.ts   loads .env, initDb(), createApp(), serve()
         ├── app.ts     route wiring: cors → /health → auth routes → images → auth gate → sync routes (library_items only) → games/movies/tv/books routes → static (prod)
@@ -289,12 +289,12 @@ Run from the repo root (pnpm workspaces + Turbo):
 
 - `pnpm dev` — Turbo runs all three packages: `shared` (tsup watch), `server` (`tsx watch`, port `SERVER_PORT`/`PORT`, default 3001), `client` (Vite, port `CLIENT_PORT`, default 5173, proxies `/api` → `SERVER_PORT`). Set `SERVER_PORT`/`CLIENT_PORT`/`DATA_DIR` (and re-run `pnpm seed`) to spin up an independent, fully isolated dev stack — e.g. one per agent working in parallel; the client's IndexedDB is already origin-scoped, so distinct `CLIENT_PORT`s isolate browser state for free. These vars only reach the tasks because they're listed in `turbo.json`'s `globalPassThroughEnv` (Turbo 2 strict env mode strips everything undeclared) — add new env vars there or they'll silently vanish inside `pnpm dev`.
 - `pnpm build` — builds `shared` → `client` → `server` in dependency order (Turbo `dependsOn: ["^build"]`).
-- `pnpm typecheck` — `tsc --noEmit` across packages (also gated on `^build`, since client/server import the built `@shelfie/shared`).
+- `pnpm typecheck` — `tsc --noEmit` across packages (also gated on `^build`, since client/server import the built `@tsundo/shared`).
 - `pnpm test` — Vitest. Real tests live in `packages/shared` (contract/validation/conflict) and `packages/server` (`igdb/rank.test.ts`); all packages run `vitest run` and fail for an empty suite.
 - `pnpm lint` — ESLint across all three packages (TypeScript recommended rules and React hook checks), with zero warnings allowed.
 - `pnpm format` — Prettier across supported repository files; `pnpm format:check` verifies formatting in CI. Uses Prettier defaults and `.prettierignore`.
-- `pnpm seed` (`scripts/seed.mjs`) — claims the owner password (`admin`, the dev convention) against a running server, resolves a mix of real games, movies, TV shows, and books through the server's own per-medium search routes (so seeded items get real cover art), then pushes them through `/api/sync/library_items/push` (the TV seed includes a few `watchedEpisodes`). Card metadata is _not_ pre-warmed by seeding — the client populates its local caches on first `Library.tsx` mount; the very first book/movie cards can take a couple of seconds to appear while the server fetches upstream. Idempotent: re-running skips ids already present. Needs the server up (`pnpm dev`) plus `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET` and `TMDB_TOKEN` set; targets `http://localhost:$SERVER_PORT` (default 3001) unless `SHELFIE_SERVER_URL` is set; `SHELFIE_PASSWORD` overrides the claimed/expected password.
-- `pnpm screenshot [path] [route]` (`scripts/screenshot.mjs`) — opens the client in headless Chromium (Playwright), signs in if needed, waits for the library grid (or empty state) to settle, optionally navigates to `route` (e.g. `/lists/dropped?type=game`), and saves a PNG (default `scripts/screenshot.png`). Needs the client up too; targets `http://localhost:$CLIENT_PORT` (default 5173) unless `SHELFIE_CLIENT_URL` is set; `SHELFIE_PASSWORD` overrides the expected password.
+- `pnpm seed` (`scripts/seed.mjs`) — claims the owner password (`admin`, the dev convention) against a running server, resolves a mix of real games, movies, TV shows, and books through the server's own per-medium search routes (so seeded items get real cover art), then pushes them through `/api/sync/library_items/push` (the TV seed includes a few `watchedEpisodes`). Card metadata is _not_ pre-warmed by seeding — the client populates its local caches on first `Library.tsx` mount; the very first book/movie cards can take a couple of seconds to appear while the server fetches upstream. Idempotent: re-running skips ids already present. Needs the server up (`pnpm dev`) plus `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET` and `TMDB_TOKEN` set; targets `http://localhost:$SERVER_PORT` (default 3001) unless `TSUNDO_SERVER_URL` is set; `TSUNDO_PASSWORD` overrides the claimed/expected password.
+- `pnpm screenshot [path] [route]` (`scripts/screenshot.mjs`) — opens the client in headless Chromium (Playwright), signs in if needed, waits for the library grid (or empty state) to settle, optionally navigates to `route` (e.g. `/lists/dropped?type=game`), and saves a PNG (default `scripts/screenshot.png`). Needs the client up too; targets `http://localhost:$CLIENT_PORT` (default 5173) unless `TSUNDO_CLIENT_URL` is set; `TSUNDO_PASSWORD` overrides the expected password.
 
 Typical flow for a task that needs to look at the UI: `pnpm dev` in the
 background, then `pnpm seed`, then `pnpm screenshot [path]`.
@@ -310,11 +310,12 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - **Error handling.** Hono handlers return `c.json({ error: "..." }, status)` for expected 4xx cases rather than throwing; unexpected errors bubble to a 500. Server-internal helpers throw descriptive `Error`s (e.g. `"IGDB rate limit exceeded"`, `"Postgres is not implemented yet"`).
 - **Async.** `async`/`await` throughout; no raw `.then()` chains except isolated cases (`Promise.withResolvers()` for the IGDB throttle queue and scrypt promisification).
 - **Migrations are append-only.** `db/migrations.ts` is a numbered `Migration[]` array bookkept in a `migrations` table — add a new numbered entry, never edit a shipped one (contrast with RxDB's `migrationStrategies`, which is a separate, currently-empty seam in `shared/src/schema.ts`).
+- **Shelfie → Tsundo rename shims.** The app was called Shelfie. Two one-time shims keep old installs working: `server/src/db/index.ts` `adoptLegacyDatabase()` renames a leftover `shelfie.sqlite` (+ WAL/SHM) in `DATA_DIR`, and `client/src/legacyStorage.ts` (first import in `entry.client.tsx`) moves `shelfie.*`/`shelfie:*` localStorage keys to `tsundo`. The old `shelfiedb` IndexedDB is not migrated: the owner database re-pulls from the server. Keep every other identifier on the `tsundo` name.
 - **State management (client).** No global store, no React Query. RxDB is the reactive data layer (`collection.find().$` subscriptions via `useEffect`); everything else is local `useState`/`useEffect` per feature screen, with a `let active = true` unmount guard pattern on async effects.
 - **Long lists (client).** Pages scroll inside App's `<main>`, not the window. Window any list that can grow with the library (the logbook feed is the reference) with `useContainerVirtualizer` from `components/virtualList.ts` (`@tanstack/react-virtual` against that `<main>`, measured rows, offset for content above the list) instead of rendering every row.
 - **Routing (client).** react-router v7 **framework mode** (`@react-router/dev`): file-route config in `src/routes.ts` (`index`/`route`/`layout` helpers), typegen via `react-router typegen` (wired into the `typecheck` script). Routes: `/`, `/search`, `/games/:slug`, `/movies/:id`, `/tv/:id`, `/books/:id`, `/people/:id`, `/logbook`, `/calendar` (`?month=YYYY-MM`), `/lists`, `/lists/:listId` (`?type=&view=&sort=&dir=&group=`), `/recommendations`, `/settings`, catch-all → `/`.
 - **Adding a media type.** Widen `MEDIA_TYPES` + zod, add per-media label/subset entries in `features/media/status.ts` and `LOG_FORMATS_BY_MEDIA`, add shared card/detail DTOs, a server client + `<medium>/routes.ts` + metadata table migration, a client `*Cards.ts` cache + collection, a detail screen + route, a Search tab, and Library href/caption/refresh branches. Statuses themselves need no schema bump.
-- **Auth (client).** Never call bare `fetch` for `/api/*` — use `authFetch()` (`auth.ts`), which attaches the bearer token and treats a 401 (not 403) as session loss, dispatching a `shelfie-auth-lost` window event.
+- **Auth (client).** Never call bare `fetch` for `/api/*` — use `authFetch()` (`auth.ts`), which attaches the bearer token and treats a 401 (not 403) as session loss, dispatching a `tsundo-auth-lost` window event.
 - **RxDB doc mutation.** Use `item.incrementalPatch({...})` for updates (see `media/LogModal.tsx`), not manual field assignment — mirrors the "bump-then-remove" style needed for RxDB revisions to stay consistent with LWW conflict resolution.
 
 ## Important Files
@@ -340,7 +341,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 - **Node ≥ 22** (`engines.node` in root `package.json`); **pnpm 11.5.2** pinned via `packageManager`. Not a Bun project.
 - pnpm workspaces (`pnpm-workspace.yaml`: `packages/*`) + Turbo 2.x for task orchestration — always run scripts through the root `pnpm <script>` (Turbo) rather than `cd`-ing into a package, unless iterating on one package only.
 - Native/postinstall scripts are gated by pnpm; `better-sqlite3` and `esbuild` are pre-approved under `allowBuilds` in `pnpm-workspace.yaml`. If a native dep won't load, check it's approved there and `pnpm rebuild <pkg>`.
-- No path aliases anywhere (`tsconfig.base.json` and every package tsconfig) — cross-package imports go through the `@shelfie/shared` workspace package name, never TS `paths`.
+- No path aliases anywhere (`tsconfig.base.json` and every package tsconfig) — cross-package imports go through the `@tsundo/shared` workspace package name, never TS `paths`.
 - TypeScript is strict everywhere (`strict`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` in `tsconfig.base.json`).
 - ESLint uses `eslint.config.js`: recommended TypeScript rules and React hook checks; package lint scripts reject warnings.
 - CI (`.github/workflows/ci.yml`) gates every PR: a `checks` job runs `pnpm typecheck` → `pnpm lint` → `pnpm format:check` → `pnpm build` → `pnpm test` across the workspace, then a `docker` job builds the Docker image (no push) on PRs and publishes it to GHCR (`ghcr.io/<repo>`) on pushes to `main` via `macbre/push-to-ghcr`. `Dockerfile` (root) is a multi-stage build — deps → build (Turbo `shared`→`client`→`server`) → `pnpm deploy` a prod-only server bundle → a slim runtime stage that serves the built client (`STATIC_DIR=./public`) and API from one container/port (`3001`), persisting SQLite to a `/data` volume. `docker-compose.yml` + `.dockerignore` also live at root; `aside`'s prod deployment patterns (single-container Docker build, `STATIC_DIR` static serving) are the ones this Dockerfile follows.
@@ -349,7 +350,7 @@ Per-package equivalents also exist (`packages/<pkg>` + `pnpm dev|build|test|type
 
 - **Framework:** Vitest, hoisted once as a root devDependency, invoked per-package as `vitest run`. No `vitest.config.*` anywhere — defaults pick up colocated `*.test.ts` files.
 - **Coverage today:** `packages/shared` — `conflict.test.ts` (LWW resolution + equality), `validation.test.ts` (zod bounds/regex/enum checks incl. mediaType/watchedEpisodes), `contract.test.ts` (zod ↔ RxDB schema field alignment + migration strategies, the shared-contract guardrail); `packages/server` — `igdb/rank.test.ts`. Client tests cover CSV import, calendar helpers, library sorting/progress, auth races, card-cache lifecycle, and recommendation ranking. Empty suites fail.
-- **Running tests:** `pnpm test` (all packages via Turbo) or `pnpm --filter @shelfie/shared test` for just shared.
+- **Running tests:** `pnpm test` (all packages via Turbo) or `pnpm --filter @tsundo/shared test` for just shared.
 - **Manual/visual verification:** for client-visible changes, prefer the `pnpm seed` + `pnpm screenshot` flow over writing new tests from scratch — it exercises the real auth + sync + IGDB path against a running dev instance and is the fastest way to confirm a UI change actually rendered.
 - When adding tests for new shared-contract fields, follow the existing pattern: extend `validation.test.ts` for the zod boundary, `contract.test.ts` for schema/zod alignment, and `conflict.test.ts` if the field affects conflict resolution.
 

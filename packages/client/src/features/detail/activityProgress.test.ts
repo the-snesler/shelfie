@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ItemActivity, LogFormat } from "@shelfie/shared";
+import type { ItemActivity, LogFormat } from "@tsundo/shared";
 import { describeProgressLine, progressLines } from "./activityProgress";
 
 function log(

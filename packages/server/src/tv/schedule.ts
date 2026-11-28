@@ -1,4 +1,4 @@
-import type { TvAiring, TvScheduledEpisode, TvSeason } from "@shelfie/shared";
+import type { TvAiring, TvScheduledEpisode, TvSeason } from "@tsundo/shared";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

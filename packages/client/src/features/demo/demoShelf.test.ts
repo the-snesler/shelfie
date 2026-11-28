@@ -1,4 +1,4 @@
-import { libraryItemDocSchema } from "@shelfie/shared";
+import { libraryItemDocSchema } from "@tsundo/shared";
 import { describe, expect, it } from "vitest";
 import { STATUSES_BY_MEDIA } from "../media/status";
 import { buildDemoItem, DEMO_CARDS, DEMO_ITEMS } from "./demoShelf";

@@ -70,7 +70,7 @@ export async function runNotificationCycle(
           id: deliveryId(entry, settings.days_before),
           event_key: entry.key,
           event_date: entry.date,
-          title: "Shelfie release reminder",
+          title: "Tsundo release reminder",
           body: `${entry.title}\n${entry.description}\nRelease date: ${entry.date}`,
           attempts: 0,
           next_attempt_at: now,
@@ -170,7 +170,7 @@ export function startNotificationWorker(
       await runNotificationCycle(database);
     } catch {
       console.error(
-        "Shelfie notification worker could not complete its scheduled pass",
+        "Tsundo notification worker could not complete its scheduled pass",
       );
     } finally {
       running = false;

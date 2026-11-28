@@ -1,4 +1,4 @@
-import type { Checkpoint } from "@shelfie/shared";
+import type { Checkpoint } from "@tsundo/shared";
 import type { ReplicatedDoc, SyncCollection } from "./collection.js";
 
 export interface PullRequest {

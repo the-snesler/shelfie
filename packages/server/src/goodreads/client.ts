@@ -1,4 +1,4 @@
-import type { BookDetail, BookSearchResult, BookSeries } from "@shelfie/shared";
+import type { BookDetail, BookSearchResult, BookSeries } from "@tsundo/shared";
 
 const AUTOCOMPLETE_URL = "https://www.goodreads.com/book/auto_complete";
 const GRAPHQL_URL =
@@ -290,7 +290,7 @@ query getBestEdition($legacyBookId: Int!) {
 `;
 
 /**
- * Goodreads legacy ids name one edition. Shelfie keys books by the edition
+ * Goodreads legacy ids name one edition. Tsundo keys books by the edition
  * Goodreads search ranks first, which is the work's "best book", so an
  * edition id from elsewhere (e.g. one matching an ebook's ISBN) is mapped to
  * that edition. Returns the input id when Goodreads names no best edition,

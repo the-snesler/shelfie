@@ -1,5 +1,5 @@
-import type { LibraryItem } from "@shelfie/shared";
-import { recordItemActivity } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
+import { recordItemActivity } from "@tsundo/shared";
 import type { BookCardDoc } from "./bookCards";
 import type { GameCardDoc } from "./gameCards";
 import type { MovieCardDoc } from "./movieCards";
@@ -32,14 +32,14 @@ const storage = import.meta.env.DEV
   : getRxStorageDexie();
 
 export type LibraryItemCollection = RxCollection<LibraryItem>;
-export interface ShelfieCollections {
+export interface TsundoCollections {
   library_items: LibraryItemCollection;
   game_metadata: RxCollection<GameCardDoc>;
   movie_metadata: RxCollection<MovieCardDoc>;
   tv_metadata: RxCollection<TvCardDoc>;
   book_metadata: RxCollection<BookCardDoc>;
 }
-export type ShelfieDatabase = RxDatabase<ShelfieCollections>;
+export type TsundoDatabase = RxDatabase<TsundoCollections>;
 
 /** `owner` is the signed-in library, replicated to the server. `guest` is a
  * visitor's local-only shelf: never replicated, and kept in its own
@@ -48,11 +48,11 @@ export type ShelfieDatabase = RxDatabase<ShelfieCollections>;
 export type DatabaseScope = "owner" | "guest";
 
 const DATABASE_NAMES: Record<DatabaseScope, string> = {
-  owner: "shelfiedb",
-  guest: "shelfiedb-guest",
+  owner: "tsundodb",
+  guest: "tsundodb-guest",
 };
 
-const dbPromises = new Map<DatabaseScope, Promise<ShelfieDatabase>>();
+const dbPromises = new Map<DatabaseScope, Promise<TsundoDatabase>>();
 
 /**
  * Memoized per scope. RxDB throws if a database of the same name is created
@@ -61,7 +61,7 @@ const dbPromises = new Map<DatabaseScope, Promise<ShelfieDatabase>>();
  */
 export function getDatabase(
   scope: DatabaseScope = "owner",
-): Promise<ShelfieDatabase> {
+): Promise<TsundoDatabase> {
   let promise = dbPromises.get(scope);
   if (!promise) {
     promise = createDatabase(DATABASE_NAMES[scope]);
@@ -70,8 +70,8 @@ export function getDatabase(
   return promise;
 }
 
-async function createDatabase(name: string): Promise<ShelfieDatabase> {
-  const db = await createRxDatabase<ShelfieCollections>({
+async function createDatabase(name: string): Promise<TsundoDatabase> {
+  const db = await createRxDatabase<TsundoCollections>({
     name,
     storage,
     multiInstance: true,

@@ -1,5 +1,5 @@
 import confetti from "canvas-confetti";
-import type { ItemStatus } from "@shelfie/shared";
+import type { ItemStatus } from "@tsundo/shared";
 import { COMPLETION_STATUSES } from "./status";
 
 // Brass accent, warm walnut, cream, and a couple of brighter pops so the

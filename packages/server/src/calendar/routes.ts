@@ -28,7 +28,7 @@ export function registerCalendarFeedRoutes(
       .executeTakeFirst();
     if (!subscription) return c.notFound();
     c.header("Content-Type", "text/calendar; charset=utf-8");
-    c.header("Content-Disposition", 'inline; filename="shelfie.ics"');
+    c.header("Content-Disposition", 'inline; filename="tsundo.ics"');
     return c.body(renderCalendar(await readCalendarEntries(database)));
   });
 }

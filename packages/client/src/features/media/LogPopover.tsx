@@ -3,9 +3,9 @@ import {
   FloatingFocusManager,
   FloatingPortal,
 } from "@floating-ui/react";
-import type { LibraryItem } from "@shelfie/shared";
+import type { LibraryItem } from "@tsundo/shared";
 import type { RxDocument } from "rxdb";
-import type { ShelfieDatabase } from "../../db/database";
+import type { TsundoDatabase } from "../../db/database";
 import { LogModal } from "./LogModal";
 import type { LogTarget } from "./libraryActions";
 import type { LogPopoverState } from "./useLogPopover";
@@ -21,7 +21,7 @@ export function LogPopover({
   item,
 }: {
   popover: LogPopoverState;
-  db: ShelfieDatabase;
+  db: TsundoDatabase;
   target: LogTarget;
   item: RxDocument<LibraryItem> | null;
 }) {

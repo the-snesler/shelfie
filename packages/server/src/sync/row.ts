@@ -1,4 +1,4 @@
-import type { ReplicatedLibraryItem } from "@shelfie/shared";
+import type { ReplicatedLibraryItem } from "@tsundo/shared";
 import type { LibraryItemsTable } from "../db/types.js";
 
 /** SQLite row → replication wire document, for library items. */

@@ -1,4 +1,4 @@
-import type { LibraryItem, TvScheduledEpisode } from "@shelfie/shared";
+import type { LibraryItem, TvScheduledEpisode } from "@tsundo/shared";
 import { describe, expect, it } from "vitest";
 import type { CardMeta } from "../media/useLibraryData";
 import { addDays, monthGrid, shiftMonth } from "./calendarDates";
